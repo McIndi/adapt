@@ -226,6 +226,25 @@ class DatasetPlugin(Plugin):
                 "request": request,
                 "api_url": api_url
             })
+            
+            # Add common navbar context
+            user = getattr(request.state, 'user', None)
+            is_superuser = user and getattr(user, 'is_superuser', False)
+            ui_links = []
+            for res in request.app.state.resources:
+                namespace = res.relative_path.with_suffix("").as_posix()
+                if "sub_namespace" in res.metadata:
+                    namespace += f"/{res.metadata['sub_namespace']}"
+                if res.resource_type in ("html", "markdown"):
+                    url = f"/{namespace}"
+                else:
+                    url = f"/ui/{namespace}"
+                ui_links.append({"name": namespace, "url": url})
+            context.update({
+                "is_superuser": is_superuser,
+                "ui_links": ui_links
+            })
+            
             # api_url and schema_url will be set by core or plugin
             return request.app.state.templates.TemplateResponse(request, template_name, context)
         configs.append(("ui", ui_router))

@@ -5,6 +5,7 @@ import hashlib
 import hmac
 from datetime import datetime, timedelta, timezone
 from fastapi import Request, HTTPException, status, Response, Depends
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 
@@ -184,7 +185,7 @@ def logout(request: Request, response: Response):
                 db.delete(sess)
                 db.commit()
         response.delete_cookie(key=SESSION_COOKIE)
-    return {"message": "Logged out"}
+    return RedirectResponse(url="/auth/login", status_code=302)
 
 @router.get("/auth/me")
 def me(user: User = Depends(require_auth)):
