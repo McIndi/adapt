@@ -188,9 +188,13 @@ All admin endpoints require superuser privileges via `Depends(require_superuser)
 ### **Security Features**
 
 - **Password Hashing:** PBKDF2 with 100,000 iterations and per-user salt
-- **Session Expiration:** 7-day TTL, automatic cleanup
+- **Session Expiration:** 7-day TTL with **active enforcement** (checked on every request)
+- **Session Cleanup:** Background task removes expired sessions daily
+- **Sliding Session Renewal:** Active sessions auto-extend by updating last_active
 - **HttpOnly Cookies:** Prevents XSS attacks
-- **Constant-Time Comparison:** Prevents timing attacks
+- **Secure Cookies:** Enabled automatically with TLS (prevents MITM)
+- **SameSite=Lax:** Prevents CSRF attacks while allowing normal navigation
+- **Constant-Time Comparison:** Prevents timing attacks on password and session validation
 - **Secure by Default:** No permission = no access
 - **Superuser Bypass:** Emergency access for administrators
 
@@ -277,7 +281,6 @@ def write(context, resource, data, request):
 A plugin is a module implementing the following interface:
 
 ```python
-```python
 class Plugin:
     def detect(self, path: Path) -> bool: ...
     def load(self, path: Path) -> ResourceDescriptor | Sequence[ResourceDescriptor]: ...
@@ -286,7 +289,6 @@ class Plugin:
     def write(self, resource: ResourceDescriptor, data: Any, request: Request, context: PluginContext) -> Any: ...
     def get_route_configs(self, resource: ResourceDescriptor) -> list[tuple[str, APIRouter]]: ...
     def get_ui_template(self, resource: ResourceDescriptor) -> tuple[str, dict[str, Any]]: ...
-```
 ```
 
 Below is the full semantic definition.
@@ -596,11 +598,28 @@ router = APIRouter()
 
 ### Guarantees
 
-* One writer at a time
+* One writer at a time (enforced via database unique constraint)
+* No race conditions - optimistic locking with IntegrityError handling
 * Writer cannot be interrupted mid-write
 * All writes use temp files + atomic move
 * Locks recorded and visible in Admin UI
-* Stale lock detection
+* Automatic stale lock cleanup on server startup (5-minute threshold)
+* Lock expiration with TTL (5 minutes default)
+* Retry with timeout (30 seconds) and exponential backoff
+
+### Implementation Details
+
+**Optimistic Locking Pattern:**
+1. Try to insert lock record directly
+2. Database enforces uniqueness via constraint
+3. On IntegrityError, check if existing lock is expired
+4. Delete stale lock and retry
+5. Raise RuntimeError if lock is held by another process
+
+**Automatic Recovery:**
+* Server startup cleans locks older than 5 minutes
+* Ensures recovery from crashes without manual intervention
+* Background monitoring via Admin UI
 
 ---
 

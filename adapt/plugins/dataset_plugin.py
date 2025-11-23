@@ -227,7 +227,7 @@ class DatasetPlugin(Plugin):
                 "api_url": api_url
             })
             # api_url and schema_url will be set by core or plugin
-            return request.app.state.templates.TemplateResponse(request=request, name=template_name, context=context)
+            return request.app.state.templates.TemplateResponse(request, template_name, context)
         configs.append(("ui", ui_router))
 
         return configs

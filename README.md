@@ -115,12 +115,18 @@ Without editing the core server.
 Writes to CSV, Excel, and Parquet-like files follow a strict, atomic workflow:
 
 1. Permission check
-2. Acquire a file lock
+2. Acquire a file lock (with unique constraint to prevent race conditions)
 3. Write to a temporary file
 4. Atomic rename/move
 5. Release lock
 
-Prevents corruption during concurrent writes.
+**Lock Safety Features:**
+* Database-level unique constraint prevents concurrent lock acquisition
+* Automatic retry with exponential backoff (30-second timeout)
+* Stale lock cleanup on server startup (5-minute threshold)
+* Lock expiration (5-minute TTL by default)
+
+Prevents corruption during concurrent writes and ensures automatic recovery from crashes.
 
 ---
 
@@ -130,9 +136,12 @@ Adapt includes a complete security layer for multi-user deployments:
 
 ### Session-Based Authentication
 
-* Cookie-based login system (HttpOnly for XSS protection)
-* PBKDF2 password hashing with per-user salts
-* 7-day session expiration with automatic cleanup
+* Cookie-based login system (HttpOnly, Secure, SameSite flags for comprehensive protection)
+* PBKDF2 password hashing with per-user salts (100,000 iterations)
+* 7-day session expiration with **active enforcement** and automatic cleanup
+* Sliding session renewal - active sessions stay valid
+* Background task removes expired sessions (runs daily)
+* Timing attack mitigation with constant-time operations
 * Automatic redirect to login for unauthenticated browser requests
 * JSON error responses for API clients
 

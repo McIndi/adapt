@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import secrets
 import hashlib
+import hmac
 from datetime import datetime, timedelta, timezone
 from fastapi import Request, HTTPException, status, Response, Depends
 from fastapi.security import OAuth2PasswordRequestForm
@@ -44,8 +45,24 @@ def create_session(db: Session, user_id: int) -> str:
     return token
 
 def get_session(db: Session, token: str) -> DBSession | None:
-    stmt = select(DBSession).where(DBSession.token == token)
-    return db.exec(stmt).first()
+    now = datetime.now(tz=timezone.utc)
+    stmt = (
+        select(DBSession)
+        .where(DBSession.token == token)
+        .where(DBSession.expires_at > now)  # Enforce expiration
+    )
+    session = db.exec(stmt).first()
+    
+    if session:
+        # Update last_active for sliding expiration
+        session.last_active = now
+        db.add(session)
+        db.commit()
+    else:
+        # Constant-time dummy operation to mitigate timing attacks
+        hmac.new(b"dummy_key", token.encode(), "sha256").digest()
+    
+    return session
 
 def get_db_session(request: Request):
     """Dependency to get a database session from the request."""
@@ -131,20 +148,28 @@ router = APIRouter()
 
 @router.get("/auth/login")
 def login_page(request: Request):
-    return request.app.state.templates.TemplateResponse("login.html", {"request": request})
+    return request.app.state.templates.TemplateResponse(request, "login.html")
 
 @router.post("/auth/login")
 def login(form: OAuth2PasswordRequestForm = Depends(), request: Request = None, response: Response = None):
     # form.username, form.password
     db_engine = request.app.state.db_engine
+    config = request.app.state.config
     with Session(db_engine) as db:
         stmt = select(User).where(User.username == form.username)
         user = db.exec(stmt).first()
         if not user or not verify_password(form.password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
         token = create_session(db, user.id)
-        # Set cookie (HttpOnly, Secure optional based on config)
-        response.set_cookie(key=SESSION_COOKIE, value=token, httponly=True, max_age=int(SESSION_TTL.total_seconds()))
+        # Set cookie (HttpOnly, Secure based on config, SameSite=lax)
+        response.set_cookie(
+            key=SESSION_COOKIE,
+            value=token,
+            httponly=True,
+            secure=config.secure_cookies,
+            samesite='lax',
+            max_age=int(SESSION_TTL.total_seconds())
+        )
         return {"message": "Logged in"}
 
 @router.post("/auth/logout")

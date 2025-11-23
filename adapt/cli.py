@@ -1,22 +1,58 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
 import getpass
 import hashlib
+import logging
 import secrets
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from uvicorn import Config, Server
-from sqlmodel import Session, select
+from sqlmodel import Session, select, delete
+from datetime import datetime, timezone
 
 from .config import AdaptConfig
 from .discovery import discover_resources
 from .routes import generate_routes
 from .storage import User, DBSession, init_database
 from .locks import LockManager
+
+
+async def cleanup_expired_sessions(engine, interval_hours=24):
+    """Background task to clean up expired sessions."""
+    while True:
+        await asyncio.sleep(interval_hours * 3600)
+        
+        with Session(engine) as db:
+            now = datetime.now(tz=timezone.utc)
+            stmt = delete(DBSession).where(DBSession.expires_at < now)
+            result = db.exec(stmt)
+            db.commit()
+            
+            if result.rowcount > 0:
+                print(f"Cleaned up {result.rowcount} expired sessions")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Handle application startup and shutdown events."""
+    # Startup: Start background cleanup task
+    engine = app.state.db_engine
+    asyncio.create_task(cleanup_expired_sessions(engine))
+    
+    yield
+    
+    # Shutdown: Could add cleanup logic here if needed
+    cleanup_task.cancel()
+    try:
+        await cleanup_task
+    except asyncio.CancelledError:
+        pass
 
 
 def hash_password(password: str) -> str:
@@ -27,12 +63,16 @@ def hash_password(password: str) -> str:
 
 def serve_app(config: AdaptConfig) -> FastAPI:
     engine = init_database(config.db_path)
-    app = FastAPI(title="Adapt", version=config.version)
+    app = FastAPI(title="Adapt", version=config.version, lifespan=lifespan)
     app.state.config = config
     app.state.db_engine = engine
     
     # Initialize lock manager
     lock_manager = LockManager(engine)
+    # Clean up stale locks from previous crash
+    cleaned = lock_manager.release_stale_locks(max_age_seconds=300)  # 5 minutes
+    if cleaned > 0:
+        logging.warning(f"Cleaned {cleaned} stale locks on startup")
     app.state.lock_manager = lock_manager
     
     resources = discover_resources(config.root, config)
@@ -50,13 +90,13 @@ def serve_app(config: AdaptConfig) -> FastAPI:
     # Authentication middleware
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
-        from sqlmodel import Session, select
+        from .auth import get_session
+        from sqlmodel import Session
         token = request.cookies.get("adapt_session")
         request.state.user = None
         if token:
             with Session(engine) as db:
-                stmt = select(DBSession).where(DBSession.token == token)
-                sess = db.exec(stmt).first()
+                sess = get_session(db, token)  # Uses fixed function with expiration check
                 if sess:
                     user = db.get(User, sess.user_id)
                     request.state.user = user
@@ -179,6 +219,7 @@ def main() -> None:
             config.tls_key = Path(args.tls_key)
 
         use_tls = bool(config.tls_cert and config.tls_key)
+        config.secure_cookies = use_tls  # Set secure cookies when using TLS
         app = serve_app(config)
         server_config = Config(
             app=app,

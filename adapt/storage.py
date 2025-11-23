@@ -4,16 +4,16 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Generator
 
-from sqlalchemy import Boolean, Column, Text
+from sqlalchemy import Boolean, Column, DateTime, Text
 from sqlmodel import Field, SQLModel, create_engine, Session
 from fastapi import Request, Depends
 
 class LockRecord(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    resource: str = Field(index=True)
+    resource: str = Field(index=True, unique=True)
     owner: str
-    acquired_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
-    expires_at: datetime | None = Field(default=None)
+    acquired_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
+    expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     reason: str | None = Field(default=None)
 
 class CacheEntry(SQLModel, table=True):
@@ -25,9 +25,9 @@ class DBSession(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(foreign_key="user.id", index=True)
     token: str = Field(index=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
-    expires_at: datetime | None = Field(default=None)
-    last_active: datetime | None = Field(default=None)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
+    expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    last_active: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
@@ -35,7 +35,7 @@ class User(SQLModel, table=True):
     password_hash: str
     is_active: bool = Field(default=True, sa_column=Column(Boolean, default=True))
     is_superuser: bool = Field(default=False, sa_column=Column(Boolean, default=False))
-    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
 
 class Group(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)

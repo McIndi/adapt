@@ -13,6 +13,7 @@ class AdaptConfig:
     version: str = "0.1.0"
     tls_cert: Path | None = None
     tls_key: Path | None = None
+    secure_cookies: bool = False  # Whether to set secure flag on cookies
     plugin_registry: dict[str, str] = field(default_factory=lambda: {
         ".csv": "adapt.plugins.csv_plugin.CsvPlugin",
         ".xlsx": "adapt.plugins.excel_plugin.ExcelPlugin",
