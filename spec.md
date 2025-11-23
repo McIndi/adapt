@@ -11,7 +11,7 @@ Adapt is an adaptive, local-first backend server built on FastAPI. It automatica
 Place files into a directory, and Adapt generates:
 
 * REST CRUD APIs
-* HTML DataTables interfaces with sorting, searching, and pagination
+* HTML DataTables interfaces with sorting, searching, pagination, and a common navigation bar
 * Inline editing (PATCH) with schema-aware validation
 * Safe writes (locking + atomic replacement)
 * Automatic schema generation and override scaffolding
@@ -264,6 +264,7 @@ Contains:
 
 * DataTables setup
 * Inline editing hooks
+* Common navigation bar with links to docs, admin, datasets, and logout
 * Basic template users can customize
 
 ### **Example generated write override stub**

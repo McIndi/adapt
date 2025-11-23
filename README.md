@@ -64,6 +64,7 @@ CSV and Excel datasets automatically generate a full-featured HTML UI:
 * Inline editing (PATCH)
 * Form-based row addition (POST)
 * Row deletion (DELETE)
+* **Common navigation bar** with links to API docs, admin dashboard (for superusers), dropdown of all discovered datasets, and logout
 
 This UI is powered by DataTables and delivered entirely over static routes — no framework or build step required.
 
