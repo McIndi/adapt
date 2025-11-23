@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adapt Admin</title>
+    <link rel="stylesheet" href="/static/admin/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <h1>Adapt</h1>
+                <span class="badge">Admin</span>
+            </div>
+            <nav>
+                <button class="nav-item active" data-tab="users">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    Users
+                </button>
+                <button class="nav-item" data-tab="locks">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    Locks
+                </button>
+                <button class="nav-item" data-tab="groups">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Groups
+                </button>
+                <button class="nav-item" data-tab="permissions">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    Permissions
+                </button>
+            </nav>
+            <div class="user-profile">
+                <div class="user-info">
+                    <span id="current-username">Loading...</span>
+                </div>
+                <button id="logout-btn" class="icon-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                </button>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div id="users-view" class="view active">
+                <header class="view-header">
+                    <h2>User Management</h2>
+                    <button class="btn primary" id="add-user-btn">Add User</button>
+                </header>
+                <div class="card">
+                    <table id="users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="locks-view" class="view">
+                <header class="view-header">
+                    <h2>System Locks</h2>
+                    <button class="btn secondary" id="clean-locks-btn">Clean Stale Locks</button>
+                </header>
+                <div class="card">
+                    <table id="locks-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Resource</th>
+                                <th>Owner</th>
+                                <th>Reason</th>
+                                <th>Expires</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="groups-view" class="view">
+                <header class="view-header">
+                    <h2>Group Management</h2>
+                    <button class="btn primary" id="add-group-btn">Add Group</button>
+                </header>
+                <div class="card">
+                    <table id="groups-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="permissions-view" class="view">
+                <header class="view-header">
+                    <h2>Permission Definitions</h2>
+                    <button class="btn primary" id="add-permission-btn">Add Permission</button>
+                </header>
+                <div class="card">
+                    <table id="permissions-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Resource</th>
+                                <th>Action</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Add User -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <header>
+                <h3>Add New User</h3>
+                <button class="close-modal">&times;</button>
+            </header>
+            <form id="add-user-form">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required>
+                </div>
+                <div class="form-group checkbox">
+                    <input type="checkbox" id="is_superuser" name="is_superuser">
+                    <label for="is_superuser">Is Superuser?</label>
+                </div>
+                <footer>
+                    <button type="button" class="btn secondary close-modal">Cancel</button>
+                    <button type="submit" class="btn primary">Create User</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Add Group -->
+    <div id="group-modal" class="modal">
+        <div class="modal-content">
+            <header>
+                <h3>Add New Group</h3>
+                <button class="close-modal">&times;</button>
+            </header>
+            <form id="add-group-form">
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" name="description">
+                </div>
+                <footer>
+                    <button type="button" class="btn secondary close-modal">Cancel</button>
+                    <button type="submit" class="btn primary">Create Group</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Group Members -->
+    <div id="members-modal" class="modal">
+        <div class="modal-content">
+            <header>
+                <h3>Manage Group Members</h3>
+                <button class="close-modal">&times;</button>
+            </header>
+            <div class="form-group">
+                <label>Add User to Group</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <select id="add-member-select"
+                        style="flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.375rem;">
+                        <!-- Populated by JS -->
+                    </select>
+                    <button id="add-member-btn" class="btn primary">Add</button>
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem;">
+                <label
+                    style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 500; color: var(--text-secondary);">Current
+                    Members</label>
+                <ul id="members-list"
+                    style="list-style: none; padding: 0; border: 1px solid var(--border); border-radius: 0.375rem; max-height: 200px; overflow-y: auto;">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Add Permission -->
+    <div id="permission-modal" class="modal">
+        <div class="modal-content">
+            <header>
+                <h3>Add New Permission</h3>
+                <button class="close-modal">&times;</button>
+            </header>
+            <form id="add-permission-form">
+                <div class="form-group">
+                    <label>Resource</label>
+                    <input type="text" name="resource" placeholder="e.g. 'documents'" required>
+                </div>
+                <div class="form-group">
+                    <label>Action</label>
+                    <input type="text" name="action" placeholder="e.g. 'read'" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" name="description">
+                </div>
+                <footer>
+                    <button type="button" class="btn secondary close-modal">Cancel</button>
+                    <button type="submit" class="btn primary">Create Permission</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Group Permissions -->
+    <div id="group-permissions-modal" class="modal">
+        <div class="modal-content">
+            <header>
+                <h3>Manage Group Permissions</h3>
+                <button class="close-modal">&times;</button>
+            </header>
+            <div class="form-group">
+                <label>Add Permission to Group</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <select id="add-group-permission-select"
+                        style="flex: 1; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.375rem;">
+                        <!-- Populated by JS -->
+                    </select>
+                    <button id="add-group-permission-btn" class="btn primary">Add</button>
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem;">
+                <label
+                    style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem; font-weight: 500; color: var(--text-secondary);">Current
+                    Permissions</label>
+                <ul id="group-permissions-list"
+                    style="list-style: none; padding: 0; border: 1px solid var(--border); border-radius: 0.375rem; max-height: 200px; overflow-y: auto;">
+                    <!-- Populated by JS -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/admin/app.js"></script>
+</body>
+
+</html>

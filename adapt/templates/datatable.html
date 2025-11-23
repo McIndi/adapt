@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ schema.name }} - Adapt</title>
+    <link href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .action-buttons { white-space: nowrap; }
+        .modal-lg { max-width: 90%; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h1>{{ schema.name }}</h1>
+                <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#createModal">
+                    Add New Record
+                </button>
+                <table id="dataTable" class="table table-striped table-bordered">
+                    <thead>
+                        <tr>
+                            {% for col_name, col_info in schema.columns.items() %}
+                            <th>{{ col_name }}</th>
+                            {% endfor %}
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Modal -->
+    <div class="modal fade" id="createModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Record</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="createForm">
+                        {% for col_name, col_info in schema.columns.items() %}
+                        <div class="mb-3">
+                            <label for="create_{{ col_name }}" class="form-label">{{ col_name }}</label>
+                            <input type="text" class="form-control" id="create_{{ col_name }}" name="{{ col_name }}">
+                        </div>
+                        {% endfor %}
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createRecord()">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Record</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editForm">
+                        <input type="hidden" id="edit_row_id" name="_row_id">
+                        {% for col_name, col_info in schema.columns.items() %}
+                        <div class="mb-3">
+                            <label for="edit_{{ col_name }}" class="form-label">{{ col_name }}</label>
+                            <input type="text" class="form-control" id="edit_{{ col_name }}" name="{{ col_name }}">
+                        </div>
+                        {% endfor %}
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="updateRecord()">Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let dataTable;
+        const apiUrl = '{{ api_url }}';
+
+        $(document).ready(function() {
+            dataTable = $('#dataTable').DataTable({
+                serverSide: false,
+                ajax: {
+                    url: apiUrl,
+                    type: 'GET',
+                    dataSrc: '',
+                    error: function(xhr, error, thrown) {
+                        console.log('DataTables error:', xhr, error, thrown);
+                        alert('Error loading data: ' + error);
+                    }
+                },
+                columns: [
+                    {% for col_name, col_info in schema.columns.items() %}
+                    { data: '{{ col_name }}' },
+                    {% endfor %}
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        render: function(data, type, row) {
+                            return `
+                                <button class="btn btn-sm btn-warning me-1" onclick="editRecord(${row._row_id})">Edit</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteRecord(${row._row_id})">Delete</button>
+                            `;
+                        }
+                    }
+                ]
+            });
+        });
+
+        function createRecord() {
+            const formData = new FormData(document.getElementById('createForm'));
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'create', data: [data] })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    $('#createModal').modal('hide');
+                    document.getElementById('createForm').reset();
+                    dataTable.ajax.reload();
+                } else {
+                    alert('Error creating record');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error creating record');
+            });
+        }
+
+        function editRecord(rowId) {
+            // Find the row data
+            const rowData = dataTable.rows().data().toArray().find(row => row._row_id === rowId);
+            if (rowData) {
+                document.getElementById('edit_row_id').value = rowId;
+                {% for col_name, col_info in schema.columns.items() %}
+                document.getElementById('edit_{{ col_name }}').value = rowData.{{ col_name }};
+                {% endfor %}
+                $('#editModal').modal('show');
+            }
+        }
+
+        function updateRecord() {
+            const formData = new FormData(document.getElementById('editForm'));
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                data[key] = value;
+            }
+
+            fetch(apiUrl, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'update', data: data })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    $('#editModal').modal('hide');
+                    dataTable.ajax.reload();
+                } else {
+                    alert('Error updating record');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating record');
+            });
+        }
+
+        function deleteRecord(rowId) {
+            if (confirm('Are you sure you want to delete this record?')) {
+                fetch(apiUrl, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete', data: { _row_id: rowId } })
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        dataTable.ajax.reload();
+                    } else {
+                        alert('Error deleting record');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting record');
+                });
+            }
+        }
+    </script>
+</body>
+</html>

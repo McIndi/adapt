@@ -1,0 +1,7 @@
+# Test Text File
+
+This is a plain text file that should be rendered as markdown because of our custom config mapping.
+
+- Item 1
+- Item 2
+- Item 3

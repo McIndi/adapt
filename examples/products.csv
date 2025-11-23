@@ -1,0 +1,23 @@
+id,name,category,price,in_stock,rating,description
+1,Wireless Bluetooth Headphones,Electronics,89.99,True,4.5,foobarbaz
+2,Ergonomic Office Chair,Furniture,249.99,True,4.2,Adjustable ergonomic chair with lumbar support and breathable mesh back
+3,Stainless Steel Water Bottle,Kitchen,24.99,False,4.7,Insulated stainless steel bottle keeps drinks cold for 24 hours or hot for 12 hours
+4,Smart Fitness Tracker,Wearables,129.99,True,4.3,"Advanced fitness tracker with heart rate monitoring, GPS, and sleep tracking"
+5,Ceramic Coffee Mug,Kitchen,12.99,True,4.8,"Handcrafted ceramic mug with unique glaze pattern, perfect for coffee or tea"
+6,Mechanical Gaming Keyboard,Electronics,159.99,True,4.6,RGB backlit mechanical keyboard with Cherry MX switches and programmable keys
+7,Yoga Mat,Fitness,39.99,False,4.4,"Non-slip yoga mat made from eco-friendly TPE material, 6mm thick"
+8,LED Desk Lamp,Lighting,45.99,True,4.1,Adjustable LED desk lamp with touch controls and multiple brightness levels
+9,Portable Charger,Electronics,29.99,True,4.0,10000mAh portable charger with fast charging and dual USB ports
+10,Herbal Tea Set,Kitchen,34.99,False,4.9,"Set of 6 premium herbal teas in decorative tin, includes chamomile, peppermint, and green tea"
+11,Wireless Mouse,Electronics,19.99,True,3.8,Ergonomic wireless mouse with 2.4GHz connectivity and long battery life
+12,Wall Art Canvas,Decor,79.99,True,4.7,"Beautiful landscape canvas print, 24x36 inches, ready to hang"
+13,Resistance Bands,Fitness,22.99,False,4.2,Set of 5 resistance bands with different resistance levels for strength training
+14,Bluetooth Speaker,Electronics,69.99,True,4.4,Portable Bluetooth speaker with waterproof design and 360-degree sound
+15,Throw Pillow,Decor,16.99,True,3.9,"Decorative throw pillow with soft microfiber cover, 18x18 inches"
+16,Digital Kitchen Scale,Kitchen,15.99,False,4.3,Precise digital scale with tare function and multiple measurement units
+17,Gaming Headset,Electronics,79.99,True,4.5,Surround sound gaming headset with microphone and RGB lighting
+18,Plant Pot Set,Gardening,32.99,True,4.6,Set of 3 ceramic plant pots in different sizes with drainage holes
+19,Fitness Dumbbells,Fitness,89.99,False,4.1,"Adjustable dumbbells from 5-50 lbs, perfect for home workouts"
+20,Smart Home Hub,Electronics,199.99,True,4.2,Central hub for controlling smart home devices with voice assistant integration
+21,Updated Test Product,Test,9.99,True,5.0,A test product for validation
+100,foo,foobar,99999.0,True,5.0,foobarbz

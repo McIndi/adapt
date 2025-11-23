@@ -1,0 +1,23 @@
+[project]
+name = "adapt"
+version = "0.1.0"
+description = "Adaptive file-backed FastAPI server that turns datasets into CRUD APIs and UIs."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{ name = "notesofcliff", email = "notesofcliff@gmail.com" }]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "sqlmodel",
+    "pendulum",
+    "watchfiles",
+    "jinja2",
+    "openpyxl",
+    "pytest",
+    "markdown",
+    "httpx",
+    "python-multipart",
+]
+[project.scripts]
+adapt = "adapt.cli:main"
