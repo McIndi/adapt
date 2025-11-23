@@ -78,19 +78,23 @@ class DatasetPlugin(Plugin):
         schema = self.schema(resource)
         columns = schema.get("columns", {})
         raw_rows = self._read_raw_rows(resource)
+        
+        # Apply Row-Level Security
+        user = getattr(request.state, "user", None)
+        filtered_rows = self.filter_for_user(resource, user, raw_rows)
+        
         rows = []
-        for row_id, row in enumerate(raw_rows, start=1):
+        for row_id, row in enumerate(filtered_rows, start=1):
             row_dict = {"_row_id": row_id}
             for idx, value in enumerate(row):
                 if idx < len(header):
                     col_name = header[idx]
-                    col_schema = columns.get(col_name, {})
-                    col_type = col_schema.get("type", "string")
-                    row_dict[col_name] = self._cast_value(value, col_type)
+                    col_type = columns.get(col_name, {}).get("type", "string")
+                    row_dict[col_name] = self._convert_value(value, col_type)
             rows.append(row_dict)
         return rows
 
-    def _cast_value(self, value: str, col_type: str) -> Any:
+    def _convert_value(self, value: str, col_type: str) -> Any:
         if col_type == "integer":
             try:
                 return int(value)

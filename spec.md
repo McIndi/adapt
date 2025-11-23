@@ -74,6 +74,8 @@ The RBAC (Role-Based Access Control) system consists of four main components:
 2. **User & Group Management** - Organize users into groups for permission inheritance
 3. **Permission System** - Resource-level permissions (read/write) assigned to groups
 4. **Enforcement Layer** - Automatic permission checking on all routes
+5. **API Key System** - Programmatic access via header-based authentication
+6. **Audit System** - Comprehensive logging of security-critical actions
 
 ### **Database Schema**
 
@@ -125,17 +127,48 @@ CREATE TABLE session (
     created_at TIMESTAMP NOT NULL,
     expires_at TIMESTAMP NOT NULL,
     last_active TIMESTAMP NOT NULL
+    last_active TIMESTAMP NOT NULL
+);
+
+-- API Keys
+CREATE TABLE apikey (
+    id INTEGER PRIMARY KEY,
+    user_id INTEGER REFERENCES user(id),
+    key_hash TEXT UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP,
+    last_used_at TIMESTAMP,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+-- Audit Logs
+CREATE TABLE auditlog (
+    id INTEGER PRIMARY KEY,
+    timestamp TIMESTAMP NOT NULL,
+    user_id INTEGER REFERENCES user(id),
+    action TEXT NOT NULL,    -- e.g., "login", "create_user"
+    resource TEXT,           -- e.g., "auth", "user"
+    details TEXT,
+    ip_address TEXT
 );
 ```
 
 ### **Authentication Flow**
 
+#### **Session-Based (Browser)**
 1. User submits credentials to `/auth/login`
 2. Server validates username/password (PBKDF2 hash comparison)
 3. Server creates session record with random token
 4. Server sets HttpOnly cookie with session token
 5. Subsequent requests include cookie automatically
 6. Middleware validates session and attaches user to request
+
+#### **API Key-Based (Programmatic)**
+1. Client includes `X-API-Key: <key>` header in request
+2. Middleware extracts key and computes SHA-256 hash
+3. Server looks up active, non-expired key by hash
+4. If valid, associated user is attached to request
 
 ### **Permission Checking**
 
@@ -182,6 +215,8 @@ The Admin UI is backed by REST endpoints at `/admin/*`:
 - `GET/POST/DELETE /admin/permissions` - Permission CRUD
 - `POST/DELETE /admin/groups/{id}/members/{user_id}` - Group membership
 - `POST/DELETE /admin/groups/{id}/permissions/{perm_id}` - Permission assignment
+- `GET/POST/DELETE /admin/api-keys` - API Key management
+- `GET /admin/audit-logs` - Audit Log viewing
 
 All admin endpoints require superuser privileges via `Depends(require_superuser)`.
 
@@ -197,6 +232,16 @@ All admin endpoints require superuser privileges via `Depends(require_superuser)
 - **Constant-Time Comparison:** Prevents timing attacks on password and session validation
 - **Secure by Default:** No permission = no access
 - **Superuser Bypass:** Emergency access for administrators
+- **Audit Logging:** All write operations and auth events are recorded
+- **Row-Level Security:** Plugins can enforce data filtering per user
+
+### **Row-Level Security (RLS)**
+
+RLS allows plugins to restrict which records a user can see or modify within a dataset.
+
+1. **Interface**: `Plugin` class includes `filter_for_user(self, resource, user, query)` method.
+2. **Enforcement**: The Dataset Engine calls this method before executing any read operation.
+3. **Implementation**: Plugins can inspect the `user` object (and their groups) and modify the `query` (e.g., adding a `WHERE owner_id = ?` clause) to return only authorized data.
 
 ---
 
@@ -682,6 +727,17 @@ Local JSON DB or pluggable backends.
 * Cache viewer
 * Clear cache
 
+#### API Keys
+
+* Generate new keys
+* Revoke keys
+* View key metadata (last used, expiration)
+
+#### Audit Logs
+
+* View system activity
+* Filter by user/action
+
 ---
 
 # **16. Companion File Specification**
@@ -777,7 +833,7 @@ All errors use a formatted JSON structure:
 * GraphQL views
 * Multi-tenant mode
 * SSO providers
-* Audit logs
+* Audit logs (Completed)
 * Plugin marketplace
 * S3 + remote storage backends
 

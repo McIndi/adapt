@@ -21,14 +21,6 @@ class CacheEntry(SQLModel, table=True):
     resource: str = Field(index=True)
     description: str | None = None
 
-class DBSession(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
-    token: str = Field(index=True)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
-    expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
-    last_active: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
-
 class User(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     username: str = Field(index=True)
@@ -55,6 +47,33 @@ class UserGroup(SQLModel, table=True):
 class GroupPermission(SQLModel, table=True):
     group_id: int = Field(foreign_key="group.id", primary_key=True)
     permission_id: int = Field(foreign_key="permission.id", primary_key=True)
+
+class APIKey(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    key_hash: str = Field(index=True, unique=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    description: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
+    expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    last_used_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    is_active: bool = Field(default=True)
+
+class AuditLog(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
+    user_id: int | None = Field(default=None, index=True)
+    action: str = Field(index=True)
+    resource: str = Field(index=True)
+    details: str | None = None
+    ip_address: str | None = None
+
+class DBSession(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    token: str = Field(index=True)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
+    expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    last_active: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
 
 def init_database(path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)

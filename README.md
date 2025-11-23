@@ -10,7 +10,10 @@ Drop a CSV, Excel file, Markdown document, HTML page, Parquet-style dataset, or 
 * Safe writes via file locking
 * Plugin-driven handlers
 * Authentication, users, groups, and permissions
-* Admin dashboard for managing users, groups, locks, and caches
+* API Keys for programmatic access
+* Audit logging for security and compliance
+* Row-Level Security (RLS) for granular data access
+* Admin dashboard for managing users, groups, locks, caches, and keys
 
 A backend that lives in a folder.
 
@@ -178,6 +181,25 @@ All dataset routes (`/api/*`, `/ui/*`, `/schema/*`) are automatically protected:
 4. POST/PUT/PATCH/DELETE require `write` permission
 5. 403 Forbidden if permission denied
 
+### API Keys
+
+* Programmatic access for scripts and external tools
+* Generate keys via Admin UI with optional expiration
+* Authenticate via `X-API-Key` header
+* Secure storage (SHA-256 hashed)
+
+### Audit Logging
+
+* Records critical system actions for security and compliance
+* Logs: Login/Logout, User/Group changes, Permission changes, API Key management
+* Viewable and filterable via Admin UI
+
+### Row-Level Security (RLS)
+
+* Plugins can enforce granular access control based on the authenticated user
+* `filter_for_user` hook allows plugins to restrict data visibility
+* Applied automatically during data retrieval
+
 ---
 
 ## Admin UI
@@ -210,6 +232,18 @@ Adapt ships with a built-in admin interface at `/admin/` to manage the entire se
 * View current file locks
 * Release stale locks
 * Monitor concurrent access
+
+### API Keys Tab
+
+* Generate new API keys for users
+* Revoke existing keys
+* Set expiration dates
+
+### Audit Logs Tab
+
+* View chronological history of system actions
+* Filter by user, action, or resource
+* Inspect action details
 
 The Admin UI uses vanilla HTML/CSS/JavaScript for portability and simplicity—no build step required.
 
@@ -301,7 +335,7 @@ Adapt exposes:
 * S3 / cloud-backed storage providers
 * Multi-tenant mode
 * GraphQL auto-introspection
-* Audit log browser in Admin UI
+* Audit log browser in Admin UI (Completed)
 * Plugin marketplace
 
 ---

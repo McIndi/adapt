@@ -42,27 +42,19 @@ class Plugin(ABC):
 
     @abstractmethod
     def schema(self, resource: ResourceDescriptor) -> dict[str, Any]:
-        ...
-
-    @abstractmethod
-    def read(self, resource: ResourceDescriptor, request: Request) -> Any:
-        ...
-
-    @abstractmethod
-    def write(self, resource: ResourceDescriptor, data: Any, request: Request, context: PluginContext) -> Any:
-        ...
-
-    def generate_companion_files(self, descriptor: ResourceDescriptor) -> None:
-        """Generate companion files for this resource (schema.json, index.html, write.py)."""
-        pass
-
-    def get_ui_template(self, descriptor: ResourceDescriptor) -> tuple[str, dict[str, Any]]:
         """Return template name and context for UI rendering."""
         return "", {}
 
     def get_route_configs(self, descriptor: ResourceDescriptor) -> list[tuple[str, APIRouter]]:
         """Return list of (prefix, router) tuples for mounting routes."""
         return []
+
+    def filter_for_user(self, resource: ResourceDescriptor, user: Any, rows: Iterable[Any]) -> Iterable[Any]:
+        """Filter rows based on user context (Row-Level Security).
+        
+        Default implementation returns all rows. Override this in plugins to implement RLS.
+        """
+        return rows
 
     def default_ui(self, descriptor: ResourceDescriptor) -> str:
         return f"""

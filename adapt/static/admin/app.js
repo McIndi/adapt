@@ -485,5 +485,123 @@ document.addEventListener('DOMContentLoaded', () => {
     window.removeGroupMember = removeGroupMember;
     window.deletePermission = deletePermission;
     window.openGroupPermissionsModal = openGroupPermissionsModal;
+    window.deletePermission = deletePermission;
+    window.openGroupPermissionsModal = openGroupPermissionsModal;
     window.removeGroupPermission = removeGroupPermission;
+    window.revokeApiKey = revokeApiKey;
+
+    // --- API Keys Logic ---
+
+    async function loadApiKeys() {
+        const res = await fetch('/admin/api-keys');
+        if (res.ok) {
+            state.apiKeys = await res.json();
+            renderApiKeys();
+        }
+    }
+
+    async function createApiKey(data) {
+        const res = await fetch('/admin/api-keys', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            const newKey = await res.json();
+            // Show key to user
+            document.getElementById('new-api-key-display').textContent = newKey.key;
+            document.getElementById('show-key-modal').classList.add('active');
+            loadApiKeys();
+        } else {
+            const err = await res.json();
+            alert(err.detail || 'Failed to generate API Key');
+        }
+    }
+
+    async function revokeApiKey(id) {
+        if (!confirm('Revoke this API Key?')) return;
+        const res = await fetch(`/admin/api-keys/${id}`, { method: 'DELETE' });
+        if (res.ok) loadApiKeys();
+        else alert('Failed to revoke API Key');
+    }
+
+    function renderApiKeys() {
+        const tbody = document.querySelector('#api-keys-table tbody');
+        if (!state.apiKeys || state.apiKeys.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-secondary)">No API Keys found</td></tr>';
+            return;
+        }
+        tbody.innerHTML = state.apiKeys.map(key => `
+            <tr>
+                <td>${key.id}</td>
+                <td>${key.user_id}</td>
+                <td>${key.description || '-'}</td>
+                <td>${key.expires_at ? new Date(key.expires_at).toLocaleDateString() : 'Never'}</td>
+                <td>${key.last_used_at ? new Date(key.last_used_at).toLocaleString() : 'Never'}</td>
+                <td>
+                    <button class="btn danger" onclick="window.revokeApiKey(${key.id})">Revoke</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // --- Audit Logs Logic ---
+
+    async function loadAuditLogs() {
+        const res = await fetch('/admin/audit-logs');
+        if (res.ok) {
+            state.auditLogs = await res.json();
+            renderAuditLogs();
+        }
+    }
+
+    function renderAuditLogs() {
+        const tbody = document.querySelector('#audit-logs-table tbody');
+        if (!state.auditLogs || state.auditLogs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-secondary)">No logs found</td></tr>';
+            return;
+        }
+        tbody.innerHTML = state.auditLogs.map(log => `
+            <tr>
+                <td>${new Date(log.timestamp).toLocaleString()}</td>
+                <td>${log.user_id || 'Anon'}</td>
+                <td>${log.action}</td>
+                <td>${log.resource}</td>
+                <td>${log.details || '-'}</td>
+                <td>${log.ip_address || '-'}</td>
+            </tr>
+        `).join('');
+    }
+
+    // --- Event Listeners for New Features ---
+
+    document.getElementById('add-api-key-btn').addEventListener('click', () => {
+        // Populate user select
+        const select = document.querySelector('select[name="user_id"]');
+        select.innerHTML = state.users.map(u => `<option value="${u.id}">${u.username}</option>`).join('');
+        document.getElementById('api-key-modal').classList.add('active');
+    });
+
+    document.getElementById('add-api-key-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+        data.user_id = parseInt(data.user_id);
+        if (data.expires_in_days) data.expires_in_days = parseInt(data.expires_in_days);
+        else delete data.expires_in_days;
+
+        await createApiKey(data);
+        document.getElementById('api-key-modal').classList.remove('active');
+        e.target.reset();
+    });
+
+    document.getElementById('refresh-audit-btn').addEventListener('click', loadAuditLogs);
+
+    // Hook into switchTab
+    const originalSwitchTab = switchTab;
+    switchTab = function (tab) {
+        originalSwitchTab(tab);
+        if (tab === 'api-keys') loadApiKeys();
+        if (tab === 'audit-logs') loadAuditLogs();
+    };
 });

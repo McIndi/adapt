@@ -56,6 +56,64 @@
                 <button class="nav-item" data-tab="groups">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adapt Admin</title>
+    <link rel="stylesheet" href="/static/admin/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">Adapt</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/docs">Docs</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/">Admin</a>
+                    </li>
+                </ul>
+                <form class="d-flex" method="post" action="/auth/logout">
+                    <button class="btn btn-outline-light" type="submit">Logout</button>
+                </form>
+            </div>
+        </div>
+    </nav>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="brand">
+                <h1>Adapt</h1>
+                <span class="badge">Admin</span>
+            </div>
+            <nav>
+                <button class="nav-item active" data-tab="users">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    Users
+                </button>
+                <button class="nav-item" data-tab="locks">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    Locks
+                </button>
+                <button class="nav-item" data-tab="groups">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                         <circle cx="9" cy="7" r="4"></circle>
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
@@ -68,6 +126,23 @@
                     </svg>
                     Permissions
                 </button>
+                <button class="nav-item" data-tab="api-keys">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                    </svg>
+                    API Keys
+                </button>
+                <button class="nav-item" data-tab="audit-logs">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    Audit Log
+                </button>
+
             </nav>
             <div class="user-profile">
                 <div class="user-info">
@@ -175,6 +250,55 @@
                     </table>
                 </div>
             </div>
+
+            <div id="api-keys-view" class="view">
+                <header class="view-header">
+                    <h2>API Keys</h2>
+                    <button class="btn primary" id="add-api-key-btn">Generate Key</button>
+                </header>
+                <div class="card">
+                    <table id="api-keys-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User ID</th>
+                                <th>Description</th>
+                                <th>Expires</th>
+                                <th>Last Used</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="audit-logs-view" class="view">
+                <header class="view-header">
+                    <h2>Audit Log</h2>
+                    <button class="btn secondary" id="refresh-audit-btn">Refresh</button>
+                </header>
+                <div class="card">
+                    <table id="audit-logs-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>User ID</th>
+                                <th>Action</th>
+                                <th>Resource</th>
+                                <th>Details</th>
+                                <th>IP</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -315,6 +439,56 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal for Add API Key -->
+    <div id="api-key-modal" class="modal">
+        <div class="modal-content">
+            <header>
+                <h3>Generate API Key</h3>
+                <button class="close-modal">&times;</button>
+            </header>
+            <form id="add-api-key-form">
+                <div class="form-group">
+                    <label>User</label>
+                    <select name="user_id" required style="width: 100%; padding: 0.5rem; border: 1px solid var(--border); border-radius: 0.375rem;">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" name="description" placeholder="e.g. 'CI/CD Pipeline'">
+                </div>
+                <div class="form-group">
+                    <label>Expires In (Days)</label>
+                    <input type="number" name="expires_in_days" placeholder="Leave empty for no expiration">
+                </div>
+                <footer>
+                    <button type="button" class="btn secondary close-modal">Cancel</button>
+                    <button type="submit" class="btn primary">Generate</button>
+                </footer>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for Showing New API Key -->
+    <div id="show-key-modal" class="modal">
+        <div class="modal-content">
+            <header>
+                <h3>API Key Generated</h3>
+                <button class="close-modal">&times;</button>
+            </header>
+            <div style="padding: 1rem;">
+                <p>Please copy your API key now. You won't be able to see it again!</p>
+                <div style="background: #f5f5f5; padding: 1rem; border-radius: 0.375rem; font-family: monospace; word-break: break-all; margin: 1rem 0;">
+                    <strong id="new-api-key-display"></strong>
+                </div>
+            </div>
+            <footer>
+                <button type="button" class="btn primary close-modal">Done</button>
+            </footer>
+        </div>
+    </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/admin/app.js"></script>

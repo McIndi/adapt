@@ -65,29 +65,38 @@ def get_session(db: Session, token: str) -> DBSession | None:
     
     return session
 
-def get_db_session(request: Request):
-    """Dependency to get a database session from the request."""
-    return Session(request.app.state.db_engine)
-
 def get_current_user(request: Request) -> User | None:
-    # Retrieve session token from cookie
+    # 1. Try Session Cookie
     token = request.cookies.get(SESSION_COOKIE)
-    if not token:
-        return None
-    
-    with get_db_session(request) as db:
-        session = get_session(db, token)
-        if not session:
-            return None
-        user = db.get(User, session.user_id)
-        if user:
-            # Force load any relationships before detaching
-            db.refresh(user)
-        return user
+    if token:
+        with Session(request.app.state.db_engine) as db:
+            session = get_session(db, token)
+            if session:
+                user = db.get(User, session.user_id)
+                if user:
+                    return user
 
-def require_auth(request: Request, user: User | None = Depends(get_current_user)) -> User:
+    # 2. Try API Key
+    api_key_header = request.headers.get("X-API-Key")
+    if api_key_header:
+        from .api_keys import verify_api_key
+        with Session(request.app.state.db_engine) as db:
+            user = verify_api_key(db, api_key_header)
+            if user:
+                return user
+
+    return None
+
+def require_auth(request: Request) -> User:
+    user = get_current_user(request)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        # Check if it's an API request (JSON) or Browser request
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+             # Redirect to login for browser
+             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+        else:
+             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     return user
 
 def require_superuser(user: User = Depends(require_auth)) -> User:
@@ -162,6 +171,10 @@ def login(form: OAuth2PasswordRequestForm = Depends(), request: Request = None, 
         if not user or not verify_password(form.password, user.password_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
         token = create_session(db, user.id)
+        
+        from .audit import log_action
+        log_action(request, "login", "auth", "User logged in", user.id)
+        
         # Set cookie (HttpOnly, Secure based on config, SameSite=lax)
         response.set_cookie(
             key=SESSION_COOKIE,
@@ -182,6 +195,9 @@ def logout(request: Request, response: Response):
             stmt = select(DBSession).where(DBSession.token == token)
             sess = db.exec(stmt).first()
             if sess:
+                from .audit import log_action
+                log_action(request, "logout", "auth", "User logged out", sess.user_id)
+                
                 db.delete(sess)
                 db.commit()
         response.delete_cookie(key=SESSION_COOKIE)
