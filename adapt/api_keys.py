@@ -31,8 +31,14 @@ def verify_api_key(db: Session, raw_key: str) -> User | None:
         return None
         
     # Check expiration
-    if api_key.expires_at and api_key.expires_at < datetime.now(tz=timezone.utc):
-        return None
+    if api_key.expires_at:
+        # Ensure expires_at is timezone-aware
+        expires_at = api_key.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+            
+        if expires_at < datetime.now(tz=timezone.utc):
+            return None
         
     # Update last used
     api_key.last_used_at = datetime.now(tz=timezone.utc)

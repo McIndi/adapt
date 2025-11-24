@@ -78,6 +78,13 @@ def write(context: PluginContext, resource, data, request):
     return context.default_write(resource, data, request)
 """
 
+    def generate_companion_files(self, descriptor: ResourceDescriptor) -> None:
+        """Generate companion files for the resource.
+        
+        Default implementation does nothing. Override in plugins that need companion files.
+        """
+        pass
+
 
 def discover_plugins(root: Path) -> Iterable[Plugin]:
     """Discover plugin definitions in the document root.

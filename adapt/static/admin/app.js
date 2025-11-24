@@ -13,7 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
         users: document.getElementById('users-view'),
         locks: document.getElementById('locks-view'),
         groups: document.getElementById('groups-view'),
-        permissions: document.getElementById('permissions-view')
+        permissions: document.getElementById('permissions-view'),
+        'api-keys': document.getElementById('api-keys-view'),
+        'audit-logs': document.getElementById('audit-logs-view')
     };
     const tables = {
         users: document.querySelector('#users-table tbody'),
@@ -26,7 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
         group: document.getElementById('group-modal'),
         members: document.getElementById('members-modal'),
         permission: document.getElementById('permission-modal'),
-        groupPermissions: document.getElementById('group-permissions-modal')
+        groupPermissions: document.getElementById('group-permissions-modal'),
+        showKey: document.getElementById('show-key-modal')
     };
     const forms = {
         user: document.getElementById('add-user-form'),
