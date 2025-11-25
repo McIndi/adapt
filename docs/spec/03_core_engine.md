@@ -105,7 +105,7 @@ Companion files are generated per sheet: `.adapt/file.<sheet>.schema.json`, `.ad
 
 * Automatic cache of GET responses
 * Cache invalidation on write
-* Cache visibility and clearing via Admin UI
+* Cache visibility and clearing via Admin UI (not yet implemented)
 
 ---
 

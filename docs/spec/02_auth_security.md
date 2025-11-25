@@ -8,7 +8,7 @@ Provide secure, multi-user access control for all Adapt resources.
 
 ### **Architecture**
 
-The RBAC (Role-Based Access Control) system consists of four main components:
+The RBAC (Role-Based Access Control) system consists of six main components:
 
 1. **Authentication Layer** - Session-based login with cookie storage
 2. **User & Group Management** - Organize users into groups for permission inheritance
@@ -21,16 +21,17 @@ The RBAC (Role-Based Access Control) system consists of four main components:
 
 ```sql
 -- Users table
-CREATE TABLE user (
+CREATE TABLE users (
     id INTEGER PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
-    is_superuser BOOLEAN DEFAULT FALSE
+    is_superuser BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL
 );
 
 -- Groups table
-CREATE TABLE "group" (
+CREATE TABLE groups (
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     description TEXT
@@ -47,7 +48,7 @@ CREATE TABLE usergroup (
 CREATE TABLE permission (
     id INTEGER PRIMARY KEY,
     resource TEXT NOT NULL,  -- e.g., "data", "workbook/People"
-    action TEXT NOT NULL,    -- "read" or "write"
+    action TEXT NOT NULL,    -- ENUM('read', 'write') (see enum below)
     description TEXT,
     UNIQUE (resource, action)
 );
@@ -60,13 +61,13 @@ CREATE TABLE grouppermission (
 );
 
 -- Session storage
-CREATE TABLE session (
+CREATE TABLE dbsession (
     id INTEGER PRIMARY KEY,
     user_id INTEGER REFERENCES user(id),
     token TEXT UNIQUE NOT NULL,
     created_at TIMESTAMP NOT NULL,
-    expires_at TIMESTAMP NOT NULL,
-    last_active TIMESTAMP NOT NULL
+    expires_at TIMESTAMP,
+    last_active TIMESTAMP
 );
 
 -- API Keys
@@ -85,11 +86,36 @@ CREATE TABLE apikey (
 CREATE TABLE auditlog (
     id INTEGER PRIMARY KEY,
     timestamp TIMESTAMP NOT NULL,
-    user_id INTEGER REFERENCES user(id),
+    user_id INTEGER REFERENCES users(id) NULL,  -- nullable to preserve audit entries when users are deleted
     action TEXT NOT NULL,    -- e.g., "login", "create_user"
-    resource TEXT,           -- e.g., "auth", "user"
+    resource TEXT NOT NULL,  -- e.g., "auth", "user"
+    -- Indexes
+    -- For common lookups we recommend indexes on the following columns:
+    -- users.username, dbsession.token, dbsession.user_id, apikey.key_hash, apikey.user_id,
+    -- permission.resource, permission.action, auditlog.user_id, auditlog.action, auditlog.resource
+
+    -- ENUM Definitions
+    -- Permission.action is an ENUM type limited to 'read' and 'write' to avoid invalid values.
+    -- For SQL dialects without native ENUM support, a CHECK constraint should be used instead.
     details TEXT,
     ip_address TEXT
+);
+
+-- Lock Records (internal locks managed by the application)
+CREATE TABLE lock_records (
+    id INTEGER PRIMARY KEY,
+    resource TEXT UNIQUE NOT NULL,
+    owner TEXT,
+    acquired_at TIMESTAMP NOT NULL,
+    expires_at TIMESTAMP,
+    reason TEXT
+);
+
+-- Cache Entries
+CREATE TABLE cache_entries (
+    id INTEGER PRIMARY KEY,
+    resource TEXT NOT NULL,
+    description TEXT
 );
 ```
 
@@ -119,7 +145,7 @@ For each protected route:
    ```sql
    SELECT permission.*
    FROM permission
-   JOIN grouppermission ON grouppermission.permission_id = permission.id
+    JOIN grouppermission ON grouppermission.permission_id = permission.id
    JOIN usergroup ON usergroup.group_id = grouppermission.group_id
    WHERE usergroup.user_id = ? 
      AND permission.resource = ?
@@ -158,7 +184,20 @@ The `permission_dependency` function:
 - **Secure by Default:** No permission = no access
 - **Superuser Bypass:** Emergency access for administrators
 - **Audit Logging:** All write operations and auth events are recorded
-- **Row-Level Security:** Plugins can enforce data filtering per user
+- **Row-Level Security:** Plugins can enforce data filtering per user (not implemented in provided plugins, this is for third party plugins)
+### **Runtime Behavior Locations**
+
+- **Password Hashing (PBKDF2, 100,000 iterations)**: Implemented in `adapt/auth.py` (`hash_password`, `verify_password`).
+- **Session Management (create/get sessions, sliding TTL)**: Implemented in `adapt/auth.py` (`create_session`, `get_session`, and `SESSION_TTL`).
+- **Session Cleanup Background Task:** Implemented in `adapt/app.py` (`cleanup_expired_sessions`).
+- **API Key Validation:** Implemented in `adapt/auth.py` (API key lookup and verification by hash).
+- **Audit Logging and Enforcement Hooks:** Implemented in `adapt/admin.py` and other handlers that create `AuditLog` entries. Row-level security filtering occurs in the plugin interface (plugins implement `filter_for_user`).
+
+### **Foreign Key ON DELETE behavior**
+
+- Most relationships use `ON DELETE CASCADE` to keep children from orphaning (e.g., `user` deletions cascade to their sessions and API keys, group deletions cascade to group membership and group permissions).
+- The `auditlog.user_id` uses `ON DELETE SET NULL` to preserve audit records when a user is deleted.
+
 
 ### **Row-Level Security (RLS)**
 

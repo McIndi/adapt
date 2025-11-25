@@ -53,5 +53,7 @@ Adapt includes the following major subsystems:
 
 * Live reload (watch filesystem)
 * GraphQL views
-* Audit logs (Completed)
+* Common navigation bar (partially implemented)
+* Self-signed certificate generation on startup (unless a key/cert pair is provided)
+* Self-issue API keys (non-admins can create their own API keys [just for themselves])
 * Plugin marketplace
