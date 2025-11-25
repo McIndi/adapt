@@ -46,7 +46,7 @@ For CSV, Excel sheets, and Parquet-like datasets, Adapt exposes:
 * `POST` — create/append items
 * `PATCH` — modify items
 * `DELETE` — remove items
-* `/schema` — view or override JSON schema
+* `/schema` — JSON schema
 
 Each Excel **sheet** receives its own resource, enabling full CRUD operations per sheet. This multi-sheet support was recently enhanced to make the ExcelPlugin fully compatible with the DatasetPlugin architecture, allowing each sheet to be treated as an independent dataset with its own API endpoints and UI.
 
@@ -329,11 +329,7 @@ Adapt exposes:
 
 ## Roadmap
 
-* Visual schema editor
 * File watchers (hot-reload route generation)
-* SQL access layer (virtual SQLite tables)
-* S3 / cloud-backed storage providers
-* Multi-tenant mode
 * GraphQL auto-introspection
 * Audit log browser in Admin UI (Completed)
 * Plugin marketplace

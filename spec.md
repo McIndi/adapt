@@ -829,13 +829,9 @@ All errors use a formatted JSON structure:
 # **21. Roadmap**
 
 * Live reload (watch filesystem)
-* Virtual SQL layer
 * GraphQL views
-* Multi-tenant mode
-* SSO providers
 * Audit logs (Completed)
 * Plugin marketplace
-* S3 + remote storage backends
 
 ---
 
