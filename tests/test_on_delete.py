@@ -1,7 +1,7 @@
 import pytest
 from sqlmodel import select
 from adapt.storage import User, APIKey, DBSession, UserGroup, Group, AuditLog, init_database
-from adapt.auth import hash_password
+from adapt.auth.password import hash_password
 
 
 def test_api_key_cascade_on_user_delete(db_session):

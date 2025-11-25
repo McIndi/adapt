@@ -3,7 +3,7 @@ from sqlmodel import Session, select
 from sqlalchemy.exc import IntegrityError
 from adapt.storage import User, Permission, DBSession, APIKey, init_database
 from datetime import datetime, timezone
-from adapt.auth import create_session
+from adapt.auth.session import create_session
 
 
 @pytest.fixture

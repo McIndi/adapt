@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from adapt.config import AdaptConfig
 from adapt.cli import serve_app
 from adapt.storage import init_database, User
-from adapt.auth import hash_password
+from adapt.auth.password import hash_password
 
 @pytest.fixture
 def app(tmp_path):

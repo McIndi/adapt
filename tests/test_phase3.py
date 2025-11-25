@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from adapt.app import create_app
 from adapt.config import AdaptConfig
 from adapt.storage import User, APIKey, AuditLog, get_db_session
-from adapt.auth import hash_password
+from adapt.auth.password import hash_password
 from adapt.api_keys import generate_api_key
 
 @pytest.fixture(name="app")

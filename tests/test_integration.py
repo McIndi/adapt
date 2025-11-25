@@ -6,7 +6,8 @@ from adapt.cli import serve_app
 from adapt.storage import init_database
 from adapt.locks import LockManager
 from adapt.storage import User
-from adapt.auth import hash_password, create_session, SESSION_COOKIE
+from adapt.auth.password import hash_password
+from adapt.auth.session import create_session, SESSION_COOKIE
 from sqlmodel import Session
 
 
@@ -32,7 +33,8 @@ def app(tmp_path):
 @pytest.fixture
 def superuser_client(app):
     from adapt.storage import User
-    from adapt.auth import hash_password, create_session, SESSION_COOKIE
+    from adapt.auth.password import hash_password
+    from adapt.auth.session import create_session, SESSION_COOKIE
     from sqlmodel import Session
     
     # Create superuser

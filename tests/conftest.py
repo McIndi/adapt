@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from adapt.app import create_app
 from adapt.config import AdaptConfig
 from adapt.storage import User, init_database
-from adapt.auth import hash_password
+from adapt.auth.password import hash_password
 
 
 @pytest.fixture(name="app")

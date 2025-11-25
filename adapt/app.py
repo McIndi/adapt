@@ -79,7 +79,7 @@ def create_app(config: AdaptConfig) -> FastAPI:
     # Authentication middleware
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
-        from .auth import get_session
+        from .auth.session import get_session
         from sqlmodel import Session
         token = request.cookies.get("adapt_session")
         request.state.user = None

@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
-from adapt.auth import get_session, create_session, SESSION_TTL
+from adapt.auth.session import get_session, create_session, SESSION_TTL
 from adapt.storage import User, DBSession, init_database
 from adapt.config import AdaptConfig
 import tempfile
@@ -105,7 +105,7 @@ def test_middleware_uses_get_session(tmp_path):
     from adapt.config import AdaptConfig
     from adapt.cli import serve_app
     from adapt.storage import init_database, User
-    from adapt.auth import hash_password
+    from adapt.auth.password import hash_password
     from datetime import datetime, timezone, timedelta
 
     config = AdaptConfig(root=tmp_path)
@@ -119,7 +119,7 @@ def test_middleware_uses_get_session(tmp_path):
         db.commit()
         
         # Create an expired session manually
-        from adapt.auth import create_session
+        from adapt.auth.session import create_session
         token = create_session(db, user.id)
         session = db.exec(select(DBSession).where(DBSession.token == token)).first()
         # Make it expired

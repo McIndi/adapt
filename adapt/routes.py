@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 from .config import AdaptConfig
 from .discovery import DatasetResource
 from .plugins.base import PluginContext, ResourceDescriptor
-from .auth import permission_dependency
+from .auth.dependencies import permission_dependency
 
 
 def get_plugin_context(request: Request) -> PluginContext:
