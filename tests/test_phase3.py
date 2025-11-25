@@ -53,6 +53,8 @@ def auth_headers_fixture(client, superuser):
     # Login to get session cookie
     response = client.post("/auth/login", data={"username": superuser.username, "password": "admin"})
     assert response.status_code == 200
+    # Apply cookies to client to avoid deprecated per-request 'cookies' parameter
+    client.cookies.update(response.cookies)
     return response.cookies
 
 def test_api_key_lifecycle(client, db_session, superuser, auth_headers):
@@ -60,7 +62,6 @@ def test_api_key_lifecycle(client, db_session, superuser, auth_headers):
     response = client.post(
         "/admin/api-keys",
         json={"user_id": superuser.id, "description": "Test Key", "expires_in_days": 30},
-        cookies=auth_headers
     )
     assert response.status_code == 200
     data = response.json()
@@ -80,7 +81,7 @@ def test_api_key_lifecycle(client, db_session, superuser, auth_headers):
     assert response.json()["username"] == superuser.username
     
     # 4. Revoke Key
-    response = client.delete(f"/admin/api-keys/{key_id}", cookies=auth_headers)
+    response = client.delete(f"/admin/api-keys/{key_id}")
     assert response.status_code == 200
     
     # 5. Verify Key is gone
@@ -97,7 +98,7 @@ def test_audit_logging(client, db_session, superuser, auth_headers):
     # 1. Perform an action that should be logged (e.g., creating a user)
     # We'll create a new user via the admin API
     new_user_data = {"username": "audit_test_user", "password": "password", "is_superuser": False}
-    response = client.post("/admin/users", json=new_user_data, cookies=auth_headers)
+    response = client.post("/admin/users", json=new_user_data)
     assert response.status_code == 200
     new_user_id = response.json()["id"]
     
@@ -122,7 +123,10 @@ def test_audit_logging(client, db_session, superuser, auth_headers):
     # 4. Test Logout Logging
     # Logout
     cookies = response.cookies
-    response = client.post("/auth/logout", cookies=cookies, follow_redirects=False)
+    # Set cookies on client rather than passing per-request to avoid deprecation
+    client.cookies.clear()
+    client.cookies.update(cookies)
+    response = client.post("/auth/logout", follow_redirects=False)
     assert response.status_code == 302
     
     # Verify logout log

@@ -52,6 +52,11 @@ def test_get_session_valid(db_session):
     # Create a valid session
     token = create_session(db_session, user.id)
 
+    # Capture existing expires_at
+    from sqlmodel import select
+    initial = db_session.exec(select(DBSession).where(DBSession.token == token)).first()
+    old_expires_at = initial.expires_at
+
     # Act
     result = get_session(db_session, token)
 
@@ -61,6 +66,8 @@ def test_get_session_valid(db_session):
     assert result.user_id == user.id
     # Check that last_active was updated (sliding expiration)
     assert result.last_active > result.created_at
+    # Check that expires_at was extended
+    assert result.expires_at > old_expires_at
 
 
 def test_get_session_nonexistent(db_session):

@@ -4,11 +4,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Generator
 
-from sqlalchemy import Boolean, Column, DateTime, Text
+from sqlalchemy import Boolean, Column, DateTime, Text, UniqueConstraint, Integer, ForeignKey as SA_ForeignKey, Enum as SqlEnum
 from sqlmodel import Field, SQLModel, create_engine, Session
+from sqlalchemy import event
 from fastapi import Request, Depends
 
 class LockRecord(SQLModel, table=True):
+    __tablename__ = "lock_records"
     id: int | None = Field(default=None, primary_key=True)
     resource: str = Field(index=True, unique=True)
     owner: str
@@ -17,41 +19,53 @@ class LockRecord(SQLModel, table=True):
     reason: str | None = Field(default=None)
 
 class CacheEntry(SQLModel, table=True):
+    __tablename__ = "cache_entries"
     id: int | None = Field(default=None, primary_key=True)
     resource: str = Field(index=True)
     description: str | None = None
 
 class User(SQLModel, table=True):
+    __tablename__ = "users"
     id: int | None = Field(default=None, primary_key=True)
-    username: str = Field(index=True)
+    username: str = Field(sa_column=Column(Text, unique=True, nullable=False))
     password_hash: str
     is_active: bool = Field(default=True, sa_column=Column(Boolean, default=True))
     is_superuser: bool = Field(default=False, sa_column=Column(Boolean, default=False))
     created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
 
 class Group(SQLModel, table=True):
+    __tablename__ = "groups"
     id: int | None = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
+    name: str = Field(sa_column=Column(Text, unique=True, nullable=False))
     description: str | None = None
 
+from enum import Enum as PyEnum
+
+
+class Action(PyEnum):
+    read = "read"
+    write = "write"
+
+
 class Permission(SQLModel, table=True):
+    __table_args__ = (UniqueConstraint("resource", "action"),)
     id: int | None = Field(default=None, primary_key=True)
     resource: str
-    action: str
+    action: Action = Field(sa_column=Column(SqlEnum(Action, name="action_enum"), nullable=False))
     description: str | None = None
 
 class UserGroup(SQLModel, table=True):
-    user_id: int = Field(foreign_key="user.id", primary_key=True)
-    group_id: int = Field(foreign_key="group.id", primary_key=True)
+    user_id: int = Field(sa_column=Column(Integer, SA_ForeignKey("users.id", ondelete="CASCADE"), primary_key=True))
+    group_id: int = Field(sa_column=Column(Integer, SA_ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True))
 
 class GroupPermission(SQLModel, table=True):
-    group_id: int = Field(foreign_key="group.id", primary_key=True)
-    permission_id: int = Field(foreign_key="permission.id", primary_key=True)
+    group_id: int = Field(sa_column=Column(Integer, SA_ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True))
+    permission_id: int = Field(sa_column=Column(Integer, SA_ForeignKey("permission.id", ondelete="CASCADE"), primary_key=True))
 
 class APIKey(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     key_hash: str = Field(index=True, unique=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
+    user_id: int = Field(sa_column=Column(Integer, SA_ForeignKey("users.id", ondelete="CASCADE"), index=True))
     description: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
     expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
@@ -61,7 +75,8 @@ class APIKey(SQLModel, table=True):
 class AuditLog(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
-    user_id: int | None = Field(default=None, index=True)
+    # Keep logs even if users are deleted; use SET NULL to preserve audit trail
+    user_id: int | None = Field(default=None, sa_column=Column(Integer, SA_ForeignKey("users.id", ondelete="SET NULL"), index=True))
     action: str = Field(index=True)
     resource: str = Field(index=True)
     details: str | None = None
@@ -69,8 +84,8 @@ class AuditLog(SQLModel, table=True):
 
 class DBSession(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="user.id", index=True)
-    token: str = Field(index=True)
+    user_id: int = Field(sa_column=Column(Integer, SA_ForeignKey("users.id", ondelete="CASCADE"), index=True))
+    token: str = Field(sa_column=Column(Text, unique=True, nullable=False))
     created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
     expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     last_active: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
@@ -79,6 +94,13 @@ def init_database(path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     engine_url = f"sqlite:///{path}"
     engine = create_engine(engine_url, connect_args={"check_same_thread": False})
+    # Ensure SQLite enforces foreign key constraints for ON DELETE behaviors
+    if "sqlite" in engine.url.drivername:
+        @event.listens_for(engine, "connect")
+        def _set_sqlite_pragma(dbapi_connection, connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
     SQLModel.metadata.create_all(engine)
     return engine
 

@@ -55,8 +55,9 @@ def get_session(db: Session, token: str) -> DBSession | None:
     session = db.exec(stmt).first()
     
     if session:
-        # Update last_active for sliding expiration
+        # Update last_active for sliding expiration and refresh expiry
         session.last_active = now
+        session.expires_at = now + SESSION_TTL
         db.add(session)
         db.commit()
     else:
