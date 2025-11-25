@@ -1,6 +1,11 @@
 # Adapt — The Adaptive File-Backed Web Server
 
 Adapt is a lightweight, FastAPI-powered adaptive server that automatically turns files and Python modules into fully functional REST APIs.
+
+Note: README vs Implementation
+----------------------------------
+The `README.md` outlines the intended design and functionality. Some features are partially implemented, still in the roadmap, or only scaffolded in the repository. For a detailed list of known differences between README/spec and the current implementation, see `IMPLEMENTATION_NOTES.md` at the project root.
+---
 Drop a CSV, Excel file, Markdown document, HTML page, Parquet-style dataset, or Python handler into a directory and Adapt instantly generates:
 
 * CRUD API endpoints
@@ -345,4 +350,3 @@ TBD: Open-source core + commercial enterprise plugins/support.
 # Adapt
 
 Your filesystem is now an API platform.
-
