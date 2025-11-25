@@ -20,33 +20,28 @@ The `README.md` and `docs/spec` describe the intended architecture and features;
 5. Lock retry strategy is constant backoff, not exponential as README suggests.
 6. DataTables UI lacks column-hiding controls and schema-based field formatters (e.g., datetime formatting).
 7. Schema inference lacks `datetime` and `enum` detection.
-8. Generated companion write override files call `context.default_write`, but `default_write` is not implemented.
-9. The Admin UI lacks a cache tab and the ability to filter audit logs server-side (API lacks filtering parameters for audit logs).
-10. CLI/service does not generate self-signed certs automatically - roadmap item.
-11. Cache invalidation on write is not implemented.
-12. Self-issue API keys (non-admin users) are not implemented (roadmap item noted in the README).
-13. The README contains optimistic claims about the plugin marketplace and some features (like GraphQL auto-introspection) which are not implemented.
+8. The Admin UI lacks a cache tab and the ability to filter audit logs server-side (API lacks filtering parameters for audit logs).
+9. CLI/service does not generate self-signed certs automatically - roadmap item.
+10. Cache invalidation on write is not implemented.
+11. Self-issue API keys (non-admin users) are not implemented (roadmap item noted in the README).
+12. The README contains optimistic claims about the plugin marketplace and some features (like GraphQL auto-introspection) which are not implemented.
+13. HTML companion files are now implemented as Jinja2 templates with pre-computed schema data for UI overrides.
 
 ---
 
 ## Per-item details & file references
 
-1) Write override wiring (high)
-- Symptom: Companion `*.write.py` files are generated under `.adapt/` but not executed. The stubs call `context.default_write`, and `PluginContext` provides no `default_write` binding.
-- Files: `adapt/plugins/dataset_plugin.py` (generate_companion_files), `adapt/plugins/base.py` (default_write_override stub), `examples/.adapt/*` (generated stubs).
-- Suggested fix: Implement a `PluginContext.default_write` that calls the plugin's `write`. At discovery or router mount time, if a `write_override_path` exists, import it and execute override `write(context, resource, data, request)`, passing a context where `default_write` calls the plugin's default implementation.
-
-2) Cache engine & admin UI (high)
+1) Cache engine & admin UI (high)
 - Symptom: `CacheEntry` model exists, but no cache behaviour in the core nor admin endpoints/UI to list/clear cached entries.
 - Files: `adapt/storage.py` (CacheEntry), `docs/spec/03_core_engine.md`, `adapt/admin.py` (no cache endpoints), `adapt/plugins/dataset_plugin.py` (no caching logic).
 - Suggested fix: Implement a simple cache for GETs (in-memory or SQLite-backed) and invalidate on writes; add `/admin/cache` endpoints to list/clear entries and a small admin UI tab. Add tests for caching and invalidation.
 
-3) Parquet support is a placeholder (medium)
+2) Parquet support is a placeholder (medium)
 - Symptom: `.parquet` maps to the CSV plugin by default — no Parquet-specific schema or read/write handling.
 - Files: `adapt/config.py` (`plugin_registry` mapping `.parquet` to CSV plugin)
 - Suggested fix: Implement `ParquetPlugin` or update docs to indicate that Parquet is not fully supported yet.
 
-4) RLS plugin hook (medium)
+3) RLS plugin hook (medium)
 - Symptom: `filter_for_user` exists in `Plugin` and is invoked by `DatasetPlugin.read` but no example plugin demonstrates RLS in the repo; `tests/test_phase3.py` has `test_rls_filtering` as a no-op placeholder.
 - Files: `adapt/plugins/base.py` (filter_for_user), `adapt/plugins/dataset_plugin.py` (read), `tests/test_phase3.py` (test stub)
 - Suggested fix: Add an example dataset plugin (or extend CSV/Excel) to demonstrate `filter_for_user`, and write a test verifying only matching rows are returned.

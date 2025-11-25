@@ -50,4 +50,3 @@ def test_resource_descriptor_structure():
     assert descriptor.metadata == {"key": "value"}
     assert descriptor.schema_path is None
     assert descriptor.ui_path is None
-    assert descriptor.write_override_path is None

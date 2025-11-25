@@ -228,7 +228,9 @@ class DatasetPlugin(Plugin):
 
             context.update({
                 "request": request,
-                "api_url": api_url
+                "api_url": api_url,
+                "title": descriptor.path.stem,
+                "table_rows": ""  # Dynamic rows loaded via JS
             })
             
             # Add common navbar context
@@ -249,8 +251,15 @@ class DatasetPlugin(Plugin):
                 "ui_links": ui_links
             })
             
-            # api_url and schema_url will be set by core or plugin
-            return request.app.state.templates.TemplateResponse(request, template_name, context)
+            if descriptor.ui_path and descriptor.ui_path.exists():
+                with descriptor.ui_path.open('r', encoding='utf-8') as f:
+                    template_content = f.read()
+                from jinja2 import Template
+                template = Template(template_content)
+                return HTMLResponse(template.render(**context))
+            else:
+                # api_url and schema_url will be set by core or plugin
+                return request.app.state.templates.TemplateResponse(request, template_name, context)
         configs.append(("ui", ui_router))
 
         return configs
@@ -281,11 +290,6 @@ class DatasetPlugin(Plugin):
         if descriptor.ui_path:
             ui_html = self.default_ui(descriptor)
             ensure_file(descriptor.ui_path, ui_html)
-
-        # Generate write.py
-        if descriptor.write_override_path:
-            write_py = self.default_write_override(descriptor)
-            ensure_file(descriptor.write_override_path, write_py)
 
     def get_ui_template(self, descriptor: ResourceDescriptor) -> tuple[str, dict[str, Any]]:
         """Return template name and context for DataTables UI."""

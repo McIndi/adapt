@@ -30,7 +30,6 @@ def generate_routes(app: FastAPI, resources: list[DatasetResource], config: Adap
             resource_type=resource.resource_type,
             schema_path=resource.schema_path,
             ui_path=resource.ui_path,
-            write_override_path=resource.write_override_path,
             metadata=resource.metadata
         )
 

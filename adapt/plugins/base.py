@@ -27,7 +27,6 @@ class ResourceDescriptor:
     resource_type: str
     schema_path: Path | None = None
     ui_path: Path | None = None
-    write_override_path: Path | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
@@ -57,26 +56,33 @@ class Plugin(ABC):
         return rows
 
     def default_ui(self, descriptor: ResourceDescriptor) -> str:
-        return f"""
+        schema = self.schema(descriptor)
+        columns = schema.get('columns', {})
+        if isinstance(columns, dict):
+            column_names = list(columns.keys())
+        else:
+            column_names = [col.get('name', 'Column') for col in columns] if columns else []
+        columns_html = "".join(f"<th>{name}</th>" for name in column_names)
+        
+        template = """
 <!DOCTYPE html>
-<html lang=\"en\">
+<html lang="en">
 <head>
-  <meta charset=\"utf-8\">
-  <title>{descriptor.path.stem} Data Preview</title>
+    <meta charset="utf-8">
+    <title>{{ title }}</title>
 </head>
 <body>
-  <h1>{descriptor.path.stem}</h1>
-  <p>DataTables UI will be generated dynamically by Adapt.</p>
+    <h1>{{ title }}</h1>
+    <table>
+        <thead><tr>{columns_html}</tr></thead>
+        <tbody>{{ table_rows }}</tbody>
+    </table>
+    <script>fetch('{{ api_url }}').then(/* populate rows */);</script>
 </body>
 </html>
 """.strip()
-
-    def default_write_override(self, descriptor: ResourceDescriptor) -> str:
-        return """from adapt.plugins import PluginContext
-
-def write(context: PluginContext, resource, data, request):
-    return context.default_write(resource, data, request)
-"""
+        
+        return template.format(columns_html=columns_html)
 
     def generate_companion_files(self, descriptor: ResourceDescriptor) -> None:
         """Generate companion files for the resource.

@@ -122,9 +122,8 @@ During startup, if a companion file does not exist, Adapt generates it automatic
 | Type                                       | Default Content                                    | Description |
 | ------------------------------------------ | -------------------------------------------------- | ----------- |
 | Schema (`.adapt/*.schema.json`)            | JSON schema inferred from dataset                  | JSON schema for dataset |
-| HTML UI (`.adapt/*.index.html`)            | Default DataTables UI template                     | Default HTML DataTables UI |
+| HTML UI (`.adapt/*.index.html`)            | Jinja2 template with pre-computed schema           | Customizable HTML UI template |
 | Sheet UI (`.adapt/*.<sheet>.html`)         | Default sheet-level UI                             | Default sheet-level UI |
-| Write Override (`.adapt/*.write.py`)       | Stub file that calls plugin’s default write method | Stub write override |
 
 ### **Example generated schema**
 
@@ -137,12 +136,4 @@ During startup, if a companion file does not exist, Adapt generates it automatic
     "age": {"type": "integer"}
   }
 }
-```
-
-### **Example generated write override stub**
-
-```python
-# Override this to customize write logic
-def write(context, resource, data, request):
-    return context.default_write(resource, data, request)
 ```

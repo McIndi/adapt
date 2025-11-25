@@ -53,12 +53,10 @@ def test_discover_resources_generates_companion_files(tmp_path, mock_config):
     assert adapt_dir.exists()
     assert (adapt_dir / "data.schema.json").exists()
     assert (adapt_dir / "data.index.html").exists()
-    assert (adapt_dir / "data.write.py").exists()
     
     # Check resource paths point to them
     assert resource.schema_path == adapt_dir / "data.schema.json"
     assert resource.ui_path == adapt_dir / "data.index.html"
-    assert resource.write_override_path == adapt_dir / "data.write.py"
 
 def test_discover_resources_nested_structure(tmp_path, mock_config):
     subdir = tmp_path / "subdir"

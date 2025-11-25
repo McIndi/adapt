@@ -261,8 +261,7 @@ Optional companion files customize behavior:
 | File                                | Purpose                     |
 | ----------------------------------- | --------------------------- |
 | `.adapt/dataset.schema.json`        | Override inferred schema    |
-| `.adapt/dataset.index.html`         | Custom HTML view            |
-| `.adapt/dataset.write.py`           | Override write logic        |
+| `.adapt/dataset.index.html`         | Custom Jinja2 HTML template |
 | `.adapt/dataset.<sheet>.html`       | Sheet-level HTML override   |
 | `.adapt/dataset.<sheet>.schema.json`| Sheet-level schema override |
 
@@ -271,6 +270,8 @@ Optional companion files customize behavior:
 ## Plugin Registry & Companion Files
 
 `AdaptConfig` embeds a `plugin_registry` that maps file extensions to dotted paths for the classes that own those datasets. The default registry wires `.csv`, `.xlsx`, and `.parquet` files to the built-in dataset plugins, but you can override the mapping to point at your own loaders. Each plugin is responsible for producing the inferred JSON schema that becomes the companion `.adapt/*.schema.json`. Those companion files are generated once on server startup and never exposed directly over HTTP—they exist purely to inform the API responses, HTML UI rendering, and validation layers.
+
+HTML companion files (`.adapt/*.index.html`) are generated as Jinja2 templates with pre-computed schema data (e.g., column headers) baked in, allowing for efficient rendering while supporting full customization. If a companion HTML file exists, it overrides the default UI template for that resource.
 
 Plugins now have full control over route generation via the `get_route_configs` method. This allows plugins to define their own API, Schema, and UI endpoints, including injecting necessary context (like `api_url`) into UI templates. This architecture supports complex multi-resource files (like Excel workbooks) by allowing plugins to generate hierarchical routes using "sub_namespace" metadata.
 

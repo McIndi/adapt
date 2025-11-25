@@ -74,7 +74,7 @@ def test_ui_load(superuser_client):
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert "Alice" not in response.text 
-    assert "DataTables" in response.text 
+    assert "name" in response.text 
 
 def test_api_create(superuser_client):
     new_row = {"name": "Charlie", "age": 35}
