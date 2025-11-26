@@ -254,8 +254,7 @@ class DatasetPlugin(Plugin):
             if descriptor.ui_path and descriptor.ui_path.exists():
                 with descriptor.ui_path.open('r', encoding='utf-8') as f:
                     template_content = f.read()
-                from jinja2 import Template
-                template = Template(template_content)
+                template = request.app.state.templates.env.from_string(template_content)
                 return HTMLResponse(template.render(**context))
             else:
                 # api_url and schema_url will be set by core or plugin
@@ -286,9 +285,11 @@ class DatasetPlugin(Plugin):
             schema = self.schema(descriptor)
             ensure_file(descriptor.schema_path, json.dumps(schema, indent=2))
 
-        # Generate index.html
+        # Generate index.html using datatable.html template
         if descriptor.ui_path:
-            ui_html = self.default_ui(descriptor)
+            template_path = Path(__file__).parent.parent / "templates" / "datatable.html"
+            with template_path.open('r', encoding='utf-8') as f:
+                ui_html = f.read()
             ensure_file(descriptor.ui_path, ui_html)
 
     def get_ui_template(self, descriptor: ResourceDescriptor) -> tuple[str, dict[str, Any]]:
