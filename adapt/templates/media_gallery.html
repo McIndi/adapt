@@ -16,9 +16,17 @@
     {% for item in media_items %}
     <div class="col-md-4 mb-4 media-item" data-name="{{ item.name }}">
         <div class="card">
+            {% if item.thumbnail %}
+            <img src="data:image/jpeg;base64,{{ item.thumbnail }}" class="card-img-top" alt="Thumbnail">
+            {% endif %}
             <div class="card-body">
-                <h5 class="card-title"><a href="/ui/{{ item.relative_path }}">{{ item.name }}</a></h5>
-                <p class="card-text">Type: {{ item.media_type }}, Size: {{ item.file_size }} bytes</p>
+                <h5 class="card-title"><a href="/ui/{{ item.relative_path }}">{{ item.title or item.name }}</a></h5>
+                <p class="card-text">
+                    Type: {{ item.media_type }}, Size: {{ item.file_size }} bytes<br>
+                    {% if item.duration %}Duration: {{ "%.2f"|format(item.duration) }}s<br>{% endif %}
+                    {% if item.artist %}Artist: {{ item.artist }}<br>{% endif %}
+                    {% if item.album %}Album: {{ item.album }}<br>{% endif %}
+                </p>
             </div>
         </div>
     </div>

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import io
 import json
 from pathlib import Path
 from typing import Any, Sequence
@@ -7,6 +9,10 @@ from typing import Any, Sequence
 from fastapi import Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.routing import APIRouter
+from mutagen import File
+from moviepy import VideoFileClip
+from PIL import Image
+import numpy as np
 
 from .base import Plugin, ResourceDescriptor, PluginContext
 
@@ -20,6 +26,27 @@ class MediaPlugin(Plugin):
         # Basic metadata for extensibility
         descriptor.metadata["file_size"] = path.stat().st_size
         descriptor.metadata["media_type"] = "video" if path.suffix.lower() in {".mp4", ".avi", ".mkv", ".webm"} else "audio"
+        
+        # Extract additional metadata using mutagen
+        try:
+            media_file = File(str(path))
+            if media_file and media_file.info:
+                info = media_file.info
+                descriptor.metadata["duration"] = info.length
+                descriptor.metadata["bitrate"] = getattr(info, 'bitrate', None)
+                descriptor.metadata["sample_rate"] = getattr(info, 'sample_rate', None)
+                descriptor.metadata["channels"] = getattr(info, 'channels', None)
+                
+                # Extract tags if available
+                if hasattr(media_file, 'tags') and media_file.tags:
+                    descriptor.metadata["title"] = media_file.tags.get('title', [None])[0]
+                    descriptor.metadata["artist"] = media_file.tags.get('artist', [None])[0]
+                    descriptor.metadata["album"] = media_file.tags.get('album', [None])[0]
+                    descriptor.metadata["genre"] = media_file.tags.get('genre', [None])[0]
+        except Exception:
+            # If metadata extraction fails, continue with basic metadata
+            pass
+        
         return descriptor
 
     def schema(self, resource: ResourceDescriptor) -> dict[str, Any]:
@@ -59,7 +86,15 @@ class MediaPlugin(Plugin):
                 "extension": descriptor.path.suffix[1:],
                 "user": user,
                 "ui_links": accessible_resources,
-                "is_superuser": getattr(user, "is_superuser", False)
+                "is_superuser": getattr(user, "is_superuser", False),
+                "title": descriptor.metadata.get("title"),
+                "artist": descriptor.metadata.get("artist"),
+                "album": descriptor.metadata.get("album"),
+                "genre": descriptor.metadata.get("genre"),
+                "duration": descriptor.metadata.get("duration"),
+                "bitrate": descriptor.metadata.get("bitrate"),
+                "sample_rate": descriptor.metadata.get("sample_rate"),
+                "channels": descriptor.metadata.get("channels"),
             }
             return request.app.state.templates.TemplateResponse(request, "media_player.html", context)
 
@@ -68,6 +103,34 @@ class MediaPlugin(Plugin):
     def generate_companion_files(self, descriptor: ResourceDescriptor) -> None:
         # Placeholder for future metadata/thumbnail
         if descriptor.ui_path:
-            companion_data = {"file_size": descriptor.metadata["file_size"], "media_type": descriptor.metadata["media_type"]}
+            # Generate thumbnail for videos
+            thumbnail_b64 = None
+            if descriptor.metadata["media_type"] == "video":
+                try:
+                    clip = VideoFileClip(str(descriptor.path))
+                    frame = clip.get_frame(1)  # Get frame at 1 second
+                    img = Image.fromarray(frame.astype('uint8'))
+                    img.thumbnail((200, 200))
+                    buffer = io.BytesIO()
+                    img.save(buffer, format='JPEG')
+                    thumbnail_b64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+                    descriptor.metadata["thumbnail"] = thumbnail_b64
+                except Exception:
+                    # If thumbnail generation fails, continue
+                    pass
+            
+            companion_data = {
+                "file_size": descriptor.metadata["file_size"], 
+                "media_type": descriptor.metadata["media_type"],
+                "duration": descriptor.metadata.get("duration"),
+                "bitrate": descriptor.metadata.get("bitrate"),
+                "sample_rate": descriptor.metadata.get("sample_rate"),
+                "channels": descriptor.metadata.get("channels"),
+                "title": descriptor.metadata.get("title"),
+                "artist": descriptor.metadata.get("artist"),
+                "album": descriptor.metadata.get("album"),
+                "genre": descriptor.metadata.get("genre"),
+                "thumbnail": thumbnail_b64,
+            }
             with descriptor.ui_path.open('w') as f:
                 json.dump(companion_data, f)

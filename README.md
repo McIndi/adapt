@@ -108,13 +108,13 @@ Perfect for:
 
 Audio and video files automatically generate a Netflix/YouTube-style gallery UI:
 
-* Card-based layout with file information
+* Card-based layout with file information, metadata, and video thumbnails
 * Searchable by filename
 * Direct streaming playback
 * Responsive design
 * Integrated with common navigation bar
 
-Individual media files also have dedicated player pages with HTML5 video/audio elements for focused viewing. Streaming uses HTTP range requests for open-standard, efficient delivery.
+Individual media files also have dedicated player pages with HTML5 video/audio elements for focused viewing. Streaming uses HTTP range requests for open-standard, efficient delivery. Metadata such as duration, bitrate, artist, and title are extracted and displayed where available.
 
 Perfect for:
 

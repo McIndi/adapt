@@ -18,6 +18,9 @@ dependencies = [
     "markdown",
     "httpx",
     "python-multipart",
+    "mutagen",
+    "moviepy",
+    "pillow",
 ]
 [project.scripts]
 adapt = "adapt.cli:main"

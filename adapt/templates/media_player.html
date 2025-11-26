@@ -10,4 +10,14 @@
         Your browser does not support the media element.
     </{{ media_type }}>
 </div>
+<div class="mt-3">
+    {% if title %}<p><strong>Title:</strong> {{ title }}</p>{% endif %}
+    {% if artist %}<p><strong>Artist:</strong> {{ artist }}</p>{% endif %}
+    {% if album %}<p><strong>Album:</strong> {{ album }}</p>{% endif %}
+    {% if genre %}<p><strong>Genre:</strong> {{ genre }}</p>{% endif %}
+    {% if duration %}<p><strong>Duration:</strong> {{ "%.2f"|format(duration) }} seconds</p>{% endif %}
+    {% if bitrate %}<p><strong>Bitrate:</strong> {{ bitrate }} kbps</p>{% endif %}
+    {% if sample_rate %}<p><strong>Sample Rate:</strong> {{ sample_rate }} Hz</p>{% endif %}
+    {% if channels %}<p><strong>Channels:</strong> {{ channels }}</p>{% endif %}
+</div>
 {% endblock %}

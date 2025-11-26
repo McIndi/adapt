@@ -122,7 +122,14 @@ def create_app(config: AdaptConfig) -> FastAPI:
                 "name": r.path.name,
                 "relative_path": r.relative_path.as_posix(),
                 "media_type": r.metadata.get("media_type", "unknown"),
-                "file_size": r.metadata.get("file_size", 0)
+                "file_size": r.metadata.get("file_size", 0),
+                "duration": r.metadata.get("duration"),
+                "bitrate": r.metadata.get("bitrate"),
+                "title": r.metadata.get("title"),
+                "artist": r.metadata.get("artist"),
+                "album": r.metadata.get("album"),
+                "genre": r.metadata.get("genre"),
+                "thumbnail": r.metadata.get("thumbnail"),
             })
         accessible_resources = build_accessible_ui_links(request, user)
         context = {

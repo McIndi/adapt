@@ -69,7 +69,7 @@ If no companion file exists, Adapt will create a new one from the original `data
 
 ### **Features**
 
-* Card-based layout displaying media files
+* Card-based layout displaying media files with metadata and thumbnails
 * Searchable by filename
 * Responsive Bootstrap grid
 * Direct links to individual player pages
@@ -80,6 +80,7 @@ If no companion file exists, Adapt will create a new one from the original `data
 * Dedicated pages at `/ui/<filename>` for each media file
 * HTML5 `<video>` or `<audio>` elements for playback
 * Centered, responsive design
+* Metadata display (duration, bitrate, artist, title, etc.)
 * Streaming via `/media/<filename>` endpoints
 
 ### **Streaming Endpoints**
@@ -87,6 +88,18 @@ If no companion file exists, Adapt will create a new one from the original `data
 * HTTP range request support for efficient streaming
 * Open-standard delivery for audio/video files
 * No write operations supported
+
+### **Metadata Extraction**
+
+* Automatic extraction of duration, bitrate, sample rate, channels
+* Tag extraction for title, artist, album, genre where available
+* Metadata stored in companion files and displayed in UI
+
+### **Thumbnail Generation**
+
+* Automatic thumbnail generation for video files
+* Base64-encoded JPEG thumbnails displayed in gallery cards
+* Extracted from 1-second mark of video for preview
 
 ### **Template System**
 
