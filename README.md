@@ -292,8 +292,8 @@ The `adapt` CLI includes a few core commands:
 
 Adapt includes administrative commands for managing users, groups, and permissions:
 
-* `adapt admin list-resources <root>` — list all discovered resources in the document root.
-* `adapt admin create-permissions <root> <resources>...` — create permissions and groups for specified resources (use `__all__` for all resources).
+* `adapt admin list-resources <root>` — list all discovered resources in the document root, including sub-namespaces for multi-resource files (e.g., Excel sheets).
+* `adapt admin create-permissions <root> <resources>...` — create permissions and groups for specified resources (use `__all__` for all resources, including sub-namespaces).
 * `adapt admin list-groups <root>` — display all groups with their associated permissions and assigned users.
 
 ## Installation
