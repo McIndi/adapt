@@ -4,7 +4,8 @@ import sys
 import argparse
 from pathlib import Path
 
-from .commands import check, addsuperuser, list_endpoints, serve, admin
+from .commands import check, addsuperuser, list_endpoints, serve
+from .commands.admin import run_admin
 
 
 def main() -> None:
@@ -24,7 +25,7 @@ def main() -> None:
     check_parser.add_argument("root", nargs="?", default=".", help="Document root to check")
 
     user_parser = subparsers.add_parser("addsuperuser", help="Create a local superuser")
-    user_parser.add_argument("--root", default=".", help="Document root containing the SQLite store")
+    user_parser.add_argument("root", nargs="?", default=".", help="Document root containing the SQLite store")
     user_parser.add_argument("--username", required=True, help="Username for the superuser")
     user_parser.add_argument("--password", help="Password (will prompt if missing)")
 
@@ -37,10 +38,13 @@ def main() -> None:
     admin_list_resources_parser.add_argument("root", nargs="?", default=".", help="Document root to inspect")
     
     admin_create_perms_parser = admin_subparsers.add_parser("create-permissions", help="Create permissions and groups for resources")
+    admin_create_perms_parser.add_argument("root", nargs="?", default=".", help="Document root")
     admin_create_perms_parser.add_argument("resources", nargs="+", help="List of resources (or '__all__' for all)")
-    admin_create_perms_parser.add_argument("--root", default=".", help="Document root")
     admin_create_perms_parser.add_argument("--all-group", default="all_resources", help="Name for the group with all permissions")
     admin_create_perms_parser.add_argument("--read-group", default="read_resources", help="Name for the group with read permissions")
+    
+    admin_list_groups_parser = admin_subparsers.add_parser("list-groups", help="List groups with their permissions and users")
+    admin_list_groups_parser.add_argument("root", nargs="?", default=".", help="Document root")
 
     args = parser.parse_args()
 
@@ -61,7 +65,7 @@ def main() -> None:
     elif args.command == "list-endpoints":
         list_endpoints.run_list_endpoints(Path(args.root).resolve())
     elif args.command == "admin":
-        admin.run_admin(args)
+        run_admin(args)
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -16,9 +16,15 @@ Options include:
 
 ### **Operational Commands**
 
-* `adapt check <path>` — initialize `.adapt.db`, migrate schemas, and list discovered datasets.
-* `adapt addsuperuser --username <name>` — create or warn if a superuser already exists in the configured SQLite store.
-* `adapt list-endpoints <path>` — print every `/api/*`, `/schema/*`, and `/ui/*` path registered during discovery.
+* `adapt check <root>` — initialize `.adapt.db`, migrate schemas, and list discovered datasets.
+* `adapt addsuperuser <root> --username <name>` — create or warn if a superuser already exists in the configured SQLite store.
+* `adapt list-endpoints <root>` — print every `/api/*`, `/schema/*`, and `/ui/*` path registered during discovery.
+
+### **Administrative Commands**
+
+* `adapt admin list-resources <root>` — list all discovered resources in the document root.
+* `adapt admin create-permissions <root> <resources>...` — create permissions and groups for specified resources (use `__all__` for all resources). Supports `--all-group` and `--read-group` options to customize group naming.
+* `adapt admin list-groups <root>` — display all groups with their associated permissions and assigned users.
 
 ---
 

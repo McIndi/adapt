@@ -285,8 +285,16 @@ The `adapt` CLI includes a few core commands:
 
 * `adapt serve <root>` — serve the given document root (supports `--host`, `--port`, `--tls-cert`, `--tls-key`, `--reload`, `--readonly`).
 * `adapt check <root>` — sanity-check the configuration, initialize `.adapt.db`, and print the discovered datasets.
-* `adapt addsuperuser --username <name>` — create a local superuser backed by `.adapt.db`.
+* `adapt addsuperuser <root> --username <name>` — create a local superuser backed by `.adapt.db`.
 * `adapt list-endpoints <root>` — show the automatically generated `/api/*`, `/ui/*`, and `/schema/*` paths for every resource.
+
+### Admin Commands
+
+Adapt includes administrative commands for managing users, groups, and permissions:
+
+* `adapt admin list-resources <root>` — list all discovered resources in the document root.
+* `adapt admin create-permissions <root> <resources>...` — create permissions and groups for specified resources (use `__all__` for all resources).
+* `adapt admin list-groups <root>` — display all groups with their associated permissions and assigned users.
 
 ## Installation
 

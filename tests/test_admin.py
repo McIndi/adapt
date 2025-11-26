@@ -4,6 +4,10 @@ from adapt.config import AdaptConfig
 from adapt.app import create_app
 from adapt.storage import init_database, User
 from adapt.auth.password import hash_password
+from pathlib import Path
+import io
+import sys
+from contextlib import redirect_stdout
 
 @pytest.fixture
 def app(tmp_path):
@@ -151,3 +155,170 @@ def test_permission_flow(client):
     # Delete Permission
     response = client.delete(f"/admin/permissions/{perm_id}")
     assert response.status_code == 200
+
+
+# CLI Command Tests
+
+@pytest.fixture
+def db_session(tmp_path):
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+    from sqlmodel import Session
+    with Session(engine) as session:
+        yield session
+
+
+def test_run_list_groups_empty(db_session, tmp_path, capsys):
+    """Test list-groups command with no groups."""
+    from adapt.commands.admin import run_list_groups
+    
+    run_list_groups(tmp_path)
+    
+    captured = capsys.readouterr()
+    assert "No groups found." in captured.out
+
+
+def test_run_list_groups_with_data(db_session, tmp_path, capsys):
+    """Test list-groups command with groups, permissions, and users."""
+    from adapt.commands.admin import run_list_groups
+    from adapt.storage import Group, Permission, GroupPermission, User, UserGroup, Action
+    from sqlmodel import select
+    
+    # Create test data
+    # Users
+    user1 = User(username="alice", password_hash="dummy", is_active=True)
+    user2 = User(username="bob", password_hash="dummy", is_active=True)
+    db_session.add(user1)
+    db_session.add(user2)
+    db_session.commit()
+    db_session.refresh(user1)
+    db_session.refresh(user2)
+    
+    # Groups
+    group1 = Group(name="admins", description="Admin group")
+    group2 = Group(name="users", description="Regular users")
+    db_session.add(group1)
+    db_session.add(group2)
+    db_session.commit()
+    db_session.refresh(group1)
+    db_session.refresh(group2)
+    
+    # Permissions
+    perm1 = Permission(resource="data.csv", action=Action.read, description="Read data")
+    perm2 = Permission(resource="data.csv", action=Action.write, description="Write data")
+    perm3 = Permission(resource="config.txt", action=Action.read, description="Read config")
+    db_session.add(perm1)
+    db_session.add(perm2)
+    db_session.add(perm3)
+    db_session.commit()
+    db_session.refresh(perm1)
+    db_session.refresh(perm2)
+    db_session.refresh(perm3)
+    
+    # Group Permissions
+    gp1 = GroupPermission(group_id=group1.id, permission_id=perm1.id)
+    gp2 = GroupPermission(group_id=group1.id, permission_id=perm2.id)
+    gp3 = GroupPermission(group_id=group2.id, permission_id=perm1.id)
+    gp4 = GroupPermission(group_id=group2.id, permission_id=perm3.id)
+    db_session.add(gp1)
+    db_session.add(gp2)
+    db_session.add(gp3)
+    db_session.add(gp4)
+    
+    # User Groups
+    ug1 = UserGroup(user_id=user1.id, group_id=group1.id)
+    ug2 = UserGroup(user_id=user2.id, group_id=group1.id)
+    ug3 = UserGroup(user_id=user2.id, group_id=group2.id)
+    db_session.add(ug1)
+    db_session.add(ug2)
+    db_session.add(ug3)
+    
+    db_session.commit()
+    
+    run_list_groups(tmp_path)
+    
+    captured = capsys.readouterr()
+    output = captured.out
+    
+    # Check that groups are listed
+    assert "Group: admins" in output
+    assert "Description: Admin group" in output
+    assert "Group: users" in output
+    assert "Description: Regular users" in output
+    
+    # Check permissions
+    assert "read on data.csv" in output
+    assert "write on data.csv" in output
+    assert "read on config.txt" in output
+    
+    # Check users
+    assert "- alice" in output
+    assert "- bob" in output
+
+
+def test_run_list_resources(tmp_path, capsys):
+    """Test list-resources command."""
+    from adapt.commands.admin import run_list_resources
+    
+    # Create some test files with supported extensions
+    (tmp_path / "data.csv").write_text("a,b\n1,2")
+    (tmp_path / "readme.md").write_text("# Hello")
+    
+    run_list_resources(tmp_path)
+    
+    captured = capsys.readouterr()
+    output = captured.out
+    
+    assert "Discovered resources:" in output
+    assert "data" in output  # extension stripped
+    assert "readme" in output  # extension stripped
+
+
+def test_run_create_permissions(tmp_path, capsys):
+    """Test create-permissions command."""
+    from adapt.commands.admin import run_create_permissions
+    from adapt.storage import Group, Permission, GroupPermission
+    from sqlmodel import Session, select
+    
+    # Create some test files
+    (tmp_path / "data.csv").write_text("a,b\n1,2")
+    (tmp_path / "test.txt").write_text("hello")
+    
+    # Mock args
+    class Args:
+        resources = ["data.csv", "test.txt"]
+        all_group = "all_resources"
+        read_group = "read_resources"
+        root = str(tmp_path)
+    
+    args = Args()
+    
+    run_create_permissions(
+        root=tmp_path,
+        resources=args.resources,
+        all_group_name=args.all_group,
+        read_group_name=args.read_group
+    )
+    
+    captured = capsys.readouterr()
+    output = captured.out
+    
+    # Check output
+    assert "Created permission read on data.csv" in output
+    assert "Created permission write on data.csv" in output
+    assert "Created permission read on test.txt" in output
+    assert "Created permission write on test.txt" in output
+    assert "Created group 'all_resources_data.csv_test.txt'" in output
+    assert "Created group 'read_resources_data.csv_test.txt'" in output
+    
+    # Verify in database
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+    with Session(engine) as db:
+        groups = db.exec(select(Group)).all()
+        assert len(groups) == 6  # all, read, and 4 individual groups (2 per resource * 2 actions? wait no)
+        # Actually, the function creates all, read, and for each resource: readonly and readwrite groups
+        # So for 2 resources: all, read, and 4 individual = 6 total
+        
+        permissions = db.exec(select(Permission)).all()
+        assert len(permissions) == 4  # 2 resources * 2 actions

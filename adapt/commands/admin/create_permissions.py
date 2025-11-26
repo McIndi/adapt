@@ -1,37 +1,10 @@
-import argparse
 from pathlib import Path
 from typing import List
 
+from ...admin.resources import list_resources
+from ...config import AdaptConfig
+from ...storage import Permission, Group, GroupPermission, init_database, Action, get_db_session
 from sqlmodel import Session, select
-
-from ..admin.resources import list_resources
-from ..config import AdaptConfig
-from ..storage import Permission, Group, GroupPermission, init_database, Action, get_db_session
-
-
-def run_admin(args):
-    """Run admin subcommands."""
-    if args.admin_command == "list-resources":
-        run_list_resources(Path(args.root).resolve())
-    elif args.admin_command == "create-permissions":
-        run_create_permissions(
-            root=Path(args.root).resolve(),
-            resources=args.resources,
-            all_group_name=args.all_group,
-            read_group_name=args.read_group
-        )
-
-
-def run_list_resources(root: Path) -> None:
-    """List all discovered resources."""
-    resources = list_resources(root)
-    if not resources:
-        print("No resources discovered.")
-        return
-    
-    print("Discovered resources:")
-    for resource in sorted(resources):
-        print(f"  {resource}")
 
 
 def run_create_permissions(root: Path, resources: List[str], all_group_name: str, read_group_name: str) -> None:
