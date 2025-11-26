@@ -105,8 +105,25 @@ def create_app(config: AdaptConfig) -> FastAPI:
 
     # Debug root route
     @app.get("/")
-    def root():
-        return {"resources": [r.relative_path.as_posix() for r in resources]}
+    def root(request: Request):
+        from .auth.dependencies import get_current_user
+        from .utils import build_accessible_ui_links
+        
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept:
+            # Render landing page
+            user = get_current_user(request)
+            accessible_resources = build_accessible_ui_links(request, user)
+            
+            context = {
+                "user": user,
+                "ui_links": accessible_resources,
+                "is_superuser": user and getattr(user, "is_superuser", False)
+            }
+            return request.app.state.templates.TemplateResponse(request, "landing.html", context)
+        else:
+            # JSON API response
+            return {"resources": [r.relative_path.as_posix() for r in request.app.state.resources]}
 
     # Exception handler for auth redirects
     from fastapi import HTTPException

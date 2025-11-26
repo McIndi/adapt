@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Adapt - Adaptive File-Backed Web Server{% endblock %}
+
+{% block content %}
+        <div class="row">
+            <div class="col-md-8">
+                <h1>Welcome to Adapt</h1>
+                <p class="lead">The Adaptive File-Backed Web Server that turns your files into APIs.</p>
+                <p>Adapt automatically discovers files in your document root and generates REST APIs, HTML UIs, and more. Drop a CSV, Excel, Markdown, or HTML file into your directory, and Adapt handles the rest.</p>
+                
+                {% if ui_links %}
+                <h2>Your Accessible Resources</h2>
+                <div class="list-group">
+                    {% for res in ui_links %}
+                    <a href="{{ res.url }}" class="list-group-item list-group-item-action">
+                        <strong>{{ res.name }}</strong> 
+                        {% if res.type == 'csv' %} - CSV Dataset{% elif res.type == 'excel' %} - Excel Workbook{% elif res.type == 'html' %} - HTML Page{% elif res.type == 'markdown' %} - Markdown Document{% else %} - Dataset{% endif %}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <h4>No accessible resources found.</h4>
+                    <p>If you're an admin, check the <a href="/admin/">Admin Dashboard</a> to manage permissions.</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        Quick Start
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">Getting Started</h5>
+                        <p class="card-text">Upload CSV, Excel, or Markdown files to your document root. Adapt will automatically generate APIs and UIs.</p>
+                        <a href="https://github.com/your-repo/adapt" class="btn btn-primary">View Documentation</a>
+                    </div>
+                </div>
+                {% if is_superuser %}
+                <div class="card mt-3">
+                    <div class="card-header">
+                        Admin Panel
+                    </div>
+                    <div class="card-body">
+                        <p class="card-text">Manage users, groups, permissions, and system settings.</p>
+                        <a href="/admin/" class="btn btn-secondary">Go to Admin</a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% endblock %}</content>
+<parameter name="filePath">c:\Users\cliff\projects\adapt\adapt\templates\landing.html

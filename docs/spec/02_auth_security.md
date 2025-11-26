@@ -10,7 +10,7 @@ Provide secure, multi-user access control for all Adapt resources.
 
 The RBAC (Role-Based Access Control) system consists of six main components:
 
-1. **Authentication Layer** - Session-based login with cookie storage
+1. **Authentication Layer** - Session-based login with cookie storage and post-login redirect to landing page
 2. **User & Group Management** - Organize users into groups for permission inheritance
 3. **Permission System** - Resource-level permissions (read/write) assigned to groups
 4. **Enforcement Layer** - Automatic permission checking on all routes

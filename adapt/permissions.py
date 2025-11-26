@@ -10,18 +10,19 @@ class PermissionChecker:
         self.db = db
 
     def get_user_permissions(self, user: User) -> list[Permission]:
-        # Direct permissions
+        # Get permissions through groups
         stmt = select(Permission).where(Permission.id.in_(
-            select(UserGroup.group_id).where(UserGroup.user_id == user.id)
+            select(GroupPermission.permission_id).where(GroupPermission.group_id.in_(
+                select(UserGroup.group_id).where(UserGroup.user_id == user.id)
+            ))
         ))
-        # This is a simplified query; in real code you'd join tables
-        direct = self.db.exec(stmt).all()
-        return direct
+        perms = self.db.exec(stmt).all()
+        return perms
 
     def has_permission(self, user: User, resource: str, action: str) -> bool:
         perms = self.get_user_permissions(user)
         for perm in perms:
-            if perm.resource == resource and perm.action == action:
+            if perm.resource == resource and perm.action.value == action:
                 return True
         return False
 

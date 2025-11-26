@@ -111,7 +111,7 @@
                 if (res.ok) {
                     // Check for redirect param
                     const params = new URLSearchParams(window.location.search);
-                    const next = params.get('next') || '/admin/';
+                    const next = params.get('next') || '/';
                     window.location.href = next;
                 } else {
                     document.getElementById('error-msg').style.display = 'block';

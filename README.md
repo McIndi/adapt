@@ -43,6 +43,19 @@ No configuration required.
 
 ---
 
+## Landing Page
+
+Adapt provides a user-friendly landing page at the root URL (`/`) that serves as the entry point for authenticated users:
+
+* **Welcome Message** - Introduction to Adapt and its capabilities
+* **Quick Start Guide** - Step-by-step instructions for getting started
+* **Accessible Resources** - Dynamic list of datasets, HTML pages, and Markdown documents the user can access based on their permissions
+* **Admin Access** - Direct link to the admin dashboard for superusers
+
+The landing page adapts to the user's authentication status and permissions, showing only resources they are authorized to view. For unauthenticated users, it displays public HTML and Markdown content.
+
+---
+
 ## Automatic CRUD API
 
 For CSV, Excel sheets, and Parquet-like datasets, Adapt exposes:
@@ -151,7 +164,7 @@ Adapt includes a complete security layer for multi-user deployments:
 * Sliding session renewal - active sessions stay valid
 * Background task removes expired sessions (runs daily)
 * Timing attack mitigation with constant-time operations
-* Automatic redirect to login for unauthenticated browser requests
+* Automatic redirect to login for unauthenticated browser requests, followed by redirect to landing page after successful authentication
 * JSON error responses for API clients
 
 ### User Management
@@ -329,6 +342,7 @@ data/
 
 Adapt exposes:
 
+* `/` — landing page with resource overview
 * `/ui/employees` — DataTables UI
 * `/api/employees` — CRUD API
 * `/api/sales` — sheet listing

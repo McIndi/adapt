@@ -16,6 +16,30 @@ The Dynamic Route Generator delegates the creation of specific routes to the plu
 
 ---
 
+## **1.5. Landing Page**
+
+### **Purpose**
+
+Provide a user-friendly entry point for authenticated users with an overview of available resources.
+
+### **Features**
+
+* Welcome message and introduction to Adapt
+* Quick start guide for new users
+* Dynamic list of accessible resources (datasets, HTML, Markdown) filtered by user permissions
+* Admin dashboard link for superusers
+* Consistent navigation bar
+
+### **Behavior**
+
+* Accessible at root URL (`/`)
+* Content adapts based on user authentication and permissions
+* For unauthenticated users, shows public HTML/Markdown content
+* For authenticated users, shows permission-filtered resources
+* API clients receive JSON list of all resources
+
+---
+
 ## **2. HTML UI Renderer (DataTables)**
 
 ### **Features**

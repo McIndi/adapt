@@ -106,3 +106,85 @@ def test_api_delete(superuser_client):
     assert len(data) == 1 # Alice
 
 
+def test_root_landing_page_html(superuser_client):
+    """Test that root route returns HTML landing page for browsers."""
+    response = superuser_client.get("/", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "Welcome to Adapt" in response.text
+    assert "Your Accessible Resources" in response.text
+
+
+def test_root_api_json(superuser_client):
+    """Test that root route returns JSON for API clients."""
+    response = superuser_client.get("/", headers={"Accept": "application/json"})
+    assert response.status_code == 200
+    data = response.json()
+    assert "resources" in data
+    assert isinstance(data["resources"], list)
+
+
+def test_build_accessible_ui_links(app):
+    """Test filtering of accessible UI links based on user permissions."""
+    from adapt.utils import build_accessible_ui_links
+    from adapt.storage import User, Permission, Group, UserGroup, GroupPermission
+    from sqlmodel import Session
+    
+    # Create a mock request
+    class MockRequest:
+        def __init__(self, app, resources):
+            self.app = app
+            self.app.state.resources = resources
+    
+    # Mock resources
+    class MockResource:
+        def __init__(self, path, rtype, sub=None):
+            self.relative_path = Path(path)
+            self.resource_type = rtype
+            self.metadata = {"sub_namespace": sub} if sub else {}
+    
+    resources = [
+        MockResource("data.csv", "csv"),
+        MockResource("doc.md", "markdown"),
+        MockResource("book.xlsx", "excel", "Sheet1"),
+    ]
+    
+    request = MockRequest(app, resources)
+    
+    # Test with no user (unauthenticated)
+    links = build_accessible_ui_links(request, None)
+    assert len(links) == 1
+    assert links[0]["name"] == "doc"
+    assert links[0]["url"] == "/doc"
+    assert links[0]["type"] == "markdown"
+    
+    # Test with user having permission
+    with Session(app.state.db_engine) as db:
+        user = User(username="testuser", password_hash="dummy")
+        db.add(user)
+        db.commit()
+        
+        perm = Permission(resource="data", action="read")
+        db.add(perm)
+        db.commit()
+        
+        group = Group(name="testgroup")
+        db.add(group)
+        db.commit()
+        
+        ug = UserGroup(user_id=user.id, group_id=group.id)
+        db.add(ug)
+        gp = GroupPermission(group_id=group.id, permission_id=perm.id)
+        db.add(gp)
+        db.commit()
+
+        from adapt.permissions import PermissionChecker
+        checker = PermissionChecker(db)
+        assert checker.has_permission(user, "data", "read") == True
+
+        links = build_accessible_ui_links(request, user)
+        assert len(links) == 2  # markdown + permitted csv
+        names = [l["name"] for l in links]
+        assert "doc" in names
+        assert "data" in names
+
+

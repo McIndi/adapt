@@ -22,3 +22,51 @@ def build_ui_links(request: Request) -> list[dict[str, str]]:
             url = f"/ui/{namespace}"
         ui_links.append({"name": namespace, "url": url})
     return ui_links
+
+
+def build_accessible_ui_links(request: Request, user: User | None) -> list[dict[str, str]]:
+    """Build UI links for resources accessible to the user.
+    
+    Filters based on permissions for datasets, includes all html/markdown.
+    Superusers have access to all resources.
+    """
+    from .permissions import PermissionChecker
+    from sqlmodel import Session
+    
+    accessible_resources = []
+    resources = request.app.state.resources
+    
+    if user and getattr(user, "is_superuser", False):
+        # Superusers have access to all
+        for res in resources:
+            namespace = res.relative_path.with_suffix("").as_posix()
+            if "sub_namespace" in res.metadata:
+                namespace += f"/{res.metadata['sub_namespace']}"
+            if res.resource_type in ("html", "markdown"):
+                url = f"/{namespace}"
+            else:
+                url = f"/ui/{namespace}"
+            accessible_resources.append({"name": namespace, "url": url, "type": res.resource_type})
+    elif user:
+        with Session(request.app.state.db_engine) as db:
+            checker = PermissionChecker(db)
+            for res in resources:
+                namespace = res.relative_path.with_suffix("").as_posix()
+                if "sub_namespace" in res.metadata:
+                    namespace += f"/{res.metadata['sub_namespace']}"
+                if res.resource_type in ("html", "markdown"):
+                    # Assume public
+                    url = f"/{namespace}"
+                    accessible_resources.append({"name": namespace, "url": url, "type": res.resource_type})
+                elif checker.has_permission(user, namespace, "read"):
+                    url = f"/ui/{namespace}"
+                    accessible_resources.append({"name": namespace, "url": url, "type": res.resource_type})
+    else:
+        # For unauthenticated, show only public html/markdown
+        for res in resources:
+            if res.resource_type in ("html", "markdown"):
+                namespace = res.relative_path.with_suffix("").as_posix()
+                url = f"/{namespace}"
+                accessible_resources.append({"name": namespace, "url": url, "type": res.resource_type})
+    
+    return accessible_resources
