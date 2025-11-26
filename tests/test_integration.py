@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pathlib import Path
 from adapt.config import AdaptConfig
-from adapt.cli import serve_app
+from adapt.app import create_app
 from adapt.storage import init_database
 from adapt.locks import LockManager
 from adapt.storage import User
@@ -23,8 +23,7 @@ def app(tmp_path):
 
     config = AdaptConfig(root=tmp_path)
     engine = init_database(config.db_path)
-    app = serve_app(config)
-    app = serve_app(config)
+    app = create_app(config)
     if not hasattr(app.state, 'lock_manager'):
         app.state.lock_manager = LockManager(engine)
 

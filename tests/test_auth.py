@@ -103,7 +103,7 @@ def test_middleware_uses_get_session(tmp_path):
     """Integration test to verify middleware uses get_session and respects expiration."""
     from fastapi.testclient import TestClient
     from adapt.config import AdaptConfig
-    from adapt.cli import serve_app
+    from adapt.app import create_app
     from adapt.storage import init_database, User
     from adapt.auth.password import hash_password
     from datetime import datetime, timezone, timedelta
@@ -127,7 +127,7 @@ def test_middleware_uses_get_session(tmp_path):
         db.add(session)
         db.commit()
 
-    app = serve_app(config)
+    app = create_app(config)
     client = TestClient(app)
     
     # Set the expired cookie

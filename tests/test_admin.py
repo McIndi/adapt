@@ -1,7 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from adapt.config import AdaptConfig
-from adapt.cli import serve_app
+from adapt.app import create_app
 from adapt.storage import init_database, User
 from adapt.auth.password import hash_password
 
@@ -17,7 +17,7 @@ def app(tmp_path):
         db.add(user)
         db.commit()
         
-    return serve_app(config)
+    return create_app(config)
 
 @pytest.fixture
 def client(app):
