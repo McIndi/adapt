@@ -1,5 +1,5 @@
 from fastapi import Request, HTTPException, status, Depends
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from ..storage import User, UserGroup, GroupPermission, Permission
 

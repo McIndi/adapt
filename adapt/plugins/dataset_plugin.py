@@ -6,6 +6,7 @@ from typing import Any, Sequence
 from fastapi import Request
 from fastapi.routing import APIRouter
 
+from ..utils import build_ui_links
 from .base import Plugin, ResourceDescriptor, PluginContext, ensure_file
 
 
@@ -236,16 +237,7 @@ class DatasetPlugin(Plugin):
             # Add common navbar context
             user = getattr(request.state, 'user', None)
             is_superuser = user and getattr(user, 'is_superuser', False)
-            ui_links = []
-            for res in request.app.state.resources:
-                namespace = res.relative_path.with_suffix("").as_posix()
-                if "sub_namespace" in res.metadata:
-                    namespace += f"/{res.metadata['sub_namespace']}"
-                if res.resource_type in ("html", "markdown"):
-                    url = f"/{namespace}"
-                else:
-                    url = f"/ui/{namespace}"
-                ui_links.append({"name": namespace, "url": url})
+            ui_links = build_ui_links(request)
             context.update({
                 "is_superuser": is_superuser,
                 "ui_links": ui_links
