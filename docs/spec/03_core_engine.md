@@ -27,7 +27,7 @@ Scan the document root and identify all resources to expose.
 | `.py`      | Python Handler Plugin |
 | `.json`    | Schema/override files |
 
----
+| `.parquet` | Parquet Plugin (robust, atomic writes) |
 
 ## **2. Dataset Engine**
 
@@ -131,7 +131,7 @@ During startup, if a companion file does not exist, Adapt generates it automatic
 {
   "type": "object",
   "primary_key": "_row_id",
-  "columns": {
+* Handles structured datasets (CSV, Excel sheets, Parquet). Parquet support is now robust and consistent with other dataset plugins, including atomic writes and schema inference.
     "name": {"type": "string"},
     "age": {"type": "integer"}
   }

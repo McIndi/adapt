@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Iterable, Sequence
 
 from fastapi import Request
-from sqlmodel import Engine
+from sqlalchemy import Engine
 
 from .discovery import DatasetResource
 

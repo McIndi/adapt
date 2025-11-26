@@ -18,7 +18,7 @@ class AdaptConfig:
         ".csv": "adapt.plugins.csv_plugin.CsvPlugin",
         ".xlsx": "adapt.plugins.excel_plugin.ExcelPlugin",
         ".xls": "adapt.plugins.excel_plugin.ExcelPlugin",
-        ".parquet": "adapt.plugins.csv_plugin.CsvPlugin",
+        ".parquet": "adapt.plugins.parquet_plugin.ParquetPlugin",
         ".py": "adapt.plugins.python_plugin.PythonHandlerPlugin",
         ".html": "adapt.plugins.html_plugin.HtmlPlugin",
         ".md": "adapt.plugins.markdown_plugin.MarkdownPlugin",

@@ -62,7 +62,7 @@ The landing page adapts to the user's authentication status and permissions, sho
 
 ## Automatic CRUD API
 
-For CSV, Excel sheets, and Parquet-like datasets, Adapt exposes:
+For CSV, Excel sheets, and Parquet datasets, Adapt exposes:
 
 * `GET` — read items
 * `POST` — create/append items
@@ -70,7 +70,8 @@ For CSV, Excel sheets, and Parquet-like datasets, Adapt exposes:
 * `DELETE` — remove items
 * `/schema` — JSON schema
 
-Each Excel **sheet** receives its own resource, enabling full CRUD operations per sheet. This multi-sheet support was recently enhanced to make the ExcelPlugin fully compatible with the DatasetPlugin architecture, allowing each sheet to be treated as an independent dataset with its own API endpoints and UI.
+
+Each Excel **sheet** and Parquet file receives its own resource, enabling full CRUD operations per dataset. Parquet support is now robust and consistent with other dataset plugins, including atomic writes, schema inference, and safe concurrent editing.
 
 For audio and video files, Adapt provides HTTP streaming endpoints using open standards for efficient playback, along with individual player pages and a searchable media gallery.
 
@@ -161,7 +162,7 @@ Without editing the core server.
 
 ## Safe Write Operations
 
-Writes to CSV, Excel, and Parquet-like files follow a strict, atomic workflow:
+Writes to CSV, Excel, and Parquet files follow a strict, atomic workflow:
 
 1. Permission check
 2. Acquire a file lock (with unique constraint to prevent race conditions)
@@ -175,7 +176,8 @@ Writes to CSV, Excel, and Parquet-like files follow a strict, atomic workflow:
 * Stale lock cleanup on server startup (5-minute threshold)
 * Lock expiration (5-minute TTL by default)
 
-Prevents corruption during concurrent writes and ensures automatic recovery from crashes.
+
+Parquet plugin now uses the same atomic write logic as CSV and Excel plugins, writing to a temporary file and atomically replacing the original, ensuring data integrity and safe concurrent access.
 
 ---
 
@@ -309,7 +311,8 @@ Optional companion files customize behavior:
 
 ## Plugin Registry & Companion Files
 
-`AdaptConfig` embeds a `plugin_registry` that maps file extensions to dotted paths for the classes that own those datasets. The default registry wires `.csv`, `.xlsx`, and `.parquet` files to the built-in dataset plugins, but you can override the mapping to point at your own loaders. Each plugin is responsible for producing the inferred JSON schema that becomes the companion `.adapt/*.schema.json`. Those companion files are generated once on server startup and never exposed directly over HTTP—they exist purely to inform the API responses, HTML UI rendering, and validation layers.
+
+`AdaptConfig` embeds a `plugin_registry` that maps file extensions to dotted paths for the classes that own those datasets. The default registry wires `.csv`, `.xlsx`, and `.parquet` files to the built-in dataset plugins, all of which now use a consistent interface for schema inference, atomic writes, and safe editing. Parquet support is fully integrated and tested. Each plugin is responsible for producing the inferred JSON schema that becomes the companion `.adapt/*.schema.json`. Those companion files are generated once on server startup and never exposed directly over HTTP—they exist purely to inform the API responses, HTML UI rendering, and validation layers.
 
 HTML companion files (`.adapt/*.index.html`) are generated as Jinja2 templates with pre-computed schema data (e.g., column headers) baked in, allowing for efficient rendering while supporting full customization. If a companion HTML file exists, it overrides the default UI template for that resource.
 
