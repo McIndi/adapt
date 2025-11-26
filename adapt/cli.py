@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import sys
 import argparse
 from pathlib import Path
 
-from .commands import check, addsuperuser, list_endpoints, serve
+from .commands import check, addsuperuser, list_endpoints, serve, admin
 
 
 def main() -> None:
@@ -30,6 +31,17 @@ def main() -> None:
     list_parser = subparsers.add_parser("list-endpoints", help="List the auto-generated REST/UI endpoints")
     list_parser.add_argument("root", nargs="?", default=".", help="Document root to inspect")
 
+    admin_parser = subparsers.add_parser("admin", help="Admin tasks")
+    admin_subparsers = admin_parser.add_subparsers(dest="admin_command", required=True)
+    admin_list_resources_parser = admin_subparsers.add_parser("list-resources", help="List discovered resources")
+    admin_list_resources_parser.add_argument("root", nargs="?", default=".", help="Document root to inspect")
+    
+    admin_create_perms_parser = admin_subparsers.add_parser("create-permissions", help="Create permissions and groups for resources")
+    admin_create_perms_parser.add_argument("resources", nargs="+", help="List of resources (or '__all__' for all)")
+    admin_create_perms_parser.add_argument("--root", default=".", help="Document root")
+    admin_create_perms_parser.add_argument("--all-group", default="all_resources", help="Name for the group with all permissions")
+    admin_create_perms_parser.add_argument("--read-group", default="read_resources", help="Name for the group with read permissions")
+
     args = parser.parse_args()
 
     if args.command == "serve":
@@ -48,3 +60,8 @@ def main() -> None:
         addsuperuser.run_add_superuser(Path(args.root).resolve(), args.username, args.password)
     elif args.command == "list-endpoints":
         list_endpoints.run_list_endpoints(Path(args.root).resolve())
+    elif args.command == "admin":
+        admin.run_admin(args)
+
+if __name__ == "__main__":
+    sys.exit(main())
