@@ -9,6 +9,7 @@ A plugin is a module implementing the `Plugin` interface. Adapt maintains a `plu
 * **Dataset Plugins** (CSV, Excel, Parquet): Provide full CRUD APIs, schemas, and DataTables UIs
 * **Handler Plugins** (Python): Custom FastAPI routers for business logic
 * **Content Plugins** (HTML, Markdown): Serve static content directly at extensionless URLs
+* **Media Plugins** (MP4, MP3, etc.): Provide streaming endpoints and gallery UIs for audio/video files
 
 ---
 

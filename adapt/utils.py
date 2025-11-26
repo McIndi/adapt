@@ -21,6 +21,11 @@ def build_ui_links(request: Request) -> list[dict[str, str]]:
         else:
             url = f"/ui/{namespace}"
         ui_links.append({"name": namespace, "url": url})
+    
+    # Add Media Gallery if media files exist
+    if any(r.resource_type == "media" for r in request.app.state.resources):
+        ui_links.append({"name": "Media Gallery", "url": "/ui/media"})
+    
     return ui_links
 
 

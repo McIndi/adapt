@@ -22,6 +22,13 @@ class AdaptConfig:
         ".py": "adapt.plugins.python_plugin.PythonHandlerPlugin",
         ".html": "adapt.plugins.html_plugin.HtmlPlugin",
         ".md": "adapt.plugins.markdown_plugin.MarkdownPlugin",
+        ".mp4": "adapt.plugins.media_plugin.MediaPlugin",
+        ".mp3": "adapt.plugins.media_plugin.MediaPlugin",
+        ".avi": "adapt.plugins.media_plugin.MediaPlugin",
+        ".mkv": "adapt.plugins.media_plugin.MediaPlugin",
+        ".webm": "adapt.plugins.media_plugin.MediaPlugin",
+        ".ogg": "adapt.plugins.media_plugin.MediaPlugin",
+        ".wav": "adapt.plugins.media_plugin.MediaPlugin",
     })
 
     def __post_init__(self) -> None:

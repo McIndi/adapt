@@ -33,7 +33,10 @@ def generate_routes(app: FastAPI, resources: list[DatasetResource], config: Adap
             metadata=resource.metadata
         )
 
-        namespace = resource.relative_path.with_suffix("").as_posix()
+        if resource.resource_type == "media":
+            namespace = resource.relative_path.as_posix()
+        else:
+            namespace = resource.relative_path.with_suffix("").as_posix()
         if "sub_namespace" in resource.metadata:
             namespace += f"/{resource.metadata['sub_namespace']}"
 

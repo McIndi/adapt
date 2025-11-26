@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Media Gallery{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<style>
+    .media-item.hidden { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Media Gallery</h1>
+<input type="text" id="search" placeholder="Search media files..." class="form-control mb-3">
+<div id="media-list" class="row">
+    {% for item in media_items %}
+    <div class="col-md-4 mb-4 media-item" data-name="{{ item.name }}">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title"><a href="/ui/{{ item.relative_path }}">{{ item.name }}</a></h5>
+                <p class="card-text">Type: {{ item.media_type }}, Size: {{ item.file_size }} bytes</p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<script>
+    const searchInput = document.getElementById('search');
+    const items = document.querySelectorAll('.media-item');
+
+    searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        items.forEach(item => {
+            const name = item.dataset.name.toLowerCase();
+            if (name.includes(query)) {
+                item.classList.remove('hidden');
+            } else {
+                item.classList.add('hidden');
+            }
+        });
+    });
+</script>
+{% endblock %}

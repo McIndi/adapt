@@ -65,6 +65,35 @@ If no companion file exists, Adapt will create a new one from the original `data
 
 ---
 
+## **2.5. Media Gallery UI**
+
+### **Features**
+
+* Card-based layout displaying media files
+* Searchable by filename
+* Responsive Bootstrap grid
+* Direct links to individual player pages
+* Common navigation bar
+
+### **Individual Player Pages**
+
+* Dedicated pages at `/ui/<filename>` for each media file
+* HTML5 `<video>` or `<audio>` elements for playback
+* Centered, responsive design
+* Streaming via `/media/<filename>` endpoints
+
+### **Streaming Endpoints**
+
+* HTTP range request support for efficient streaming
+* Open-standard delivery for audio/video files
+* No write operations supported
+
+### **Template System**
+
+Media UIs use Jinja2 templates extending `base.html`. The gallery uses `media_gallery.html` with Bootstrap cards and JavaScript search. Individual players use `media_player.html` with embedded media elements.
+
+---
+
 ## **3. Python Handler Loader**
 
 ### **Behavior**

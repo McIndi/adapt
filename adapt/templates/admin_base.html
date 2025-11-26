@@ -26,6 +26,13 @@
                         {% endfor %}
                     </ul>
                 </li>
+                {% for link in ui_links %}
+                {% if link.name == "Media Gallery" %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ link.url }}">Media</a>
+                </li>
+                {% endif %}
+                {% endfor %}
                 {% endif %}
                 {% if is_superuser %}
                 <li class="nav-item">

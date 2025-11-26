@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block title %}{{ filename }}{% endblock %}
+
+{% block content %}
+<h1>{{ filename }}</h1>
+<div class="text-center">
+    <{{ media_type }} controls class="w-75">
+        <source src="{{ media_url }}" type="{{ media_type }}/{{ extension }}">
+        Your browser does not support the media element.
+    </{{ media_type }}>
+</div>
+{% endblock %}

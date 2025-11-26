@@ -5,6 +5,7 @@ from adapt.plugins.csv_plugin import CsvPlugin
 from adapt.plugins.excel_plugin import ExcelPlugin
 from adapt.plugins.html_plugin import HtmlPlugin
 from adapt.plugins.markdown_plugin import MarkdownPlugin
+from adapt.plugins.media_plugin import MediaPlugin
 from adapt.plugins.python_plugin import PythonHandlerPlugin
 
 # List of all plugin classes to test
@@ -13,6 +14,7 @@ PLUGIN_CLASSES = [
     ExcelPlugin,
     HtmlPlugin,
     MarkdownPlugin,
+    MediaPlugin,
     PythonHandlerPlugin,
 ]
 

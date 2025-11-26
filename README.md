@@ -6,11 +6,13 @@ Note: README vs Implementation
 ----------------------------------
 The `README.md` outlines the intended design and functionality. Some features are partially implemented, still in the roadmap, or only scaffolded in the repository. For a detailed list of known differences between README/spec and the current implementation, see `IMPLEMENTATION_NOTES.md` at the project root.
 ---
-Drop a CSV, Excel file, Markdown document, HTML page, Parquet-style dataset, or Python handler into a directory and Adapt instantly generates:
+Drop a CSV, Excel file, Markdown document, HTML page, Parquet-style dataset, audio/video file, or Python handler into a directory and Adapt instantly generates:
 
 * CRUD API endpoints
 * HTML DataTables UI (sortable, searchable)
 * Inline editing with PATCH support
+* HTTP streaming for audio/video files
+* Media gallery UI with searchable cards
 * Automatic schema inspection
 * Safe writes via file locking
 * Plugin-driven handlers
@@ -34,6 +36,7 @@ On startup, Adapt:
 * Detects supported files & handlers
 * Builds REST routes
 * Generates HTML table UIs for CSV/XLSX
+* Generates media players and galleries for audio/video files
 * Loads schema overrides and custom renderers
 * Registers Python handlers automatically
 * Serves HTML and Markdown files directly at extensionless URLs
@@ -50,6 +53,7 @@ Adapt provides a user-friendly landing page at the root URL (`/`) that serves as
 * **Welcome Message** - Introduction to Adapt and its capabilities
 * **Quick Start Guide** - Step-by-step instructions for getting started
 * **Accessible Resources** - Dynamic list of datasets, HTML pages, and Markdown documents the user can access based on their permissions
+* **Media Gallery** - Browse and stream audio/video files
 * **Admin Access** - Direct link to the admin dashboard for superusers
 
 The landing page adapts to the user's authentication status and permissions, showing only resources they are authorized to view. For unauthenticated users, it displays public HTML and Markdown content.
@@ -67,6 +71,8 @@ For CSV, Excel sheets, and Parquet-like datasets, Adapt exposes:
 * `/schema` — JSON schema
 
 Each Excel **sheet** receives its own resource, enabling full CRUD operations per sheet. This multi-sheet support was recently enhanced to make the ExcelPlugin fully compatible with the DatasetPlugin architecture, allowing each sheet to be treated as an independent dataset with its own API endpoints and UI.
+
+For audio and video files, Adapt provides HTTP streaming endpoints using open standards for efficient playback, along with individual player pages and a searchable media gallery.
 
 The plugin system is extensible, allowing any plugin to create sub-resources by setting a "sub_namespace" in the resource metadata, enabling hierarchical API routes for complex file formats.
 
@@ -95,6 +101,27 @@ Perfect for:
 * Quick data exploration
 * Lightweight admin interfaces
 * Local-first tools
+
+---
+
+## Media Gallery
+
+Audio and video files automatically generate a Netflix/YouTube-style gallery UI:
+
+* Card-based layout with file information
+* Searchable by filename
+* Direct streaming playback
+* Responsive design
+* Integrated with common navigation bar
+
+Individual media files also have dedicated player pages with HTML5 video/audio elements for focused viewing. Streaming uses HTTP range requests for open-standard, efficient delivery.
+
+Perfect for:
+
+* Media libraries
+* Content management
+* Personal streaming servers
+* Educational resources
 
 ---
 
@@ -333,6 +360,8 @@ data/
   employees.schema.json
   sales.xlsx
   sales.q1.html
+  video.mp4
+  audio.mp3
   stats.py
   readme.md
   index.html
@@ -347,6 +376,9 @@ Adapt exposes:
 * `/api/employees` — CRUD API
 * `/api/sales` — sheet listing
 * `/api/sales/<sheet>` — CRUD API for each sheet
+* `/media/video.mp4` — streaming endpoint
+* `/ui/video.mp4` — media player page
+* `/ui/media` — media gallery
 * `/api/stats/*` — handler routes
 * `/readme` — rendered Markdown content
 * `/index` — HTML page content

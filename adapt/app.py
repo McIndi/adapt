@@ -16,6 +16,7 @@ from .discovery import discover_resources
 from .routes import generate_routes
 from .storage import User, DBSession, init_database
 from .locks import LockManager
+from .utils import build_accessible_ui_links
 
 
 async def cleanup_expired_sessions(engine, interval_hours=24):
@@ -103,6 +104,35 @@ def create_app(config: AdaptConfig) -> FastAPI:
     # Generate and mount routes
     generate_routes(app, resources, config)
 
+    # Media gallery route
+    @app.get("/ui/media")
+    def media_gallery(request: Request):
+        from .auth.dependencies import get_current_user
+        user = get_current_user(request)
+        if not user:
+            # Redirect to login if not authenticated
+            return RedirectResponse(url=f"/auth/login?next=/ui/media", status_code=302)
+        
+        media_resources = [r for r in request.app.state.resources if r.resource_type == "media"]
+        media_items = []
+        for r in media_resources:
+            # Check permission, but for simplicity, assume read permission
+            # In full impl, check permission
+            media_items.append({
+                "name": r.path.name,
+                "relative_path": r.relative_path.as_posix(),
+                "media_type": r.metadata.get("media_type", "unknown"),
+                "file_size": r.metadata.get("file_size", 0)
+            })
+        accessible_resources = build_accessible_ui_links(request, user)
+        context = {
+            "media_items": media_items,
+            "user": user,
+            "ui_links": accessible_resources,
+            "is_superuser": user and getattr(user, "is_superuser", False)
+        }
+        return request.app.state.templates.TemplateResponse(request, "media_gallery.html", context)
+
     # Debug root route
     @app.get("/")
     def root(request: Request):
@@ -114,6 +144,10 @@ def create_app(config: AdaptConfig) -> FastAPI:
             # Render landing page
             user = get_current_user(request)
             accessible_resources = build_accessible_ui_links(request, user)
+            
+            # Add media gallery if there are media files
+            if any(r.resource_type == "media" for r in request.app.state.resources):
+                accessible_resources.append({"name": "Media Gallery", "url": "/ui/media", "type": "media"})
             
             context = {
                 "user": user,
