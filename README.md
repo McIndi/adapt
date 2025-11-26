@@ -74,7 +74,7 @@ CSV and Excel datasets automatically generate a full-featured HTML UI:
 * Row deletion (DELETE)
 * **Common navigation bar** with links to API docs, admin dashboard (for superusers), dropdown of all discovered datasets, and logout
 
-This UI is powered by DataTables and delivered entirely over static routes — no framework or build step required.
+This UI is powered by DataTables and delivered via Jinja2 templates that extend a base template for consistent navigation. Companion files (`.adapt/*.index.html`) are generated during startup and can be customized by users to add features like charts, custom styling, or additional JavaScript. Rendering happens during requests to ensure dynamic data is always current.
 
 Perfect for:
 

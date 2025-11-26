@@ -27,10 +27,17 @@ The Dynamic Route Generator delegates the creation of specific routes to the plu
 * Inline editing (PATCH)
 * Row add (POST)
 * Row delete (DELETE)
+* Common navigation bar (with links to all resources, admin dashboard (for superusers), and logout)
+
+### **Template System**
+
+Dataset UIs use Jinja2 templates that extend `base.html` for consistent navigation. The default template (`datatable.html`) provides a full-featured DataTables interface with Bootstrap styling and modal forms for CRUD operations.
 
 ### **Customization**
 
-`.adapt/*.index.html` and `.adapt/*.<sheet>.html` allow full replacement. If no UI file exists, Adapt generates a default DataTables view.
+`.adapt/*.index.html` companion files allow full UI replacement. During startup, Adapt generates these files with the default `datatable.html` template. Users can edit these files to customize the UI while retaining the base navigation and functionality. Rendering occurs during requests, not at startup, ensuring dynamic data is always fresh.
+
+If no companion file exists, Adapt will create a new one from the original `datatable.html`.
 
 ---
 
