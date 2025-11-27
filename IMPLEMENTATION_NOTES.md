@@ -17,7 +17,7 @@ The `README.md` and `docs/spec` describe the intended architecture and features;
 2. Cache engine: `CacheEntry` exists but cache behavior, invalidation, and admin controls are not implemented.
 3. Parquet support is a placeholder – `.parquet` is mapped to CSV plugin by default.
 4. Row-Level Security (RLS) is a plugin hook; built-in plugins do not provide example RLS enforcement.
-5. Lock retry strategy is constant backoff, not exponential as README suggests.
+5. Lock retry strategy now uses exponential backoff as claimed in README.
 6. DataTables UI lacks column-hiding controls and schema-based field formatters (e.g., datetime formatting).
 7. Schema inference lacks `datetime` and `enum` detection.
 8. The Admin UI lacks a cache tab and the ability to filter audit logs server-side (API lacks filtering parameters for audit logs).
@@ -46,10 +46,10 @@ The `README.md` and `docs/spec` describe the intended architecture and features;
 - Files: `adapt/plugins/base.py` (filter_for_user), `adapt/plugins/dataset_plugin.py` (read), `tests/test_phase3.py` (test stub)
 - Suggested fix: Add an example dataset plugin (or extend CSV/Excel) to demonstrate `filter_for_user`, and write a test verifying only matching rows are returned.
 
-5) Lock backoff behavior (low/medium)
-- Symptom: README claims "exponential backoff" but current `LockManager` uses fixed short sleeps in a loop (`time.sleep(0.1)`).
-- Files: `adapt/locks.py`
-- Suggested fix: Either implement exponential backoff in `_LockContext.__enter__` or update README to reflect constant backoff.
+5) Lock backoff behavior (FIXED)
+- Symptom: Previously used constant backoff; now implements exponential backoff as documented.
+- Files: `adapt/locks.py`, `tests/test_locks.py`
+- Fix: Implemented exponential backoff with cap at 1.0s, added test for verification.
 
 6) UI: column hiding and schema-based formatting (low/medium)
 - Symptom: `datatable.html` provides basic DataTables features but not column hide toggles or per-type formatting for datetimes/booleans.

@@ -94,6 +94,32 @@ def test_lock_context_manager_timeout(lock_manager):
             pass
 
 
+def test_lock_context_manager_exponential_backoff(lock_manager, monkeypatch):
+    """Test that backoff delays increase exponentially."""
+    # Acquire lock first
+    lock_manager.acquire_lock("test.csv", "user1", "test")
+    
+    delays = []
+    fake_time = [0]  # mutable to simulate time advancing
+    def mock_time():
+        return fake_time[0]
+    def mock_sleep(delay):
+        delays.append(delay)
+        fake_time[0] += delay  # Advance fake time by delay
+    
+    monkeypatch.setattr(time, 'time', mock_time)
+    monkeypatch.setattr(time, 'sleep', mock_sleep)
+    
+    # Try to acquire with timeout - use longer timeout to see multiple retries
+    with pytest.raises(TimeoutError):
+        with lock_manager.lock("test.csv", "user2", "test", timeout_seconds=2):
+            pass
+    
+    # Check that delays are exponential: 0.1, 0.2, 0.4, 0.8, 1.0...
+    expected = [0.1, 0.2, 0.4, 0.8, 1.0]
+    assert delays == expected
+
+
 def test_race_condition_prevention(lock_manager):
     """Test that race condition is prevented with unique constraint."""
     results = []

@@ -79,6 +79,22 @@ The plugin system is extensible, allowing any plugin to create sub-resources by 
 
 ---
 
+## Caching System
+
+Adapt now includes a robust, SQLite-backed caching system:
+
+* GET responses for datasets, media metadata, and rendered content are cached for performance.
+* Cache is stored in `.adapt.db` and managed per resource.
+* Plugins control what is cached and for how long (TTL).
+* Cache is automatically invalidated on resource mutation (POST/PATCH/DELETE).
+* Admin UI supports cache inspection and manual invalidation.
+
+All major plugins (CSV, Excel, Parquet, HTML, Markdown, Media, Python handler) now support caching where appropriate. Parquet, CSV, Excel plugins use cache for reads and schema inference. Media plugin caches metadata. Python handler plugin does not cache routers (for safety).
+
+All cache expiry logic uses timezone-aware UTC datetimes.
+
+Comprehensive test suite covers all cache logic and plugin integration.
+
 ## Built-In HTML UIs (DataTables)
 
 CSV and Excel datasets automatically generate a full-featured HTML UI:
@@ -172,7 +188,7 @@ Writes to CSV, Excel, and Parquet files follow a strict, atomic workflow:
 
 **Lock Safety Features:**
 * Database-level unique constraint prevents concurrent lock acquisition
-* Automatic retry with exponential backoff (30-second timeout)
+* Automatic retry with exponential backoff (starting at 0.1s, doubling each attempt, capped at 1.0s, 30-second timeout)
 * Stale lock cleanup on server startup (5-minute threshold)
 * Lock expiration (5-minute TTL by default)
 
@@ -291,6 +307,13 @@ Adapt ships with a built-in admin interface at `/admin/` to manage the entire se
 * View chronological history of system actions
 * Filter by user, action, or resource
 * Inspect action details
+
+### Cache Tab
+
+* View all cached entries with key, resource, expiration, and user
+* Delete individual cache entries
+* Clear all cache entries
+* Monitor cache usage and performance
 
 The Admin UI uses vanilla HTML/CSS/JavaScript for portability and simplicity—no build step required.
 

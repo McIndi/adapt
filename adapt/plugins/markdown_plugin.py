@@ -1,4 +1,5 @@
 from __future__ import annotations
+from adapt.cache import get_cache, set_cache
 
 import markdown
 from pathlib import Path
@@ -12,6 +13,17 @@ from .base import Plugin, ResourceDescriptor, PluginContext
 
 
 class MarkdownPlugin(Plugin):
+    def write(self, resource: ResourceDescriptor, data: Any, request: Request, context: PluginContext) -> Any:
+        raise NotImplementedError("Markdown files do not support write operations")
+
+    def get_route_configs(self, descriptor: ResourceDescriptor) -> list[tuple[str, APIRouter]]:
+        router = APIRouter()
+        @router.get("")
+        def get_markdown(request: Request):
+            content = self.read(descriptor, request)
+            return HTMLResponse(content=content)
+        return [("", router)]
+
     def detect(self, path: Path) -> bool:
         return path.suffix.lower() == ".md"
 
@@ -23,10 +35,14 @@ class MarkdownPlugin(Plugin):
         return {}  # No schema for Markdown files
 
     def read(self, resource: ResourceDescriptor, request: Request) -> Any:
+        cache_key = f"markdown:{resource.path}"
+        cached = get_cache(cache_key, str(resource.path))
+        if cached:
+            return cached
         with open(resource.path, 'r', encoding='utf-8') as f:
             md_content = f.read()
         html_content = markdown.markdown(md_content)
-        return f"""
+        content = f"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -44,18 +60,5 @@ class MarkdownPlugin(Plugin):
 </body>
 </html>
 """
-
-    def write(self, resource: ResourceDescriptor, data: Any, request: Request, context: PluginContext) -> Any:
-        raise NotImplementedError("Markdown files do not support write operations")
-
-    def get_route_configs(self, descriptor: ResourceDescriptor) -> list[tuple[str, APIRouter]]:
-        """Return route configs for Markdown content: direct serving."""
-        from fastapi.responses import HTMLResponse
-
-        router = APIRouter()
-        @router.get("")
-        def get_markdown(request: Request):
-            content = self.read(descriptor, request)
-            return HTMLResponse(content=content)
-
-        return [("", router)]
+        set_cache(cache_key, content, ttl_seconds=600, resource=str(resource.path))  # 10 min TTL
+        return content

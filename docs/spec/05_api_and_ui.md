@@ -11,6 +11,7 @@
 * Mount Python handler routers
 * Mount plugin-provided routers
 * Build Admin UI routes
+* GET responses for datasets, media, and content may be cached for performance, with automatic invalidation on writes.
 
 The Dynamic Route Generator delegates the creation of specific routes to the plugins themselves via `get_route_configs`.
 
@@ -152,7 +153,7 @@ The Admin UI is backed by REST endpoints at `/admin/*`. All admin endpoints requ
 
 #### **System**
 * Active locks (Force unlock)
-* Cache viewer (Clear cache)
+* Cache viewer (Inspect and clear cache entries)
 
 #### **API Keys**
 * Generate new keys
@@ -161,7 +162,7 @@ The Admin UI is backed by REST endpoints at `/admin/*`. All admin endpoints requ
 
 #### **Audit Logs**
 * View system activity
-* Filter by user/action
+* Filter by user, action, or resource
 
 ---
 

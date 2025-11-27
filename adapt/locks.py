@@ -85,12 +85,15 @@ class LockManager:
 
         def __enter__(self):
             start = time.time()
+            retry_count = 0
             while time.time() - start < self.timeout_seconds:
                 try:
                     self.lock = self.manager.acquire_lock(self.resource, self.owner, self.reason)
                     return self.lock
                 except RuntimeError:
-                    time.sleep(0.1)  # Backoff
+                    delay = min(0.1 * (2 ** min(retry_count, 10)), 1.0)
+                    time.sleep(delay)
+                    retry_count += 1
             raise TimeoutError(f"Failed to acquire lock on {self.resource} after {self.timeout_seconds}s")
 
         def __exit__(self, exc_type, exc_val, exc_tb):

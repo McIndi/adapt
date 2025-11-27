@@ -1,4 +1,5 @@
 from __future__ import annotations
+from adapt.cache import get_cache, set_cache, invalidate_cache
 
 import base64
 import io
@@ -22,32 +23,35 @@ class MediaPlugin(Plugin):
         return path.suffix.lower() in {".mp4", ".mp3", ".avi", ".mkv", ".webm", ".ogg", ".wav"}
 
     def load(self, path: Path) -> ResourceDescriptor:
-        descriptor = ResourceDescriptor(path=path, resource_type="media")
-        # Basic metadata for extensibility
-        descriptor.metadata["file_size"] = path.stat().st_size
-        descriptor.metadata["media_type"] = "video" if path.suffix.lower() in {".mp4", ".avi", ".mkv", ".webm"} else "audio"
-        
-        # Extract additional metadata using mutagen
-        try:
-            media_file = File(str(path))
-            if media_file and media_file.info:
-                info = media_file.info
-                descriptor.metadata["duration"] = info.length
-                descriptor.metadata["bitrate"] = getattr(info, 'bitrate', None)
-                descriptor.metadata["sample_rate"] = getattr(info, 'sample_rate', None)
-                descriptor.metadata["channels"] = getattr(info, 'channels', None)
-                
-                # Extract tags if available
-                if hasattr(media_file, 'tags') and media_file.tags:
-                    descriptor.metadata["title"] = media_file.tags.get('title', [None])[0]
-                    descriptor.metadata["artist"] = media_file.tags.get('artist', [None])[0]
-                    descriptor.metadata["album"] = media_file.tags.get('album', [None])[0]
-                    descriptor.metadata["genre"] = media_file.tags.get('genre', [None])[0]
-        except Exception:
-            # If metadata extraction fails, continue with basic metadata
-            pass
-        
-        return descriptor
+            cache_key = f"media_meta:{path}"
+            cached = get_cache(cache_key, str(path))
+            if cached:
+                descriptor = ResourceDescriptor(path=path, resource_type="media")
+                descriptor.metadata.update(cached)
+                return descriptor
+            descriptor = ResourceDescriptor(path=path, resource_type="media")
+            # Basic metadata for extensibility
+            descriptor.metadata["file_size"] = path.stat().st_size
+            descriptor.metadata["media_type"] = "video" if path.suffix.lower() in {".mp4", ".avi", ".mkv", ".webm"} else "audio"
+            # Extract additional metadata using mutagen
+            try:
+                media_file = File(str(path))
+                if media_file and media_file.info:
+                    info = media_file.info
+                    descriptor.metadata["duration"] = info.length
+                    descriptor.metadata["bitrate"] = getattr(info, 'bitrate', None)
+                    descriptor.metadata["sample_rate"] = getattr(info, 'sample_rate', None)
+                    descriptor.metadata["channels"] = getattr(info, 'channels', None)
+                    # Extract tags if available
+                    if hasattr(media_file, 'tags') and media_file.tags:
+                        descriptor.metadata["title"] = media_file.tags.get('title', [None])[0]
+                        descriptor.metadata["artist"] = media_file.tags.get('artist', [None])[0]
+                        descriptor.metadata["album"] = media_file.tags.get('album', [None])[0]
+                        descriptor.metadata["genre"] = media_file.tags.get('genre', [None])[0]
+            except Exception:
+                pass
+            set_cache(cache_key, descriptor.metadata, ttl_seconds=1800, resource=str(path))  # 30 min TTL
+            return descriptor
 
     def schema(self, resource: ResourceDescriptor) -> dict[str, Any]:
         return {}  # No schema for media files

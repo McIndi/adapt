@@ -1,3 +1,4 @@
+from adapt.cache import get_cache, set_cache, invalidate_cache
 from pathlib import Path
 from typing import Any, Sequence, Iterable, Optional
 import pandas as pd
@@ -21,8 +22,14 @@ class ParquetPlugin(DatasetPlugin):
         os.replace(tmp_path, resource.path)
 
     def _read_raw_rows(self, resource: ResourceDescriptor) -> list[list[Any]]:
-        df = pd.read_parquet(resource.path)
-        return df.values.tolist()
+            cache_key = f"data:{resource.path}"
+            cached = get_cache(cache_key, str(resource.path))
+            if cached:
+                return cached
+            df = pd.read_parquet(resource.path)
+            data = df.values.tolist()
+            set_cache(cache_key, data, ttl_seconds=300, resource=str(resource.path))  # 5 min TTL
+            return data
 
     @property
     def resource_type(self) -> str:
@@ -73,3 +80,5 @@ class ParquetPlugin(DatasetPlugin):
             tmp_path = tmp_fh.name
         df.to_parquet(tmp_path, engine="fastparquet")
         os.replace(tmp_path, resource.path)
+        # Invalidate cache after mutation
+        invalidate_cache(str(resource.path))

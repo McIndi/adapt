@@ -1,4 +1,5 @@
 from __future__ import annotations
+from adapt.cache import get_cache, set_cache, invalidate_cache
 
 from pathlib import Path
 from typing import Any, Sequence
@@ -40,17 +41,22 @@ class ExcelPlugin(DatasetPlugin):
         return descriptors
 
     def _read_raw_rows(self, resource: ResourceDescriptor) -> list[list[str]]:
-        sub_namespace = resource.metadata["sub_namespace"]
-        rows = []
-        workbook = load_workbook(resource.path, read_only=True, data_only=True)
-        try:
-            sheet = workbook[sub_namespace]
-            data_rows = list(sheet.iter_rows(values_only=True))
-            for row in data_rows[1:]:  # Skip header
-                rows.append([str(cell) if cell is not None else "" for cell in row])
-        finally:
-            workbook.close()
-        return rows
+            cache_key = f"data:{resource.path}:{resource.metadata.get('sub_namespace', '')}"
+            cached = get_cache(cache_key, str(resource.path))
+            if cached:
+                return cached
+            sub_namespace = resource.metadata["sub_namespace"]
+            rows = []
+            workbook = load_workbook(resource.path, read_only=True, data_only=True)
+            try:
+                sheet = workbook[sub_namespace]
+                data_rows = list(sheet.iter_rows(values_only=True))
+                for row in data_rows[1:]:  # Skip header
+                    rows.append([str(cell) if cell is not None else "" for cell in row])
+            finally:
+                workbook.close()
+            set_cache(cache_key, rows, ttl_seconds=300, resource=str(resource.path))  # 5 min TTL
+            return rows
 
     def _write_rows(self, resource: ResourceDescriptor, rows: list[dict[str, Any]], header: list[str]) -> None:
         sub_namespace = resource.metadata["sub_namespace"]
@@ -75,4 +81,6 @@ class ExcelPlugin(DatasetPlugin):
             workbook.close()
 
         os.replace(tmp_path, resource.path)
+        # Invalidate cache after mutation
+        invalidate_cache(str(resource.path))
     

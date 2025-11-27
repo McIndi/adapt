@@ -1,4 +1,5 @@
 from __future__ import annotations
+from adapt.cache import get_cache, set_cache, invalidate_cache
 
 from pathlib import Path
 from typing import Any, Sequence
@@ -22,8 +23,14 @@ class HtmlPlugin(Plugin):
         return {}  # No schema for HTML files
 
     def read(self, resource: ResourceDescriptor, request: Request) -> Any:
+        cache_key = f"html:{resource.path}"
+        cached = get_cache(cache_key, str(resource.path))
+        if cached:
+            return cached
         with open(resource.path, 'r', encoding='utf-8') as f:
-            return f.read()
+            content = f.read()
+        set_cache(cache_key, content, ttl_seconds=600, resource=str(resource.path))  # 10 min TTL
+        return content
 
     def write(self, resource: ResourceDescriptor, data: Any, request: Request, context: PluginContext) -> Any:
         raise NotImplementedError("HTML files do not support write operations")

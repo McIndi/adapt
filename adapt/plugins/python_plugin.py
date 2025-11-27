@@ -1,4 +1,5 @@
 from __future__ import annotations
+from adapt.cache import get_cache, set_cache, invalidate_cache
 
 from pathlib import Path
 from typing import Any, Sequence
@@ -32,6 +33,7 @@ class PythonHandlerPlugin(Plugin):
         spec = importlib.util.spec_from_file_location(descriptor.path.stem, descriptor.path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
+        routes = []
         if hasattr(module, 'router') and isinstance(module.router, APIRouter):
-            return [("api", module.router)]
-        return []
+            routes = [("api", module.router)]
+        return routes

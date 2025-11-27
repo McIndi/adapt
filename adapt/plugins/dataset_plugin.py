@@ -1,4 +1,5 @@
 from __future__ import annotations
+from adapt.cache import get_cache, set_cache, invalidate_cache
 
 from pathlib import Path
 from typing import Any, Sequence
@@ -59,20 +60,26 @@ class DatasetPlugin(Plugin):
         return descriptor
 
     def schema(self, resource: ResourceDescriptor) -> dict[str, Any]:
-        if resource.schema_path and resource.schema_path.exists():
-            import json
-            with resource.schema_path.open() as f:
-                return json.load(f)
-        else:
-            header = resource.metadata.get("header", [])
-            sample = resource.metadata.get("sample_row", [])
-            columns = _build_columns(header, sample)
-            return {
-                "type": "object",
-                "name": resource.path.stem,
-                "primary_key": resource.metadata.get("primary_key"),
-                "columns": columns,
-            }
+            cache_key = f"schema:{resource.path}"
+            cached = get_cache(cache_key, str(resource.path))
+            if cached:
+                return cached
+            if resource.schema_path and resource.schema_path.exists():
+                import json
+                with resource.schema_path.open() as f:
+                    schema = json.load(f)
+            else:
+                header = resource.metadata.get("header", [])
+                sample = resource.metadata.get("sample_row", [])
+                columns = _build_columns(header, sample)
+                schema = {
+                    "type": "object",
+                    "name": resource.path.stem,
+                    "primary_key": resource.metadata.get("primary_key"),
+                    "columns": columns,
+                }
+            set_cache(cache_key, schema, ttl_seconds=3600, resource=str(resource.path))  # 1 hour TTL
+            return schema
 
     def read(self, resource: ResourceDescriptor, request: Request) -> Sequence[dict[str, Any]]:
         header = resource.metadata.get("header", [])

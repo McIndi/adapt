@@ -81,7 +81,7 @@ Companion files are generated per sheet: `.adapt/file.<sheet>.schema.json`, `.ad
 * Locks recorded and visible in Admin UI
 * Automatic stale lock cleanup on server startup (5-minute threshold)
 * Lock expiration with TTL (5 minutes default)
-* Retry with timeout (30 seconds) and exponential backoff
+* Retry with timeout (30 seconds) and exponential backoff (0.1s initial, doubling, 1.0s max)
 
 ### **Implementation Details**
 
@@ -105,7 +105,7 @@ Companion files are generated per sheet: `.adapt/file.<sheet>.schema.json`, `.ad
 
 * Automatic cache of GET responses
 * Cache invalidation on write
-* Cache visibility and clearing via Admin UI (not yet implemented)
+* Cache visibility and clearing via Admin UI
 
 ---
 

@@ -322,3 +322,59 @@ def test_run_create_permissions(tmp_path, capsys):
         
         permissions = db.exec(select(Permission)).all()
         assert len(permissions) == 4  # 2 resources * 2 actions
+
+def test_cache_admin(client):
+    # Login first
+    response = client.post("/auth/login", data={"username": "admin", "password": "admin"})
+    assert response.status_code == 200
+    
+    # Test list cache
+    response = client.get("/admin/cache")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    # Check structure
+    if data:
+        entry = data[0]
+        assert 'key' in entry
+        assert 'expires_at' in entry
+        assert 'resource' in entry
+        assert 'user' in entry
+    
+    # Test clear cache
+    response = client.delete("/admin/cache")
+    assert response.status_code == 200
+    assert response.json() == {"success": True}
+
+    # Test delete single cache entry (if any exist)
+    response = client.get("/admin/cache")
+    data = response.json()
+    if data:
+        entry = data[0]
+        key = entry['key']
+        resource = entry['resource']
+        response = client.delete(f"/admin/cache/{key}?resource={resource}")
+        assert response.status_code == 200
+        assert response.json() == {"success": True}
+
+def test_audit_logs_filtering(client):
+    # Login first
+    response = client.post("/auth/login", data={"username": "admin", "password": "admin"})
+    assert response.status_code == 200
+    
+    # Test list audit logs without filters
+    response = client.get("/admin/audit-logs")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    
+    # Test with user_id filter (should work even if no matches)
+    response = client.get("/admin/audit-logs?user_id=999")
+    assert response.status_code == 200
+    filtered_data = response.json()
+    assert isinstance(filtered_data, list)
+    
+    # Test with action filter
+    response = client.get("/admin/audit-logs?action=login")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)

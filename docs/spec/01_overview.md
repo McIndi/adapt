@@ -14,6 +14,7 @@ Place files into a directory, and Adapt generates:
 * Auto-registered FastAPI routers from Python files
 * Users, groups, and RBAC
 * Admin UI for managing users, groups, permissions, locks, and cache
+* SQLite-backed caching system for GET responses, plugin-driven and resource-aware
 
 Adapt treats your filesystem as a structured backend environment. Companion files (schemas, UIs, overrides) are stored in a hidden `.adapt` directory to keep the docroot clean.
 

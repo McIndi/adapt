@@ -63,6 +63,13 @@
             </svg>
             Audit Log
         </button>
+        <button class="nav-item" data-tab="cache">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2z"></path>
+                <path d="M8 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V5z"></path>
+            </svg>
+            Cache
+        </button>
 
     </nav>
     <div class="user-profile">
@@ -199,7 +206,12 @@
     <div id="audit-logs-view" class="view">
         <header class="view-header">
             <h2>Audit Log</h2>
-            <button class="btn secondary" id="refresh-audit-btn">Refresh</button>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <input type="number" id="filter-user-id" placeholder="User ID" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <input type="text" id="filter-action" placeholder="Action" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <input type="text" id="filter-resource" placeholder="Resource" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <button class="btn secondary" id="refresh-audit-btn">Refresh</button>
+            </div>
         </header>
         <div class="card">
             <table id="audit-logs-table">
@@ -211,6 +223,29 @@
                         <th>Resource</th>
                         <th>Details</th>
                         <th>IP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="cache-view" class="view">
+        <header class="view-header">
+            <h2>Cache Management</h2>
+            <button class="btn secondary" id="clear-cache-btn">Clear All Cache</button>
+        </header>
+        <div class="card">
+            <table id="cache-table">
+                <thead>
+                    <tr>
+                        <th>Key</th>
+                        <th>Resource</th>
+                        <th>User</th>
+                        <th>Expires At</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>

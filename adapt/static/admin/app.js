@@ -5,6 +5,9 @@ document.addEventListener('DOMContentLoaded', () => {
         locks: [],
         groups: [],
         permissions: [],
+        'api-keys': [],
+        'audit-logs': [],
+        cache: [],
         currentUser: null
     };
 
@@ -15,13 +18,17 @@ document.addEventListener('DOMContentLoaded', () => {
         groups: document.getElementById('groups-view'),
         permissions: document.getElementById('permissions-view'),
         'api-keys': document.getElementById('api-keys-view'),
-        'audit-logs': document.getElementById('audit-logs-view')
+        'audit-logs': document.getElementById('audit-logs-view'),
+        cache: document.getElementById('cache-view')
     };
     const tables = {
         users: document.querySelector('#users-table tbody'),
         locks: document.querySelector('#locks-table tbody'),
         groups: document.querySelector('#groups-table tbody'),
-        permissions: document.querySelector('#permissions-table tbody')
+        permissions: document.querySelector('#permissions-table tbody'),
+        'api-keys': document.querySelector('#api-keys-table tbody'),
+        'audit-logs': document.querySelector('#audit-logs-table tbody'),
+        cache: document.querySelector('#cache-table tbody')
     };
     const modals = {
         user: document.getElementById('user-modal'),
@@ -177,6 +184,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tab === 'locks') loadLocks();
         if (tab === 'groups') loadGroups();
         if (tab === 'permissions') loadPermissions();
+        if (tab === 'api-keys') loadApiKeys();
+        if (tab === 'audit-logs') loadAuditLogs();
+        if (tab === 'cache') loadCache();
     }
 
     // API Calls
@@ -551,20 +561,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Audit Logs Logic ---
 
     async function loadAuditLogs() {
-        const res = await fetch('/admin/audit-logs');
+        const userId = document.getElementById('filter-user-id').value;
+        const action = document.getElementById('filter-action').value;
+        const resource = document.getElementById('filter-resource').value;
+        const params = new URLSearchParams();
+        if (userId) params.append('user_id', userId);
+        if (action) params.append('action', action);
+        if (resource) params.append('resource', resource);
+        const res = await fetch(`/admin/audit-logs?${params}`);
         if (res.ok) {
-            state.auditLogs = await res.json();
+            state['audit-logs'] = await res.json();
             renderAuditLogs();
         }
     }
 
     function renderAuditLogs() {
         const tbody = document.querySelector('#audit-logs-table tbody');
-        if (!state.auditLogs || state.auditLogs.length === 0) {
+        if (!state['audit-logs'] || state['audit-logs'].length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-secondary)">No logs found</td></tr>';
             return;
         }
-        tbody.innerHTML = state.auditLogs.map(log => `
+        tbody.innerHTML = state['audit-logs'].map(log => `
             <tr>
                 <td>${new Date(log.timestamp).toLocaleString()}</td>
                 <td>${log.user_id || 'Anon'}</td>
@@ -574,6 +591,48 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${log.ip_address || '-'}</td>
             </tr>
         `).join('');
+    }
+
+    // --- Cache Logic ---
+
+    async function loadCache() {
+        const res = await fetch('/admin/cache');
+        if (res.ok) {
+            state.cache = await res.json();
+            renderCache();
+        }
+    }
+
+    function renderCache() {
+        const tbody = document.querySelector('#cache-table tbody');
+        if (!state.cache || state.cache.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-secondary)">No cache entries</td></tr>';
+            return;
+        }
+        tbody.innerHTML = state.cache.map(entry => `
+            <tr>
+                <td>${entry.key}</td>
+                <td>${entry.resource}</td>
+                <td>${entry.user || '-'}</td>
+                <td>${new Date(entry.expires_at).toLocaleString()}</td>
+                <td><button class="btn danger" onclick="deleteCacheEntry(${JSON.stringify(entry.key)}, ${JSON.stringify(entry.resource)})">Delete</button></td>
+            </tr>
+        `).join('');
+    }
+
+    async function deleteCacheEntry(key, resource) {
+        const res = await fetch(`/admin/cache/${encodeURIComponent(key)}?resource=${encodeURIComponent(resource)}`, { method: 'DELETE' });
+        if (res.ok) loadCache();
+        else alert('Failed to delete cache entry');
+    }
+
+    window.deleteCacheEntry = deleteCacheEntry;
+
+    async function clearCache() {
+        if (!confirm('Are you sure you want to clear all cache?')) return;
+        const res = await fetch('/admin/cache', { method: 'DELETE' });
+        if (res.ok) loadCache();
+        else alert('Failed to clear cache');
     }
 
     // --- Event Listeners for New Features ---
@@ -600,11 +659,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('refresh-audit-btn').addEventListener('click', loadAuditLogs);
 
+    document.getElementById('clear-cache-btn').addEventListener('click', clearCache);
+
     // Hook into switchTab
     const originalSwitchTab = switchTab;
     switchTab = function (tab) {
         originalSwitchTab(tab);
         if (tab === 'api-keys') loadApiKeys();
         if (tab === 'audit-logs') loadAuditLogs();
+        if (tab === 'cache') loadCache();
     };
 });

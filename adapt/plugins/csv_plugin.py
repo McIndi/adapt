@@ -1,4 +1,5 @@
 from __future__ import annotations
+from adapt.cache import get_cache, set_cache, invalidate_cache
 
 import csv
 from pathlib import Path
@@ -26,10 +27,16 @@ class CsvPlugin(DatasetPlugin):
         return normalized, sample
 
     def _read_raw_rows(self, resource: ResourceDescriptor) -> list[list[str]]:
-        with resource.path.open(newline="", encoding="utf-8") as fh:
-            reader = csv.reader(fh)
-            next(reader, None)  # Skip header
-            return list(reader)
+            cache_key = f"data:{resource.path}"
+            cached = get_cache(cache_key, str(resource.path))
+            if cached:
+                return cached
+            with resource.path.open(newline="", encoding="utf-8") as fh:
+                reader = csv.reader(fh)
+                next(reader, None)  # Skip header
+                data = list(reader)
+            set_cache(cache_key, data, ttl_seconds=300, resource=str(resource.path))  # 5 min TTL
+            return data
 
     def _write_rows(self, resource: ResourceDescriptor, rows: list[dict[str, Any]], header: list[str]) -> None:
         # Write back atomically
@@ -43,3 +50,5 @@ class CsvPlugin(DatasetPlugin):
             tmp_path = tmp_fh.name
 
         os.replace(tmp_path, resource.path)
+        # Invalidate cache after mutation
+        invalidate_cache(str(resource.path))
