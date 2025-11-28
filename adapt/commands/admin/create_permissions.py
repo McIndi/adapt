@@ -1,21 +1,26 @@
 from pathlib import Path
 from typing import List
+import logging
 
 from ...admin.resources import list_resources
 from ...config import AdaptConfig
 from ...storage import Permission, Group, GroupPermission, init_database, Action, get_db_session
 from sqlmodel import Session, select
 
+logger = logging.getLogger(__name__)
+
 
 def run_create_permissions(root: Path, resources: List[str], all_group_name: str, read_group_name: str) -> None:
     """Create permissions and groups for the given resources."""
     if "__all__" in resources:
         all_res = list_resources(root)
+        logger.info("Using all %d resources", len(all_res))
         print(f"Using all {len(all_res)} resources")
     else:
         all_res = resources
     
     if not all_res:
+        logger.warning("No resources to process")
         print("No resources to process.")
         return
     
@@ -39,6 +44,7 @@ def run_create_permissions(root: Path, resources: List[str], all_group_name: str
                     Permission.action == action
                 )).first()
                 if existing:
+                    logger.debug("Permission %s on %s already exists", action.value, res)
                     print(f"Permission {action.value} on {res} already exists")
                     created_perms.append(existing)
                 else:
@@ -47,6 +53,7 @@ def run_create_permissions(root: Path, resources: List[str], all_group_name: str
                     db.commit()
                     db.refresh(perm)
                     created_perms.append(perm)
+                    logger.info("Created permission %s on %s", action.value, res)
                     print(f"Created permission {action.value} on {res}")
         
         # Create all permissions group
@@ -56,8 +63,10 @@ def run_create_permissions(root: Path, resources: List[str], all_group_name: str
             db.add(all_group)
             db.commit()
             db.refresh(all_group)
+            logger.info("Created group '%s'", dynamic_all_group_name)
             print(f"Created group '{dynamic_all_group_name}'")
         else:
+            logger.debug("Group '%s' already exists", dynamic_all_group_name)
             print(f"Group '{dynamic_all_group_name}' already exists")
         
         # Assign all permissions to all_group
@@ -69,6 +78,7 @@ def run_create_permissions(root: Path, resources: List[str], all_group_name: str
             if not existing_gp:
                 gp = GroupPermission(group_id=all_group.id, permission_id=perm.id)
                 db.add(gp)
+                logger.debug("Assigned %s on %s to group '%s'", perm.action.value, perm.resource, dynamic_all_group_name)
                 print(f"Assigned {perm.action.value} on {perm.resource} to group '{dynamic_all_group_name}'")
         
         # Create read permissions group
@@ -79,8 +89,10 @@ def run_create_permissions(root: Path, resources: List[str], all_group_name: str
             db.add(read_group)
             db.commit()
             db.refresh(read_group)
+            logger.info("Created group '%s'", dynamic_read_group_name)
             print(f"Created group '{dynamic_read_group_name}'")
         else:
+            logger.debug("Group '%s' already exists", dynamic_read_group_name)
             print(f"Group '{dynamic_read_group_name}' already exists")
         
         # Assign read permissions to read_group
@@ -92,6 +104,7 @@ def run_create_permissions(root: Path, resources: List[str], all_group_name: str
             if not existing_gp:
                 gp = GroupPermission(group_id=read_group.id, permission_id=perm.id)
                 db.add(gp)
+                logger.debug("Assigned %s on %s to group '%s'", perm.action.value, perm.resource, dynamic_read_group_name)
                 print(f"Assigned {perm.action.value} on {perm.resource} to group '{dynamic_read_group_name}'")
         
         # Create individual resource groups
@@ -107,8 +120,10 @@ def run_create_permissions(root: Path, resources: List[str], all_group_name: str
                 db.add(readonly_group)
                 db.commit()
                 db.refresh(readonly_group)
+                logger.info("Created group '%s'", readonly_group_name)
                 print(f"Created group '{readonly_group_name}'")
             else:
+                logger.debug("Group '%s' already exists", readonly_group_name)
                 print(f"Group '{readonly_group_name}' already exists")
             
             for perm in res_read_perms:
@@ -119,6 +134,7 @@ def run_create_permissions(root: Path, resources: List[str], all_group_name: str
                 if not existing_gp:
                     gp = GroupPermission(group_id=readonly_group.id, permission_id=perm.id)
                     db.add(gp)
+                    logger.debug("Assigned %s on %s to group '%s'", perm.action, perm.resource, readonly_group_name)
                     print(f"Assigned {perm.action} on {perm.resource} to group '{readonly_group_name}'")
             
             # Read/write group for this resource
@@ -129,8 +145,10 @@ def run_create_permissions(root: Path, resources: List[str], all_group_name: str
                 db.add(readwrite_group)
                 db.commit()
                 db.refresh(readwrite_group)
+                logger.info("Created group '%s'", readwrite_group_name)
                 print(f"Created group '{readwrite_group_name}'")
             else:
+                logger.debug("Group '%s' already exists", readwrite_group_name)
                 print(f"Group '{readwrite_group_name}' already exists")
             
             for perm in res_all_perms:
@@ -141,7 +159,9 @@ def run_create_permissions(root: Path, resources: List[str], all_group_name: str
                 if not existing_gp:
                     gp = GroupPermission(group_id=readwrite_group.id, permission_id=perm.id)
                     db.add(gp)
+                    logger.debug("Assigned %s on %s to group '%s'", perm.action, perm.resource, readwrite_group_name)
                     print(f"Assigned {perm.action} on {perm.resource} to group '{readwrite_group_name}'")
         
         db.commit()
+        logger.info("Permissions and groups created successfully for %d resources", len(all_res))
         print("Permissions and groups created successfully.")

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+import logging
 
 if TYPE_CHECKING:
     from fastapi import Request
+
+logger = logging.getLogger(__name__)
 
 
 def build_ui_links(request: Request) -> list[dict[str, str]]:
@@ -26,6 +29,7 @@ def build_ui_links(request: Request) -> list[dict[str, str]]:
     if any(r.resource_type == "media" for r in request.app.state.resources):
         ui_links.append({"name": "Media Gallery", "url": "/ui/media"})
     
+    logger.debug("Built %d UI links", len(ui_links))
     return ui_links
 
 
@@ -74,4 +78,5 @@ def build_accessible_ui_links(request: Request, user: User | None) -> list[dict[
                 url = f"/{namespace}"
                 accessible_resources.append({"name": namespace, "url": url, "type": res.resource_type})
     
+    logger.debug("Built %d accessible UI links for user %s", len(accessible_resources), user.username if user else None)
     return accessible_resources

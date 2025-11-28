@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from sqlmodel import Session
 from fastapi import Request
 
 from .storage import AuditLog
+
+
+logger = logging.getLogger(__name__)
 
 def log_action(
     request: Request,
@@ -14,6 +18,7 @@ def log_action(
     user_id: int | None = None
 ):
     """Log an action to the audit log."""
+    logger.debug(f"Logging action: {action} on {resource}")
     try:
         engine = request.app.state.db_engine
         
@@ -37,6 +42,8 @@ def log_action(
             )
             db.add(log_entry)
             db.commit()
+        logger.debug(f"Audit log entry created for action: {action}")
     except Exception as e:
         # Don't let logging failures crash the application
+        logger.error(f"Failed to write audit log: {e}")
         print(f"Failed to write audit log: {e}")

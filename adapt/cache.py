@@ -16,11 +16,13 @@ CACHE_TABLE = "cache"
 _lock = threading.Lock()
 
 def _get_conn():
+    """Get a SQLite connection to the cache database."""
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
 def init_cache_table():
+    """Initialize the cache table in the SQLite database."""
     with _lock:
         conn = _get_conn()
         conn.execute(f"""
@@ -37,6 +39,15 @@ def init_cache_table():
     logger.debug("Cache table initialized")
 
 def set_cache(key, value, ttl_seconds, resource, user=None):
+    """Set a cache entry with a time-to-live.
+
+    Args:
+        key: The cache key.
+        value: The value to cache (will be pickled).
+        ttl_seconds: Time-to-live in seconds.
+        resource: The resource identifier.
+        user: Optional user identifier.
+    """
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
     blob = pickle.dumps(value)
     with _lock:
@@ -50,6 +61,16 @@ def set_cache(key, value, ttl_seconds, resource, user=None):
     logger.debug(f"Cached key '{key}' for resource '{resource}' with TTL {ttl_seconds}s, expires at {expires_at}")
 
 def get_cache(key, resource, user=None):
+    """Get a cache entry if it exists and hasn't expired.
+
+    Args:
+        key: The cache key.
+        resource: The resource identifier.
+        user: Optional user identifier.
+
+    Returns:
+        The cached value if found and not expired, None otherwise.
+    """
     now = datetime.now(timezone.utc).isoformat()
     with _lock:
         conn = _get_conn()
@@ -70,6 +91,12 @@ def get_cache(key, resource, user=None):
     return None
 
 def invalidate_cache(resource, key=None):
+    """Invalidate cache entries.
+
+    Args:
+        resource: The resource identifier. If None, invalidates all cache.
+        key: Optional specific key to invalidate. If None, invalidates all for the resource.
+    """
     with _lock:
         conn = _get_conn()
         if key:
@@ -88,6 +115,15 @@ def invalidate_cache(resource, key=None):
         logger.debug("Invalidated entire cache")
 
 def list_cache(resource=None):
+    """List cache entries.
+
+    Args:
+        resource: Optional resource filter.
+
+    Returns:
+        List of cache entry dictionaries.
+    """
+    logger.debug(f"Listing cache entries for resource: {resource}")
     with _lock:
         conn = _get_conn()
         if resource:

@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import sys
 import argparse
+import logging
 from pathlib import Path
 
 from .commands import check, addsuperuser, list_endpoints, serve
 from .commands.admin import run_admin
 
+logger = logging.getLogger(__name__)
+
 
 def main() -> None:
+    """Main entry point for the Adapt CLI application."""
+    logger.debug("Starting Adapt CLI")
     parser = argparse.ArgumentParser(prog="adapt")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -47,8 +52,10 @@ def main() -> None:
     admin_list_groups_parser.add_argument("root", nargs="?", default=".", help="Document root")
 
     args = parser.parse_args()
+    logger.debug("Parsed CLI args: command=%s", args.command)
 
     if args.command == "serve":
+        logger.info("Running serve command with root=%s, host=%s, port=%d", args.root, args.host, args.port)
         serve.run_serve(
             root=Path(args.root).resolve(),
             host=args.host,
@@ -59,12 +66,16 @@ def main() -> None:
             readonly=args.readonly
         )
     elif args.command == "check":
+        logger.info("Running check command with root=%s", args.root)
         check.run_check(Path(args.root).resolve())
     elif args.command == "addsuperuser":
+        logger.info("Running addsuperuser command for username=%s", args.username)
         addsuperuser.run_add_superuser(Path(args.root).resolve(), args.username, args.password)
     elif args.command == "list-endpoints":
+        logger.info("Running list-endpoints command with root=%s", args.root)
         list_endpoints.run_list_endpoints(Path(args.root).resolve())
     elif args.command == "admin":
+        logger.info("Running admin command: %s", args.admin_command)
         run_admin(args)
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from adapt.cache import get_cache, set_cache, invalidate_cache
 
 from pathlib import Path
 from typing import Any, Sequence
+import logging
 
 from fastapi import Request
 from fastapi.routing import APIRouter
@@ -10,8 +11,11 @@ from fastapi.routing import APIRouter
 from ..utils import build_ui_links
 from .base import Plugin, ResourceDescriptor, PluginContext, ensure_file
 
+logger = logging.getLogger(__name__)
+
 
 def _guess_type(value: str | None) -> str:
+    """Guess the data type of a string value."""
     if value is None:
         return "string"
 
@@ -39,10 +43,12 @@ def _guess_type(value: str | None) -> str:
 
 
 def _ensure_header(header: Sequence[str | None]) -> list[str]:
+    """Ensure header has valid column names."""
     return [str(col).strip() if col else f"column_{idx + 1}" for idx, col in enumerate(header)]
 
 
 def _build_columns(header: Sequence[str], sample: Sequence[str | None]) -> dict[str, dict[str, str]]:
+    """Build column definitions from header and sample row."""
     columns: dict[str, dict[str, str]] = {}
     for idx, column in enumerate(header):
         sample_value = sample[idx] if idx < len(sample) else None
@@ -51,37 +57,45 @@ def _build_columns(header: Sequence[str], sample: Sequence[str | None]) -> dict[
 
 
 class DatasetPlugin(Plugin):
+    """Base plugin for dataset-like resources (CSV, Excel, etc.)."""
+    
     def load(self, path: Path) -> ResourceDescriptor:
+        """Load a resource descriptor for the dataset."""
         header, sample = self._get_header_and_sample(path)
         descriptor = ResourceDescriptor(path=path, resource_type=self.resource_type)
         descriptor.metadata["header"] = header
         descriptor.metadata["sample_row"] = sample
         descriptor.metadata["primary_key"] = "_row_id"
+        logger.debug("Loaded descriptor for %s", path)
         return descriptor
 
     def schema(self, resource: ResourceDescriptor) -> dict[str, Any]:
-            cache_key = f"schema:{resource.path}"
-            cached = get_cache(cache_key, str(resource.path))
-            if cached:
-                return cached
-            if resource.schema_path and resource.schema_path.exists():
-                import json
-                with resource.schema_path.open() as f:
-                    schema = json.load(f)
-            else:
-                header = resource.metadata.get("header", [])
-                sample = resource.metadata.get("sample_row", [])
-                columns = _build_columns(header, sample)
-                schema = {
-                    "type": "object",
-                    "name": resource.path.stem,
-                    "primary_key": resource.metadata.get("primary_key"),
-                    "columns": columns,
-                }
-            set_cache(cache_key, schema, ttl_seconds=3600, resource=str(resource.path))  # 1 hour TTL
-            return schema
+        """Get the schema for the resource, with caching."""
+        cache_key = f"schema:{resource.path}"
+        cached = get_cache(cache_key, str(resource.path))
+        if cached:
+            logger.debug("Using cached schema for %s", resource.path)
+            return cached
+        if resource.schema_path and resource.schema_path.exists():
+            import json
+            with resource.schema_path.open() as f:
+                schema = json.load(f)
+        else:
+            header = resource.metadata.get("header", [])
+            sample = resource.metadata.get("sample_row", [])
+            columns = _build_columns(header, sample)
+            schema = {
+                "type": "object",
+                "name": resource.path.stem,
+                "primary_key": resource.metadata.get("primary_key"),
+                "columns": columns,
+            }
+        set_cache(cache_key, schema, ttl_seconds=3600, resource=str(resource.path))  # 1 hour TTL
+        logger.debug("Generated schema for %s", resource.path)
+        return schema
 
     def read(self, resource: ResourceDescriptor, request: Request) -> Sequence[dict[str, Any]]:
+        """Read data from the resource, applying RLS filtering."""
         header = resource.metadata.get("header", [])
         schema = self.schema(resource)
         columns = schema.get("columns", {})
@@ -100,9 +114,11 @@ class DatasetPlugin(Plugin):
                     col_type = columns.get(col_name, {}).get("type", "string")
                     row_dict[col_name] = self._convert_value(value, col_type)
             rows.append(row_dict)
+        logger.debug("Read %d rows from %s", len(rows), resource.path)
         return rows
 
     def _convert_value(self, value: str, col_type: str) -> Any:
+        """Convert a string value to the appropriate type."""
         if col_type == "integer":
             try:
                 return int(value)
@@ -124,6 +140,7 @@ class DatasetPlugin(Plugin):
             return value
 
     def write(self, resource: ResourceDescriptor, data: Any, request: Request, context: PluginContext) -> dict[str, Any]:
+        """Write data to the resource, handling create/update/delete operations."""
         from fastapi import HTTPException
         
         action = data.get("action")
@@ -148,6 +165,7 @@ class DatasetPlugin(Plugin):
                         for col in header:
                             row_dict[col] = new_row.get(col, "")
                         existing_rows.append(row_dict)
+                    logger.info("Created %d rows in %s", len(payload), resource.path)
                 elif action == "update":
                     # Update existing row
                     row_id = int(payload.get("_row_id"))
@@ -157,6 +175,7 @@ class DatasetPlugin(Plugin):
                                 if col in payload:
                                     row[col] = payload[col]
                             break
+                    logger.info("Updated row %d in %s", row_id, resource.path)
                 elif action == "delete":
                     # Remove row
                     row_id = int(payload.get("_row_id"))
@@ -164,16 +183,19 @@ class DatasetPlugin(Plugin):
                     # Reassign row_ids
                     for idx, row in enumerate(existing_rows, start=1):
                         row["_row_id"] = idx
+                    logger.info("Deleted row %d from %s", row_id, resource.path)
 
                 # Write back
                 self._write_rows(resource, existing_rows, header)
 
                 return {"success": True}
         except RuntimeError as e:
+            logger.warning("Write failed for %s: %s", resource.path, str(e))
             raise HTTPException(status_code=409, detail=str(e))
 
     def get_route_configs(self, descriptor: ResourceDescriptor) -> list[tuple[str, APIRouter]]:
         """Return route configs for dataset: api, schema, ui."""
+        logger.debug("Generating route configs for %s", descriptor.path)
         from fastapi import Request
         from fastapi.responses import HTMLResponse
 
@@ -182,9 +204,11 @@ class DatasetPlugin(Plugin):
         api_router = APIRouter()
         @api_router.get("/")
         def read_all(request: Request):
+            """Read all data from the dataset."""
             return self.read(descriptor, request)
         @api_router.post("/")
         def create(data: dict, request: Request):
+            """Create new data in the dataset."""
             context = PluginContext(
                 engine=request.app.state.db_engine,
                 root=request.app.state.config.root,
@@ -194,6 +218,7 @@ class DatasetPlugin(Plugin):
             return self.write(descriptor, data, request, context)
         @api_router.patch("/")
         def update(data: dict, request: Request):
+            """Update existing data in the dataset."""
             context = PluginContext(
                 engine=request.app.state.db_engine,
                 root=request.app.state.config.root,
@@ -203,6 +228,7 @@ class DatasetPlugin(Plugin):
             return self.write(descriptor, data, request, context)
         @api_router.delete("/")
         def delete(data: dict, request: Request):
+            """Delete data from the dataset."""
             context = PluginContext(
                 engine=request.app.state.db_engine,
                 root=request.app.state.config.root,
@@ -216,6 +242,7 @@ class DatasetPlugin(Plugin):
         schema_router = APIRouter()
         @schema_router.get("/")
         def get_schema():
+            """Get the schema for the dataset."""
             return self.schema(descriptor)
         configs.append(("schema", schema_router))
 
@@ -223,6 +250,7 @@ class DatasetPlugin(Plugin):
         ui_router = APIRouter()
         @ui_router.get("/", response_class=HTMLResponse)
         def get_ui(request: Request):
+            """Get the UI for the dataset."""
             template_name, context = self.get_ui_template(descriptor)
             
             # Calculate API URL from UI URL
@@ -264,25 +292,31 @@ class DatasetPlugin(Plugin):
 
     @property
     def resource_type(self) -> str:
+        """Return the resource type string."""
         raise NotImplementedError
 
     def _get_header_and_sample(self, path: Path) -> tuple[list[str], list[str | None]]:
+        """Get header and sample row from the file."""
         raise NotImplementedError
 
     def _read_raw_rows(self, resource: ResourceDescriptor) -> list[list[str]]:
+        """Read raw rows from the resource."""
         raise NotImplementedError
 
     def _write_rows(self, resource: ResourceDescriptor, rows: list[dict[str, Any]], header: list[str]) -> None:
+        """Write rows back to the resource."""
         raise NotImplementedError
 
     def generate_companion_files(self, descriptor: ResourceDescriptor) -> None:
         """Generate companion files for dataset resources."""
+        logger.debug(f"Generating companion files for {descriptor.path}")
         import json
 
         # Generate schema.json
         if descriptor.schema_path:
             schema = self.schema(descriptor)
             ensure_file(descriptor.schema_path, json.dumps(schema, indent=2))
+            logger.debug(f"Generated schema.json at {descriptor.schema_path}")
 
         # Generate index.html using datatable.html template
         if descriptor.ui_path:
@@ -290,9 +324,11 @@ class DatasetPlugin(Plugin):
             with template_path.open('r', encoding='utf-8') as f:
                 ui_html = f.read()
             ensure_file(descriptor.ui_path, ui_html)
+            logger.debug(f"Generated index.html at {descriptor.ui_path}")
 
     def get_ui_template(self, descriptor: ResourceDescriptor) -> tuple[str, dict[str, Any]]:
         """Return template name and context for DataTables UI."""
+        logger.debug(f"Getting UI template for {descriptor.path}")
         schema = self.schema(descriptor)
         return "datatable.html", {
             "schema": schema,
@@ -302,6 +338,7 @@ class DatasetPlugin(Plugin):
 
     def routes(self, resource: ResourceDescriptor) -> Sequence[APIRouter]:
         """Return API routers for backward compatibility."""
+        logger.debug(f"Getting routes for {resource.path}")
         configs = self.get_route_configs(resource)
         for prefix, router in configs:
             if prefix == "api":

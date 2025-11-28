@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -8,8 +9,12 @@ from .config import AdaptConfig
 from .plugins.base import Plugin, ResourceDescriptor
 
 
+logger = logging.getLogger(__name__)
+
+
 @dataclass
 class DatasetResource:
+    """Represents a discovered dataset resource."""
     path: Path
     relative_path: Path
     resource_type: str
@@ -20,17 +25,43 @@ class DatasetResource:
 
 
 def should_ignore(path: Path) -> bool:
+    """Check if a path should be ignored during discovery.
+
+    Args:
+        path: The path to check.
+
+    Returns:
+        True if the path should be ignored, False otherwise.
+    """
     return path.name.startswith(".") or ".adapt" in path.parts
 
 
 def ensure_file(path: Path, content: str) -> None:
+    """Ensure a file exists with the given content.
+
+    Args:
+        path: The file path.
+        content: The content to write if the file doesn't exist.
+    """
     if path.exists():
+        logger.debug(f"File already exists: {path}")
         return
+    logger.debug(f"Creating file: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
 
 
 def discover_resources(root: Path, config: AdaptConfig) -> list[DatasetResource]:
+    """Discover dataset resources in the root directory.
+
+    Args:
+        root: The root directory to search.
+        config: The Adapt configuration.
+
+    Returns:
+        A list of discovered DatasetResource objects.
+    """
+    logger.info(f"Discovering resources in {root}")
     resources: list[DatasetResource] = []
     supported = {ext for ext in config.plugin_registry}
     adapt_dir = root / ".adapt"
@@ -43,6 +74,7 @@ def discover_resources(root: Path, config: AdaptConfig) -> list[DatasetResource]
         if ext not in supported:
             continue
 
+        logger.debug(f"Processing file: {path}")
         plugin_cls = config.get_plugin_factory(ext)
         plugin: Plugin = plugin_cls()
 
@@ -75,6 +107,7 @@ def discover_resources(root: Path, config: AdaptConfig) -> list[DatasetResource]
             )
             resources.append(resource)
 
+    logger.info(f"Discovered {len(resources)} resources")
     return resources
 
 

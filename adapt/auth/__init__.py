@@ -1,6 +1,10 @@
 from fastapi import APIRouter
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
+logger.debug("Auth router initialized")
 
 # Import all submodules to register routes
 from . import routes

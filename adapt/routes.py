@@ -3,14 +3,25 @@ from __future__ import annotations
 from fastapi import FastAPI, Request, Depends
 from fastapi.routing import APIRouter
 from fastapi.responses import HTMLResponse
+import logging
 
 from .config import AdaptConfig
 from .discovery import DatasetResource
 from .plugins.base import PluginContext, ResourceDescriptor
 from .auth.dependencies import permission_dependency
 
+logger = logging.getLogger(__name__)
+
 
 def get_plugin_context(request: Request) -> PluginContext:
+    """Create a plugin context from the current request.
+
+    Args:
+        request: The FastAPI request object.
+
+    Returns:
+        A PluginContext instance with app state data.
+    """
     app = request.app
     return PluginContext(
         engine=app.state.db_engine,
@@ -22,6 +33,7 @@ def get_plugin_context(request: Request) -> PluginContext:
 
 def generate_routes(app: FastAPI, resources: list[DatasetResource], config: AdaptConfig) -> None:
     """Generate and mount dynamic routes for all discovered resources."""
+    logger.debug("Generating routes for %d resources", len(resources))
     for resource in resources:
         plugin_cls = config.get_plugin_factory(resource.path.suffix)
         plugin = plugin_cls()
@@ -49,3 +61,4 @@ def generate_routes(app: FastAPI, resources: list[DatasetResource], config: Adap
                 tags=[resource.resource_type],
                 dependencies=[Depends(permission_dependency("auto", namespace))]
             )
+            logger.debug("Mounted router for resource %s at prefix %s", resource.path, full_prefix)

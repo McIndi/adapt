@@ -18,9 +18,12 @@ from .storage import User, DBSession, init_database
 from .locks import LockManager
 from .utils import build_accessible_ui_links
 
+logger = logging.getLogger(__name__)
+
 
 async def cleanup_expired_sessions(engine, interval_hours=24):
     """Background task to clean up expired sessions."""
+    logger.debug("Starting background session cleanup task with interval %d hours", interval_hours)
     while True:
         await asyncio.sleep(interval_hours * 3600)
         
@@ -31,7 +34,7 @@ async def cleanup_expired_sessions(engine, interval_hours=24):
             db.commit()
             
             if result.rowcount > 0:
-                print(f"Cleaned up {result.rowcount} expired sessions")
+                logger.info("Cleaned up %d expired sessions", result.rowcount)
 
 
 @asynccontextmanager
@@ -40,6 +43,7 @@ async def lifespan(app: FastAPI):
     # Startup: Start background cleanup task
     engine = app.state.db_engine
     cleanup_task = asyncio.create_task(cleanup_expired_sessions(engine))
+    logger.debug("Application startup: background cleanup task started")
     
     yield
     
@@ -48,10 +52,19 @@ async def lifespan(app: FastAPI):
     try:
         await cleanup_task
     except asyncio.CancelledError:
-        pass
+        logger.debug("Application shutdown: cleanup task cancelled")
 
 
 def create_app(config: AdaptConfig) -> FastAPI:
+    """Create and configure the FastAPI application.
+
+    Args:
+        config: The application configuration.
+
+    Returns:
+        The configured FastAPI app instance.
+    """
+    logger.debug("Creating FastAPI app with config: %s", config)
     engine = init_database(config.db_path)
     app = FastAPI(title="Adapt", version=config.version, lifespan=lifespan)
     app.state.config = config
@@ -67,6 +80,7 @@ def create_app(config: AdaptConfig) -> FastAPI:
     
     resources = discover_resources(config.root, config)
     app.state.resources = resources
+    logger.debug("Discovered %d resources", len(resources))
 
     # Set up Jinja2 templates
     templates_dir = Path(__file__).parent / "templates"
@@ -80,6 +94,7 @@ def create_app(config: AdaptConfig) -> FastAPI:
     # Authentication middleware
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
+        """Middleware to handle user authentication via session cookies."""
         from .auth.session import get_session
         from sqlmodel import Session
         token = request.cookies.get("adapt_session")
@@ -90,6 +105,11 @@ def create_app(config: AdaptConfig) -> FastAPI:
                 if sess:
                     user = db.get(User, sess.user_id)
                     request.state.user = user
+                    logger.debug("Authenticated user %s for request %s", user.username if user else None, request.url)
+                else:
+                    logger.debug("Invalid or expired session token for request %s", request.url)
+        else:
+            logger.debug("No session token in request %s", request.url)
         response = await call_next(request)
         return response
 
@@ -107,10 +127,12 @@ def create_app(config: AdaptConfig) -> FastAPI:
     # Media gallery route
     @app.get("/ui/media")
     def media_gallery(request: Request):
+        """Render the media gallery UI for authenticated users."""
         from .auth.dependencies import get_current_user
         user = get_current_user(request)
         if not user:
             # Redirect to login if not authenticated
+            logger.debug("Unauthenticated access to media gallery, redirecting to login")
             return RedirectResponse(url=f"/auth/login?next=/ui/media", status_code=302)
         
         media_resources = [r for r in request.app.state.resources if r.resource_type == "media"]
@@ -138,11 +160,13 @@ def create_app(config: AdaptConfig) -> FastAPI:
             "ui_links": accessible_resources,
             "is_superuser": user and getattr(user, "is_superuser", False)
         }
+        logger.debug("Rendering media gallery for user %s with %d items", user.username, len(media_items))
         return request.app.state.templates.TemplateResponse(request, "media_gallery.html", context)
 
     # Debug root route
     @app.get("/")
     def root(request: Request):
+        """Handle root requests, rendering HTML landing page or JSON API response."""
         from .auth.dependencies import get_current_user
         from .utils import build_accessible_ui_links
         
@@ -161,10 +185,13 @@ def create_app(config: AdaptConfig) -> FastAPI:
                 "ui_links": accessible_resources,
                 "is_superuser": user and getattr(user, "is_superuser", False)
             }
+            logger.debug("Rendering HTML landing page for user %s", user.username if user else None)
             return request.app.state.templates.TemplateResponse(request, "landing.html", context)
         else:
             # JSON API response
-            return {"resources": [r.relative_path.as_posix() for r in request.app.state.resources]}
+            resources = [r.relative_path.as_posix() for r in request.app.state.resources]
+            logger.debug("Returning JSON API response with %d resources", len(resources))
+            return {"resources": resources}
 
     # Exception handler for auth redirects
     from fastapi import HTTPException
@@ -173,11 +200,14 @@ def create_app(config: AdaptConfig) -> FastAPI:
 
     @app.exception_handler(HTTPException)
     async def auth_exception_handler(request: Request, exc: HTTPException):
+        """Handle HTTP exceptions, redirecting to login for 401 errors in HTML requests."""
         if exc.status_code == 401:
             accept = request.headers.get("accept", "")
             if "text/html" in accept:
+                logger.debug("Redirecting unauthenticated request to login for %s", request.url)
                 return RedirectResponse(url=f"/auth/login?next={request.url}", status_code=302)
         
+        logger.warning("HTTP exception %d: %s for request %s", exc.status_code, exc.detail, request.url)
         return JSONResponse(
             status_code=exc.status_code,
             content={"detail": exc.detail},

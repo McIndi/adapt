@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 from adapt.cache import get_cache, set_cache, invalidate_cache
 
 from pathlib import Path
@@ -10,19 +11,41 @@ from .base import ResourceDescriptor
 from .dataset_plugin import DatasetPlugin
 
 
+logger = logging.getLogger(__name__)
+
+
 class ExcelPlugin(DatasetPlugin):
     @property
     def resource_type(self) -> str:
+        """Return the resource type string."""
         return "excel"
 
     def detect(self, path: Path) -> bool:
+        """Detect if the path is an Excel file.
+
+        Args:
+            path: The file path to check.
+
+        Returns:
+            True if the file has .xlsx extension, False otherwise.
+        """
         return path.suffix.lower() == ".xlsx"
 
     def load(self, path: Path) -> Sequence[ResourceDescriptor]:
+        """Load Excel file and create descriptors for each worksheet.
+
+        Args:
+            path: The path to the Excel file.
+
+        Returns:
+            A sequence of ResourceDescriptors, one for each worksheet.
+        """
+        logger.debug(f"Loading Excel file: {path}")
         workbook = load_workbook(path, read_only=True, data_only=True)
         descriptors = []
         try:
             for sheet_name in workbook.sheetnames:
+                logger.debug(f"Processing sheet: {sheet_name}")
                 sheet = workbook[sheet_name]
                 rows = sheet.iter_rows(values_only=True)
                 header_row = list(next(rows, []))
@@ -38,27 +61,47 @@ class ExcelPlugin(DatasetPlugin):
                 descriptors.append(descriptor)
         finally:
             workbook.close()
+        logger.info(f"Loaded {len(descriptors)} worksheets from Excel file: {path}")
         return descriptors
 
     def _read_raw_rows(self, resource: ResourceDescriptor) -> list[list[str]]:
-            cache_key = f"data:{resource.path}:{resource.metadata.get('sub_namespace', '')}"
-            cached = get_cache(cache_key, str(resource.path))
-            if cached:
-                return cached
-            sub_namespace = resource.metadata["sub_namespace"]
-            rows = []
-            workbook = load_workbook(resource.path, read_only=True, data_only=True)
-            try:
-                sheet = workbook[sub_namespace]
-                data_rows = list(sheet.iter_rows(values_only=True))
-                for row in data_rows[1:]:  # Skip header
-                    rows.append([str(cell) if cell is not None else "" for cell in row])
-            finally:
-                workbook.close()
-            set_cache(cache_key, rows, ttl_seconds=300, resource=str(resource.path))  # 5 min TTL
-            return rows
+        """Read raw rows from the Excel worksheet.
+
+        Args:
+            resource: The resource descriptor.
+
+        Returns:
+            A list of rows as lists of strings.
+        """
+        logger.debug(f"Reading raw rows from Excel sheet: {resource.metadata.get('sub_namespace', '')}")
+        cache_key = f"data:{resource.path}:{resource.metadata.get('sub_namespace', '')}"
+        cached = get_cache(cache_key, str(resource.path))
+        if cached:
+            logger.debug(f"Cache hit for Excel data: {resource.path}")
+            return cached
+        logger.debug(f"Cache miss, reading from Excel file: {resource.path}")
+        sub_namespace = resource.metadata["sub_namespace"]
+        rows = []
+        workbook = load_workbook(resource.path, read_only=True, data_only=True)
+        try:
+            sheet = workbook[sub_namespace]
+            data_rows = list(sheet.iter_rows(values_only=True))
+            for row in data_rows[1:]:  # Skip header
+                rows.append([str(cell) if cell is not None else "" for cell in row])
+        finally:
+            workbook.close()
+        set_cache(cache_key, rows, ttl_seconds=300, resource=str(resource.path))  # 5 min TTL
+        return rows
 
     def _write_rows(self, resource: ResourceDescriptor, rows: list[dict[str, Any]], header: list[str]) -> None:
+        """Write rows to the Excel worksheet.
+
+        Args:
+            resource: The resource descriptor.
+            rows: The rows to write.
+            header: The column headers.
+        """
+        logger.info(f"Writing rows to Excel worksheet: {resource.metadata.get('sub_namespace', '')}")
         sub_namespace = resource.metadata["sub_namespace"]
         # Write back atomically
         import tempfile
@@ -83,4 +126,5 @@ class ExcelPlugin(DatasetPlugin):
         os.replace(tmp_path, resource.path)
         # Invalidate cache after mutation
         invalidate_cache(str(resource.path))
+        logger.debug(f"Successfully wrote {len(rows)} rows to Excel file: {resource.path}")
     

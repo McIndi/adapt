@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import secrets
 import hashlib
 from datetime import datetime, timezone
@@ -9,17 +10,22 @@ from fastapi.security import APIKeyHeader
 
 from .storage import APIKey, User
 
+
+logger = logging.getLogger(__name__)
+
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 def generate_api_key() -> tuple[str, str]:
     """Generate a new API key. Returns (raw_key, key_hash)."""
     raw_key = "ak_" + secrets.token_urlsafe(32)
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    logger.debug("Generated new API key")
     return raw_key, key_hash
 
 def verify_api_key(db: Session, raw_key: str) -> User | None:
     """Verify an API key and return the associated user."""
     if not raw_key:
+        logger.debug("API key verification failed: no key provided")
         return None
         
     key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
@@ -27,7 +33,12 @@ def verify_api_key(db: Session, raw_key: str) -> User | None:
     stmt = select(APIKey).where(APIKey.key_hash == key_hash)
     api_key = db.exec(stmt).first()
     
-    if not api_key or not api_key.is_active:
+    if not api_key:
+        logger.warning("API key verification failed: key not found")
+        return None
+        
+    if not api_key.is_active:
+        logger.warning("API key verification failed: key is inactive")
         return None
         
     # Check expiration
@@ -38,6 +49,7 @@ def verify_api_key(db: Session, raw_key: str) -> User | None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
             
         if expires_at < datetime.now(tz=timezone.utc):
+            logger.warning("API key verification failed: key expired")
             return None
         
     # Update last used
@@ -45,6 +57,7 @@ def verify_api_key(db: Session, raw_key: str) -> User | None:
     db.add(api_key)
     db.commit()
     
+    logger.info(f"API key verified successfully for user {api_key.user_id}")
     return db.get(User, api_key.user_id)
 
 def get_user_from_api_key(
@@ -53,6 +66,7 @@ def get_user_from_api_key(
 ) -> User | None:
     """FastAPI dependency to get user from API key."""
     if not api_key:
+        logger.debug("No API key provided in request")
         return None
         
     # We need a DB session here. Since this is a dependency, 
@@ -60,4 +74,9 @@ def get_user_from_api_key(
     # or context management. We'll grab the engine from app state.
     engine = request.app.state.db_engine
     with Session(engine) as db:
-        return verify_api_key(db, api_key)
+        user = verify_api_key(db, api_key)
+        if user:
+            logger.debug(f"Authenticated user {user.username} via API key")
+        else:
+            logger.debug("API key authentication failed")
+        return user

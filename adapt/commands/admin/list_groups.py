@@ -1,8 +1,11 @@
 from pathlib import Path
+import logging
 
 from ...config import AdaptConfig
 from ...storage import Permission, Group, GroupPermission, init_database, Action, get_db_session, User, UserGroup
 from sqlmodel import Session, select
+
+logger = logging.getLogger(__name__)
 
 
 def run_list_groups(root: Path) -> None:
@@ -13,9 +16,11 @@ def run_list_groups(root: Path) -> None:
     with Session(engine) as db:
         groups = db.exec(select(Group)).all()
         if not groups:
+            logger.info("No groups found")
             print("No groups found.")
             return
         
+        logger.debug("Listing %d groups", len(groups))
         for group in sorted(groups, key=lambda g: g.name):
             print(f"Group: {group.name}")
             if group.description:
