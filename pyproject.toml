@@ -21,6 +21,7 @@ dependencies = [
     "mutagen",
     "moviepy",
     "pillow",
+    "python-json-logger",
 ]
 [project.scripts]
 adapt = "adapt.cli:main"

@@ -5,6 +5,8 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any, Callable
 import logging
+import json
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,7 @@ class AdaptConfig:
         tls_key: Path to the TLS key file.
         secure_cookies: Whether to set secure flags on cookies.
         plugin_registry: Mapping of file extensions to plugin class paths.
+        logging: Logging configuration dictionary for dictConfig.
     """
     root: Path
     readonly: bool = False
@@ -43,6 +46,27 @@ class AdaptConfig:
         ".webm": "adapt.plugins.media_plugin.MediaPlugin",
         ".ogg": "adapt.plugins.media_plugin.MediaPlugin",
         ".wav": "adapt.plugins.media_plugin.MediaPlugin",
+    })
+    logging: dict[str, Any] = field(default_factory=lambda: {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "json": {
+                "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+                "format": "%(asctime)s %(name)s %(levelname)s %(message)s"
+            }
+        },
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "json",
+                "stream": "ext://sys.stdout"
+            }
+        },
+        "root": {
+            "level": "INFO",
+            "handlers": ["console"]
+        }
     })
 
     def __post_init__(self) -> None:
@@ -74,3 +98,66 @@ class AdaptConfig:
         plugin_cls = getattr(module, class_name)
         logger.debug("Loaded plugin %s for extension '%s'", dotted, extension)
         return plugin_cls
+
+    def load_from_file(self) -> None:
+        """Load configuration from DOCROOT/.adapt/conf.json, creating it with defaults if missing."""
+        conf_path = self.root / ".adapt" / "conf.json"
+        (self.root / ".adapt").mkdir(parents=True, exist_ok=True)
+        if not conf_path.exists():
+            defaults = {
+                "plugin_registry": self.plugin_registry.copy(),
+                "tls_cert": str(self.tls_cert) if self.tls_cert else None,
+                "tls_key": str(self.tls_key) if self.tls_key else None,
+                "secure_cookies": self.secure_cookies,
+                "logging": self.logging.copy(),
+            }
+            with conf_path.open('w') as f:
+                json.dump(defaults, f, indent=2)
+        try:
+            with conf_path.open() as f:
+                data = json.load(f)
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in {conf_path}: {e}")
+            sys.exit(1)
+        # Validate keys
+        allowed_keys = {"plugin_registry", "tls_cert", "tls_key", "secure_cookies", "logging"}
+        for key in data:
+            if key not in allowed_keys:
+                logger.error(f"Unknown key in {conf_path}: {key}")
+                sys.exit(1)
+        # Validate types
+        if "plugin_registry" in data:
+            if not isinstance(data["plugin_registry"], dict):
+                logger.error("plugin_registry must be a dict")
+                sys.exit(1)
+            for ext, path in data["plugin_registry"].items():
+                if not isinstance(ext, str) or not isinstance(path, str):
+                    logger.error("plugin_registry values must be str: str")
+                    sys.exit(1)
+        if "tls_cert" in data and data["tls_cert"] is not None:
+            if not isinstance(data["tls_cert"], str):
+                logger.error("tls_cert must be str or null")
+                sys.exit(1)
+        if "tls_key" in data and data["tls_key"] is not None:
+            if not isinstance(data["tls_key"], str):
+                logger.error("tls_key must be str or null")
+                sys.exit(1)
+        if "secure_cookies" in data:
+            if not isinstance(data["secure_cookies"], bool):
+                logger.error("secure_cookies must be bool")
+                sys.exit(1)
+        if "logging" in data:
+            if not isinstance(data["logging"], dict):
+                logger.error("logging must be a dict")
+                sys.exit(1)
+        # Merge
+        if "plugin_registry" in data:
+            self.plugin_registry.update(data["plugin_registry"])
+        if "tls_cert" in data and data["tls_cert"]:
+            self.tls_cert = Path(data["tls_cert"])
+        if "tls_key" in data and data["tls_key"]:
+            self.tls_key = Path(data["tls_key"])
+        if "secure_cookies" in data:
+            self.secure_cookies = data["secure_cookies"]
+        if "logging" in data:
+            self.logging.update(data["logging"])

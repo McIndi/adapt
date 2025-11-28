@@ -28,6 +28,7 @@ def run_serve(root: Path, host: str, port: int, tls_cert: str | None, tls_key: s
         None
     """
     config = AdaptConfig(root=root, readonly=readonly)
+    config.load_from_file()
     if tls_cert:
         config.tls_cert = Path(tls_cert)
     if tls_key:

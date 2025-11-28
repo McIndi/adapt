@@ -332,6 +332,42 @@ Optional companion files customize behavior:
 
 ---
 
+## Configuration
+
+Adapt supports configuration via a `conf.json` file in `DOCROOT/.adapt/`. If the file doesn't exist, it's created with default values on first run.
+
+The configuration allows customizing:
+
+- `plugin_registry`: Map file extensions to plugin classes (e.g., add custom handlers).
+- `tls_cert`: Path to TLS certificate file.
+- `tls_key`: Path to TLS key file.
+- `secure_cookies`: Whether to set secure flags on cookies.
+- `logging`: Logging configuration dictionary for Python's dictConfig.
+
+Precedence: CLI arguments > `conf.json` > defaults.
+
+Example `conf.json`:
+
+```json
+{
+  "plugin_registry": {
+    ".custom": "my_plugin.CustomPlugin"
+  },
+  "tls_cert": "/path/to/cert.pem",
+  "tls_key": "/path/to/key.pem",
+  "secure_cookies": true,
+  "logging": {
+    "root": {
+      "level": "DEBUG"
+    }
+  }
+}
+```
+
+To reset, delete `conf.json` and restart the server.
+
+---
+
 ## Plugin Registry & Companion Files
 
 

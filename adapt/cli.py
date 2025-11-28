@@ -3,8 +3,10 @@ from __future__ import annotations
 import sys
 import argparse
 import logging
+import logging.config
 from pathlib import Path
 
+from .config import AdaptConfig
 from .commands import check, addsuperuser, list_endpoints, serve
 from .commands.admin import run_admin
 
@@ -53,6 +55,12 @@ def main() -> None:
 
     args = parser.parse_args()
     logger.debug("Parsed CLI args: command=%s", args.command)
+
+    # Load config early to configure logging
+    root = Path(args.root) if hasattr(args, 'root') else Path('.')
+    config = AdaptConfig(root=root)
+    config.load_from_file()
+    logging.config.dictConfig(config.logging)
 
     if args.command == "serve":
         logger.info("Running serve command with root=%s, host=%s, port=%d", args.root, args.host, args.port)

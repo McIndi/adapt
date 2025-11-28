@@ -32,18 +32,21 @@ Options include:
 
 ### **Sources**
 
-* Environment variables
-* `adapt.json`
+* `DOCROOT/.adapt/conf.json` (auto-created with defaults if missing)
 * CLI args
 * Defaults
 
+Precedence: CLI args > `conf.json` > defaults.
+
 ### **Key Settings**
 
-* document root
-* authentication enable/disable
-* allowed plugins
-* write mode
-* TLS
+* `plugin_registry`: Dict mapping file extensions to plugin class paths (e.g., `".csv": "adapt.plugins.csv_plugin.CsvPlugin"`). Allows adding custom handlers.
+* `tls_cert`: Path to TLS certificate file.
+* `tls_key`: Path to TLS key file.
+* `secure_cookies`: Boolean for setting secure flags on cookies.
+* `logging`: Dict for Python logging configuration (dictConfig format), allowing customization of log levels, formatters, and handlers.
+
+Invalid `conf.json` causes the server to exit with an error.
 
 ---
 
@@ -51,7 +54,7 @@ Options include:
 
 ### **Logging**
 
-* JSON structured logs
+* JSON structured logs (configurable via `logging` in `conf.json`)
 * Write operations
 * Lock events
 * Admin actions
