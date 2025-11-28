@@ -100,5 +100,4 @@ Precedence follows the config system: CLI args override defaults, but logging is
 Plugins can access the logging config via `request.app.state.config.logging` to adjust behavior, such as enabling verbose logging for custom handlers. This keeps logging consistent and configurable.
 
 ## 5. **Conclusion**
-This logging config support makes Adapt more observable and production-ready, allowing easy customization of logs for different environments. By integrating with the existing config system, we've maintained simplicity while adding powerful control. As always, we've included tests for reliability. Excited to hear your feedback and see how you use it!</content>
-<parameter name="filePath">c:\Users\cliff\projects\adapt\blog-posts\20251128-logging-configuration-support.md
+This logging config support makes Adapt more observable and production-ready, allowing easy customization of logs for different environments. By integrating with the existing config system, we've maintained simplicity while adding powerful control. As always, we've included tests for reliability. Excited to hear your feedback and see how you use it!
