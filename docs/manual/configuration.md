@@ -1,5 +1,7 @@
 # Configuration
 
+[Previous](security) | [Next](plugin_development) | [Index](index)
+
 Adapt is designed to work out of the box with sensible defaults, but offers extensive configuration options for customization. Configuration can be set via command-line arguments, configuration files, or environment variables.
 
 ## Configuration Sources
@@ -564,3 +566,5 @@ curl http://localhost:8000/admin/api/config
 ```
 
 This comprehensive configuration guide covers all aspects of customizing Adapt for your specific needs and environment.
+
+[Previous](security) | [Next](plugin_development) | [Index](index)

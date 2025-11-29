@@ -1,5 +1,7 @@
 # Quick Start Guide
 
+[Previous](installation) | [Next](user_guide) | [Index](index)
+
 This guide will get you up and running with Adapt in minutes.
 
 ## Step 1: Install Adapt
@@ -193,10 +195,10 @@ In minutes, you've created:
 
 ## Next Steps
 
-- Explore the [User Guide](user_guide.md) for detailed usage
-- Learn about [Plugin Development](plugin_development.md) to extend Adapt
-- Set up [Security](security.md) for production
-- Check [Configuration](configuration.md) options
+- Explore the [User Guide](user_guide) for detailed usage
+- Learn about [Plugin Development](plugin_development) to extend Adapt
+- Set up [Security](security) for production
+- Check [Configuration](configuration) options
 
 ## Troubleshooting
 
@@ -213,3 +215,5 @@ In minutes, you've created:
 ### API Returns 403 Forbidden
 - You may need to log in or set up permissions
 - Check the admin interface for user/group permissions
+
+[Previous](installation) | [Next](user_guide) | [Index](index)

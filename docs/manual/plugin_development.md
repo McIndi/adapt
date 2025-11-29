@@ -1,5 +1,7 @@
 # Plugin Development
 
+[Previous](configuration) | [Next](architecture) | [Index](index)
+
 Adapt's plugin system allows you to extend the server with custom file type handlers, business logic, and integrations. This guide covers creating, testing, and distributing custom plugins.
 
 ## Plugin Architecture
@@ -597,3 +599,5 @@ def read(self, resource: ResourceDescriptor, request):
 - Write comprehensive tests
 
 This guide provides a complete foundation for developing powerful plugins that extend Adapt's capabilities to handle any file type or integration requirement.
+
+[Previous](configuration) | [Next](architecture) | [Index](index)

@@ -1,5 +1,7 @@
 # API Reference
 
+[Previous](user_guide) | [Next](admin_guide) | [Index](index)
+
 This document provides comprehensive API documentation for Adapt's REST endpoints.
 
 ## Authentication
@@ -409,3 +411,5 @@ class AdaptClient:
 5. **Cache Responses**: Leverage HTTP caching headers
 6. **Validate Data**: Use schema endpoints to understand data structure
 7. **Monitor Usage**: Check audit logs for API usage patterns
+
+[Previous](user_guide) | [Next](admin_guide) | [Index](index)

@@ -1,5 +1,7 @@
 # Overview
 
+[Next](installation) | [Index](index)
+
 ## What is Adapt?
 
 Adapt is a lightweight, FastAPI-powered adaptive server that automatically turns files and Python modules into fully functional REST APIs and interactive HTML user interfaces. It treats your filesystem as a backend database, providing instant APIs for CSV files, Excel spreadsheets, Parquet datasets, media files, and custom Python handlers.
@@ -98,3 +100,5 @@ To get started with Adapt:
 4. Open http://localhost:8000 in your browser
 
 Adapt will automatically discover your files and generate APIs and UIs.
+
+[Next](installation) | [Index](index)

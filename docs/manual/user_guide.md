@@ -1,5 +1,7 @@
 # User Guide
 
+[Previous](quick_start) | [Next](api_reference) | [Index](index)
+
 This guide covers how to use Adapt as an end user, including navigating the web interface, interacting with data, and managing content.
 
 ## Landing Page
@@ -93,6 +95,8 @@ Directly served at extensionless URLs (e.g., `index.html` → `/index`)
 
 ### Markdown Files
 Rendered to HTML with syntax highlighting and table support (e.g., `readme.md` → `/readme`)
+
+All resources in Adapt are accessible via extensionless URLs for cleaner, more user-friendly access (e.g., `data.csv` → `/data`).
 
 ## API Usage
 
@@ -221,3 +225,5 @@ Adapt caches responses for performance:
 - Use descriptive filenames
 - Group related files in subdirectories
 - Document your data with README.md files
+
+[Previous](quick_start) | [Next](api_reference) | [Index](index)

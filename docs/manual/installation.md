@@ -1,5 +1,7 @@
 # Installation
 
+[Previous](overview) | [Next](quick_start) | [Index](index)
+
 ## System Requirements
 
 - Python 3.8 or higher
@@ -207,3 +209,5 @@ This will:
 - Check configuration
 - List discovered resources
 - Report any issues
+
+[Previous](overview) | [Next](quick_start) | [Index](index)

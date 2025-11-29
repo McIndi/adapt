@@ -45,20 +45,24 @@ def generate_routes(app: FastAPI, resources: list[DatasetResource], config: Adap
             metadata=resource.metadata
         )
 
-        if resource.resource_type == "media":
-            namespace = resource.relative_path.as_posix()
-        else:
-            namespace = resource.relative_path.with_suffix("").as_posix()
+        # Compute namespaces with and without file extension
+        namespace_no_ext = resource.relative_path.with_suffix("").as_posix()
+        namespace_with_ext = resource.relative_path.as_posix()
         if "sub_namespace" in resource.metadata:
-            namespace += f"/{resource.metadata['sub_namespace']}"
+            namespace_no_ext += f"/{resource.metadata['sub_namespace']}"
+            namespace_with_ext += f"/{resource.metadata['sub_namespace']}"
 
-        configs = plugin.get_route_configs(descriptor)
-        for prefix, router in configs:
-            full_prefix = f"/{prefix}".rstrip("/") + f"/{namespace}"
-            app.include_router(
-                router, 
-                prefix=full_prefix, 
-                tags=[resource.resource_type],
-                dependencies=[Depends(permission_dependency("auto", namespace))]
-            )
-            logger.debug("Mounted router for resource %s at prefix %s", resource.path, full_prefix)
+        # Use a set to avoid duplicate mounts if namespaces are identical
+        namespaces = set([namespace_no_ext, namespace_with_ext])
+
+        for ns in namespaces:
+            configs = plugin.get_route_configs(descriptor)
+            for prefix, router in configs:
+                full_prefix = f"/{prefix}".rstrip("/") + f"/{ns}"
+                app.include_router(
+                    router, 
+                    prefix=full_prefix, 
+                    tags=[resource.resource_type],
+                    dependencies=[Depends(permission_dependency("auto", ns))]
+                )
+                logger.debug("Mounted router for resource %s at prefix %s", resource.path, full_prefix)

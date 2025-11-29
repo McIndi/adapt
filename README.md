@@ -39,7 +39,7 @@ On startup, Adapt:
 * Generates media players and galleries for audio/video files
 * Loads schema overrides and custom renderers
 * Registers Python handlers automatically
-* Serves HTML and Markdown files directly at extensionless URLs
+* Serves all resources at extensionless URLs for cleaner access (e.g., `data.csv` → `/data`)
 * Creates companion files in a hidden `.adapt` directory to avoid cluttering the docroot
 
 No configuration required.

@@ -1,5 +1,7 @@
 # Security
 
+[Previous](admin_guide) | [Next](configuration) | [Index](index)
+
 Adapt provides comprehensive security features for protecting your data and APIs. This guide covers authentication, authorization, encryption, and security best practices.
 
 ## Authentication System
@@ -384,3 +386,5 @@ Content-Security-Policy: default-src 'self'
 - [ ] Communication procedures defined
 
 This comprehensive security guide ensures your Adapt deployment remains secure and compliant with industry standards.
+
+[Previous](admin_guide) | [Next](configuration) | [Index](index)

@@ -1,5 +1,7 @@
 # Architecture
 
+[Previous](plugin_development) | [Next](troubleshooting) | [Index](index)
+
 This document describes the internal architecture of Adapt, including system components, data flow, and design patterns.
 
 ## System Overview
@@ -515,3 +517,5 @@ graph TD
 - **API Gateway**: Advanced routing and transformation capabilities
 
 This architecture document provides a comprehensive view of Adapt's design, enabling developers to understand, extend, and maintain the system effectively.
+
+[Previous](plugin_development) | [Next](troubleshooting) | [Index](index)

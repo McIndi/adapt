@@ -1,5 +1,7 @@
 # Admin Guide
 
+[Previous](api_reference) | [Next](security) | [Index](index)
+
 This guide covers system administration tasks for Adapt servers, including user management, permissions, monitoring, and maintenance.
 
 ## Initial Setup
@@ -24,12 +26,35 @@ adapt admin create-permissions /path/to/docroot __all__
 
 # Or specify individual resources
 adapt admin create-permissions /path/to/docroot products inventory reports
+
+# Customize group names
+adapt admin create-permissions /path/to/docroot products --all-group "full_access" --read-group "view_only"
 ```
 
 This creates:
-- A "read" permission for each resource
-- A "write" permission for each resource
-- Default groups: `{resource}-readers`, `{resource}-writers`
+
+#### Permissions
+- A "read" permission for each resource (e.g., `products:read`)
+- A "write" permission for each resource (e.g., `products:write`)
+
+#### Groups
+For the specified resources (e.g., `products inventory`):
+
+- **Aggregate groups**:
+  - `all_resources_{resources}` - All permissions for all specified resources (default: `all_resources_products_inventory`)
+  - `read_resources_{resources}` - Read permissions for all specified resources (default: `read_resources_products_inventory`)
+
+- **Per-resource groups** (for each individual resource):
+  - `{resource}_readonly` - Read-only access to that resource
+  - `{resource}_readwrite` - Read/write access to that resource
+
+**Example**: For resources `products inventory` with default group names:
+- `all_resources_products_inventory` (all permissions)
+- `read_resources_products_inventory` (read permissions only)
+- `products_readonly` (products read permission)
+- `products_readwrite` (products read/write permissions)
+- `inventory_readonly` (inventory read permission)
+- `inventory_readwrite` (inventory read/write permissions)
 
 ## Admin Interface
 
@@ -44,9 +69,7 @@ Access the admin interface at `/admin/` (requires superuser login).
 4. Click "Create"
 
 #### Managing Users
-- **Edit**: Change passwords or superuser status
 - **Delete**: Remove users (logs action in audit)
-- **View Details**: See creation date and last login
 
 ### Groups Tab
 
@@ -175,8 +198,11 @@ adapt admin revoke-permission /path/to/docroot --group analysts --permission pro
 # List all discovered resources
 adapt admin list-resources /path/to/docroot
 
-# Create permissions for resources
-adapt admin create-permissions /path/to/docroot products inventory --all-group --read-group
+# Create permissions for resources with default group names
+adapt admin create-permissions /path/to/docroot products inventory
+
+# Create permissions with custom group names
+adapt admin create-permissions /path/to/docroot products --all-group "full_access" --read-group "view_only"
 ```
 
 ## Security Best Practices
@@ -434,3 +460,6 @@ Extend Adapt with custom plugins in `conf.json`:
 ```
 
 This comprehensive admin guide covers all aspects of managing an Adapt server in production environments.
+
+
+[Previous](api_reference) | [Next](security) | [Index](index)

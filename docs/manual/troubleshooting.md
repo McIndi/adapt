@@ -1,5 +1,7 @@
 # Troubleshooting
 
+[Previous](architecture) | [Index](index)
+
 This guide helps diagnose and resolve common issues with Adapt servers.
 
 ## Startup Issues
@@ -560,3 +562,5 @@ For production outages:
 6. **Document**: Record everything for post-mortem
 
 This troubleshooting guide covers the most common issues. For complex problems, consider enabling debug logging and collecting detailed diagnostic information before seeking help.
+
+[Previous](architecture) | [Index](index)
