@@ -247,9 +247,10 @@ All dataset routes (`/api/*`, `/ui/*`, `/schema/*`) are automatically protected:
 ### API Keys
 
 * Programmatic access for scripts and external tools
-* Generate keys via Admin UI with optional expiration
+* Generate keys via Admin UI or user Profile page with optional expiration (max 1 year)
 * Authenticate via `X-API-Key` header
 * Secure storage (SHA-256 hashed)
+* Users can self-issue API keys for their own account
 
 ### Audit Logging
 
@@ -298,9 +299,10 @@ Adapt ships with a built-in admin interface at `/admin/` to manage the entire se
 
 ### API Keys Tab
 
-* Generate new API keys for users
+* Generate new API keys for users (admin only)
+* Users can self-manage their API keys via Profile page
 * Revoke existing keys
-* Set expiration dates
+* Set expiration dates (max 1 year)
 
 ### Audit Logs Tab
 

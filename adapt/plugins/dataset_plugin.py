@@ -71,7 +71,8 @@ class DatasetPlugin(Plugin):
 
     def schema(self, resource: ResourceDescriptor) -> dict[str, Any]:
         """Get the schema for the resource, with caching."""
-        cache_key = f"schema:{resource.path}"
+        sub_namespace = resource.metadata.get("sub_namespace", "")
+        cache_key = f"schema:{resource.path}:{sub_namespace}"
         cached = get_cache(cache_key, str(resource.path))
         if cached:
             logger.debug("Using cached schema for %s", resource.path)
@@ -274,6 +275,7 @@ class DatasetPlugin(Plugin):
             is_superuser = user and getattr(user, 'is_superuser', False)
             ui_links = build_ui_links(request)
             context.update({
+                "user": user,
                 "is_superuser": is_superuser,
                 "ui_links": ui_links
             })

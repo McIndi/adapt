@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Adapt{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <h1>Your Profile</h1>
+        <p>Manage your API keys and account settings.</p>
+
+        <h2>API Keys</h2>
+        <p>API keys allow programmatic access to Adapt resources. Create keys for scripts, tools, or integrations.</p>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                Create New API Key
+            </div>
+            <div class="card-body">
+                <form id="create-key-form">
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Description (optional)</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="e.g., My Python script">
+                    </div>
+                    <div class="mb-3">
+                        <label for="expires_in_days" class="form-label">Expires in (days, optional)</label>
+                        <input type="number" class="form-control" id="expires_in_days" name="expires_in_days" min="1" max="365" placeholder="Leave empty for no expiration">
+                        <div class="form-text">Maximum 365 days (1 year).</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create API Key</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                Your API Keys
+            </div>
+            <div class="card-body">
+                <div id="keys-list">
+                    <p class="text-muted">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                Account Information
+            </div>
+            <div class="card-body">
+                <p><strong>Username:</strong> {{ user.username }}</p>
+                <p><strong>Superuser:</strong> {% if is_superuser %}Yes{% else %}No{% endif %}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const createForm = document.getElementById('create-key-form');
+    const keysList = document.getElementById('keys-list');
+
+    // Load existing keys
+    loadKeys();
+
+    // Handle form submission
+    createForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(createForm);
+        const data = {
+            description: formData.get('description') || null,
+            expires_in_days: formData.get('expires_in_days') ? parseInt(formData.get('expires_in_days')) : null
+        };
+
+        try {
+            const response = await fetch('/api/apikeys', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                alert(`API Key created! Key: ${result.key}\n\nSave this key securely - it won't be shown again.`);
+                createForm.reset();
+                loadKeys();
+            } else {
+                const error = await response.json();
+                alert('Error: ' + (error.detail || 'Failed to create API key'));
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    });
+
+    async function loadKeys() {
+        try {
+            const response = await fetch('/api/apikeys');
+            if (response.ok) {
+                const keys = await response.json();
+                renderKeys(keys);
+            } else {
+                keysList.innerHTML = '<p class="text-danger">Failed to load API keys.</p>';
+            }
+        } catch (error) {
+            keysList.innerHTML = '<p class="text-danger">Error loading API keys.</p>';
+        }
+    }
+
+    function renderKeys(keys) {
+        if (keys.length === 0) {
+            keysList.innerHTML = '<p class="text-muted">No API keys found. Create one above.</p>';
+            return;
+        }
+
+        let html = '<div class="table-responsive"><table class="table table-striped">';
+        html += '<thead><tr><th>Description</th><th>Created</th><th>Expires</th><th>Last Used</th><th>Status</th><th>Actions</th></tr></thead>';
+        html += '<tbody>';
+
+        keys.forEach(key => {
+            const created = new Date(key.created_at).toLocaleDateString();
+            const expires = key.expires_at ? new Date(key.expires_at).toLocaleDateString() : 'Never';
+            const lastUsed = key.last_used_at ? new Date(key.last_used_at).toLocaleDateString() : 'Never';
+            const status = key.is_active ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-danger">Revoked</span>';
+
+            html += `<tr>
+                <td>${key.description || 'No description'}</td>
+                <td>${created}</td>
+                <td>${expires}</td>
+                <td>${lastUsed}</td>
+                <td>${status}</td>
+                <td>
+                    ${key.is_active ? `<button class="btn btn-sm btn-danger" onclick="revokeKey(${key.id})">Revoke</button>` : ''}
+                </td>
+            </tr>`;
+        });
+
+        html += '</tbody></table></div>';
+        keysList.innerHTML = html;
+    }
+
+    window.revokeKey = async function(keyId) {
+        if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/apikeys/${keyId}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                alert('API key revoked successfully.');
+                loadKeys();
+            } else {
+                alert('Failed to revoke API key.');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    };
+});
+</script>
+{% endblock %}

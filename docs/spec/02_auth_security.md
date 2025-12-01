@@ -135,6 +135,13 @@ CREATE TABLE cache_entries (
 3. Server looks up active, non-expired key by hash
 4. If valid, associated user is attached to request
 
+#### **API Key Management**
+- **Self-Issue:** Authenticated users can create API keys for their own account via `/api/apikeys` POST endpoint or Profile UI
+- **Expiration:** Optional expiration up to 1 year maximum
+- **Revocation:** Users can revoke their own keys via `/api/apikeys/{id}` DELETE endpoint or Profile UI
+- **Security:** Keys are generated securely, hashed for storage, and never retrievable after creation
+- **Audit:** All key creation and revocation events are logged
+
 ### **Permission Checking**
 
 For each protected route:

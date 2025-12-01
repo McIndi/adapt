@@ -23,7 +23,8 @@ def admin_ui(request: Request):
     context = {
         "request": request,
         "is_superuser": is_superuser,
-        "ui_links": ui_links
+        "ui_links": ui_links,
+        "user": user
     }
 
     # Serve the admin template

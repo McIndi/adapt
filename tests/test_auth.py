@@ -2,7 +2,7 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
 from adapt.auth.session import get_session, create_session, SESSION_TTL
-from adapt.storage import User, DBSession, init_database
+from adapt.storage import User, DBSession, APIKey, init_database
 from adapt.config import AdaptConfig
 import tempfile
 import os
@@ -136,3 +136,207 @@ def test_middleware_uses_get_session(tmp_path):
     # Try to access protected API endpoint - should return 401 (not redirect)
     response = client.get("/admin/users", follow_redirects=False)
     assert response.status_code == 401  # API returns 401 for unauthenticated requests
+
+
+def test_create_api_key_self(tmp_path):
+    """Test that a non-superuser can create an API key for themselves."""
+    from fastapi.testclient import TestClient
+    from adapt.config import AdaptConfig
+    from adapt.app import create_app
+    from adapt.storage import init_database, User
+    from adapt.auth.password import hash_password
+
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+    
+    # Create a regular user
+    from sqlmodel import Session
+    with Session(engine) as db:
+        user = User(username="user", password_hash=hash_password("pass"), is_superuser=False, is_active=True)
+        db.add(user)
+        db.commit()
+        user_id = user.id
+
+    app = create_app(config)
+    client = TestClient(app)
+    
+    # Login as the user
+    response = client.post("/auth/login", data={"username": "user", "password": "pass"})
+    assert response.status_code == 200
+    
+    # Create API key
+    response = client.post("/api/apikeys", json={"description": "Test key", "expires_in_days": 30})
+    assert response.status_code == 201
+    data = response.json()
+    assert "key" in data
+    assert "id" in data
+    assert data["description"] == "Test key"
+    
+    # Verify the key was created in DB
+    with Session(engine) as db:
+        api_key = db.exec(select(APIKey).where(APIKey.user_id == user_id)).first()
+        assert api_key is not None
+        assert api_key.description == "Test key"
+        assert api_key.is_active == True
+        assert api_key.expires_at is not None
+        # Expires in about 30 days
+        expected_expires = datetime.now() + timedelta(days=30)
+        assert abs((api_key.expires_at - expected_expires).total_seconds()) < 3600 * 6  # Within 6 hours due to timezone issues
+
+
+def test_create_api_key_self_no_expiration(tmp_path):
+    """Test creating API key without expiration."""
+    from fastapi.testclient import TestClient
+    from adapt.config import AdaptConfig
+    from adapt.app import create_app
+    from adapt.storage import init_database, User
+    from adapt.auth.password import hash_password
+
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+    
+    # Create a regular user
+    from sqlmodel import Session
+    with Session(engine) as db:
+        user = User(username="user", password_hash=hash_password("pass"), is_superuser=False, is_active=True)
+        db.add(user)
+        db.commit()
+
+    app = create_app(config)
+    client = TestClient(app)
+    
+    # Login
+    client.post("/auth/login", data={"username": "user", "password": "pass"})
+    
+    # Create API key without expiration
+    response = client.post("/api/apikeys", json={"description": "No expire"})
+    assert response.status_code == 201
+    data = response.json()
+    assert data["expires_at"] is None
+
+
+def test_create_api_key_self_max_expiration(tmp_path):
+    """Test that expiration cannot exceed 1 year."""
+    from fastapi.testclient import TestClient
+    from adapt.config import AdaptConfig
+    from adapt.app import create_app
+    from adapt.storage import init_database, User
+    from adapt.auth.password import hash_password
+
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+    
+    # Create a regular user
+    from sqlmodel import Session
+    with Session(engine) as db:
+        user = User(username="user", password_hash=hash_password("pass"), is_superuser=False, is_active=True)
+        db.add(user)
+        db.commit()
+
+    app = create_app(config)
+    client = TestClient(app)
+    
+    # Login
+    client.post("/auth/login", data={"username": "user", "password": "pass"})
+    
+    # Try to create API key with >1 year expiration
+    response = client.post("/api/apikeys", json={"description": "Too long", "expires_in_days": 400})
+    assert response.status_code == 400
+    assert "expiration" in response.json()["detail"].lower()
+
+
+def test_list_api_keys_self(tmp_path):
+    """Test listing own API keys."""
+    from fastapi.testclient import TestClient
+    from adapt.config import AdaptConfig
+    from adapt.app import create_app
+    from adapt.storage import init_database, User, APIKey
+    from adapt.auth.password import hash_password
+    from adapt.api_keys import generate_api_key
+
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+    
+    # Create a regular user
+    from sqlmodel import Session
+    with Session(engine) as db:
+        user = User(username="user", password_hash=hash_password("pass"), is_superuser=False, is_active=True)
+        db.add(user)
+        db.commit()
+        user_id = user.id
+        
+        # Create an API key manually
+        raw_key, key_hash = generate_api_key()
+        api_key = APIKey(
+            key_hash=key_hash,
+            user_id=user_id,
+            description="Existing key",
+            created_at=datetime.now(tz=timezone.utc),
+            expires_at=datetime.now(tz=timezone.utc) + timedelta(days=30),
+            is_active=True
+        )
+        db.add(api_key)
+        db.commit()
+
+    app = create_app(config)
+    client = TestClient(app)
+    
+    # Login
+    client.post("/auth/login", data={"username": "user", "password": "pass"})
+    
+    # List API keys
+    response = client.get("/api/apikeys")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["description"] == "Existing key"
+    assert data[0]["is_active"] == True
+
+
+def test_revoke_api_key_self(tmp_path):
+    """Test revoking own API key."""
+    from fastapi.testclient import TestClient
+    from adapt.config import AdaptConfig
+    from adapt.app import create_app
+    from adapt.storage import init_database, User, APIKey
+    from adapt.auth.password import hash_password
+    from adapt.api_keys import generate_api_key
+
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+    
+    # Create a regular user
+    from sqlmodel import Session
+    with Session(engine) as db:
+        user = User(username="user", password_hash=hash_password("pass"), is_superuser=False, is_active=True)
+        db.add(user)
+        db.commit()
+        user_id = user.id
+        
+        # Create an API key manually
+        raw_key, key_hash = generate_api_key()
+        api_key = APIKey(
+            key_hash=key_hash,
+            user_id=user_id,
+            description="To revoke",
+            created_at=datetime.now(tz=timezone.utc),
+            is_active=True
+        )
+        db.add(api_key)
+        db.commit()
+        key_id = api_key.id
+
+    app = create_app(config)
+    client = TestClient(app)
+    
+    # Login
+    client.post("/auth/login", data={"username": "user", "password": "pass"})
+    
+    # Revoke API key
+    response = client.delete(f"/api/apikeys/{key_id}")
+    assert response.status_code == 204
+    
+    # Verify revoked
+    with Session(engine) as db:
+        api_key = db.get(APIKey, key_id)
+        assert api_key.is_active == False
