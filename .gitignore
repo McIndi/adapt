@@ -4,6 +4,7 @@ cookies.txt
 .github/copilot-instructions.md
 examples/.adapt/
 .adapt/
+.adapt.db
 
 # Github provided Python.gitignore template below
 ##############################################################################
