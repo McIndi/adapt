@@ -10,6 +10,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.routing import APIRouter
 
+from ..utils import build_ui_links
 from .base import Plugin, ResourceDescriptor, PluginContext
 
 
@@ -39,8 +40,17 @@ class MarkdownPlugin(Plugin):
         @router.get("")
         def get_markdown(request: Request):
             """Serve the Markdown content as HTML."""
-            content = self.read(descriptor, request)
-            return HTMLResponse(content=content)
+            html_content = self.read(descriptor, request)
+            user = getattr(request.state, 'user', None)
+            is_superuser = user and getattr(user, 'is_superuser', False)
+            ui_links = build_ui_links(request)
+            context = {
+                "content": html_content,
+                "title": descriptor.path.stem,
+                "is_superuser": is_superuser,
+                "ui_links": ui_links
+            }
+            return request.app.state.templates.TemplateResponse(request, "base.html", context)
         return [("", router)]
 
     def detect(self, path: Path) -> bool:
@@ -99,23 +109,5 @@ class MarkdownPlugin(Plugin):
         with open(resource.path, 'r', encoding='utf-8') as f:
             md_content = f.read()
         html_content = markdown.markdown(md_content)
-        content = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>{resource.path.stem}</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 40px; }}
-        h1, h2, h3 {{ color: #333; }}
-        code {{ background: #f4f4f4; padding: 2px 4px; border-radius: 4px; }}
-        pre {{ background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }}
-    </style>
-</head>
-<body>
-    {html_content}
-</body>
-</html>
-"""
-        set_cache(cache_key, content, ttl_seconds=600, resource=str(resource.path))  # 10 min TTL
-        return content
+        set_cache(cache_key, html_content, ttl_seconds=600, resource=str(resource.path))  # 10 min TTL
+        return html_content

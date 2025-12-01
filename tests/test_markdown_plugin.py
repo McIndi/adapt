@@ -49,7 +49,6 @@ def test_markdown_plugin_read(sample_md):
     content = plugin.read(descriptor, request)
     assert "<h1>Test</h1>" in content
     assert "<p>This is a test.</p>" in content
-    assert "<!DOCTYPE html>" in content
 
 
 def test_markdown_plugin_write_raises(sample_md):
