@@ -71,6 +71,51 @@ For CSV, Excel sheets, and Parquet datasets, Adapt exposes:
 * `/schema` — JSON schema
 
 
+### Request Format for Dataset Endpoints
+
+**Note:** For dataset resources (CSV, Excel, Parquet), API requests must use an envelope format specifying the action and data. This is required for all POST, PATCH, and DELETE requests.
+
+**Envelope format:**
+
+```json
+{
+  "action": "create|update|delete",
+  "data": [ ... ] // for create, or { ... } for update/delete
+}
+```
+
+**Examples:**
+
+*Create rows (POST):*
+```json
+{
+  "action": "create",
+  "data": [
+    {"id": "899", "name": "Unknown"},
+    {"id": "900", "name": "Alice"}
+  ]
+}
+```
+
+*Update a row (PATCH):*
+```json
+{
+  "action": "update",
+  "data": {"_row_id": 1, "name": "Updated Name"}
+}
+```
+
+*Delete a row (DELETE):*
+```json
+{
+  "action": "delete",
+  "data": {"_row_id": 2}
+}
+```
+
+This format is required for all dataset plugin endpoints. Future versions may support simpler payloads, but for now, always wrap your data in this envelope.
+
+
 Each Excel **sheet** and Parquet file receives its own resource, enabling full CRUD operations per dataset. Parquet support is now robust and consistent with other dataset plugins, including atomic writes, schema inference, and safe concurrent editing.
 
 For audio and video files, Adapt provides HTTP streaming endpoints using open standards for efficient playback, along with individual player pages and a searchable media gallery.
