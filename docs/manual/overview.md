@@ -27,6 +27,7 @@ Adapt scans your document root directory on startup, detects supported files, an
 - JSON schemas (`/schema/*`)
 - Streaming media endpoints (`/media/*`)
 - Direct content serving for HTML/Markdown files
+- Health check endpoint (`/health`)
 
 ## Architecture Overview
 

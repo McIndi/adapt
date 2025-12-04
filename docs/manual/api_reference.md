@@ -8,7 +8,7 @@ This document provides comprehensive API documentation for Adapt's REST endpoint
 
 All API endpoints require authentication unless otherwise noted. Use one of:
 
-1. **Session Cookie**: Log in via `/login` endpoint or web UI
+1. **Session Cookie**: Log in via `/auth/login` endpoint or web UI
 2. **API Key**: Include `X-API-Key: <your-key>` header
 
 ## Base URL
@@ -186,7 +186,7 @@ Example: `reports.py` with router defines endpoints under `/api/reports/`.
 
 ### Login
 
-**POST** `/login`
+**POST** `/auth/login`
 
 Authenticate user and establish session.
 
@@ -202,7 +202,7 @@ Authenticate user and establish session.
 
 ### Logout
 
-**POST** `/logout`
+**POST** `/auth/logout`
 
 End current session.
 
@@ -244,6 +244,35 @@ Admin endpoints require superuser access.
 
 **GET** `/admin/api/audit` - List audit entries
 **GET** `/admin/api/audit?user={id}&action={action}` - Filtered logs
+
+## System Endpoints
+
+### Health Check
+
+**GET** `/health`
+
+Check application health and status. No authentication required for basic info.
+
+**Response (unauthenticated):**
+```json
+{
+  "status": "ok",
+  "version": "1.0.0",
+  "timestamp": "2025-12-04T12:34:56Z"
+}
+```
+
+**Response (authenticated):**
+```json
+{
+  "status": "ok",
+  "version": "1.0.0",
+  "timestamp": "2025-12-04T12:34:56Z",
+  "uptime_seconds": 3600,
+  "cache_size": 42,
+  "endpoint_count": 15
+}
+```
 
 ## Error Responses
 
@@ -308,14 +337,6 @@ Schema validation errors.
 }
 ```
 
-## Rate Limiting
-
-- API endpoints are rate-limited by IP address
-- Authenticated users have higher limits
-- Rate limit headers included in responses:
-  - `X-RateLimit-Limit`
-  - `X-RateLimit-Remaining`
-  - `X-RateLimit-Reset`
 
 ## Data Types
 
@@ -406,7 +427,6 @@ class AdaptClient:
 
 1. **Use API Keys**: For programmatic access, prefer API keys over sessions
 2. **Handle Errors**: Check HTTP status codes and error responses
-3. **Respect Rate Limits**: Implement backoff strategies
 4. **Use Pagination**: For large datasets, use limit/offset parameters
 5. **Cache Responses**: Leverage HTTP caching headers
 6. **Validate Data**: Use schema endpoints to understand data structure

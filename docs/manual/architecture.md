@@ -483,28 +483,59 @@ graph TD
 
 ### Metrics Collection
 
-- **Request Metrics**: Count, latency, error rates
-- **Resource Metrics**: CPU, memory, disk I/O
-- **Business Metrics**: Active users, API calls, data volumes
-- **Security Metrics**: Failed logins, permission denials
 
 ### Logging Strategy
 
-```mermaid
-graph TD
-    A[Application Logs] --> B[Structured JSON]
-    B --> C[Log Aggregation]
-    C --> D[Search/Indexing]
-    D --> E[Dashboards]
-    E --> F[Alerting]
+Adapt uses Python's standard `logging` library. Each module defines a logger with `logging.getLogger(__name__)`, so logger names match module paths (e.g., `adapt.api_keys`, `adapt.config`).
+
+Logging is configured via the `logging` section in `conf.json` or programmatically. The default setup uses structured JSON logs to the console.
+
+**Example logging configuration:**
+```json
+{
+  "version": 1,
+  "disable_existing_loggers": false,
+  "formatters": {
+    "json": {
+      "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
+      "format": "%(asctime)s %(name)s %(levelname)s %(message)s"
+    }
+  },
+  "handlers": {
+    "console": {
+      "class": "logging.StreamHandler",
+      "formatter": "json",
+      "stream": "ext://sys.stdout"
+    }
+  },
+  "root": {
+    "level": "INFO",
+    "handlers": ["console"]
+  }
+}
 ```
+
+You can set log levels or handlers for any module using its logger name (e.g., `adapt.api_keys`, `adapt.config`, etc.).
 
 ### Health Checks
 
-- **Application Health**: `/health` endpoint
-- **Database Health**: Connection and query tests
-- **Filesystem Health**: Read/write permissions
-- **Dependency Health**: Plugin and external service checks
+Adapt provides a `/health` endpoint for monitoring application status:
+
+- **Unauthenticated Access**: Returns basic status, version, and timestamp
+- **Authenticated Access**: Includes additional metrics like uptime, cache size, and endpoint count
+- **Security**: No sensitive information exposed to unauthenticated users
+
+Example response:
+```json
+{
+  "status": "ok",
+  "version": "1.0.0",
+  "timestamp": "2025-12-04T12:34:56Z",
+  "uptime_seconds": 3600,
+  "cache_size": 42,
+  "endpoint_count": 15
+}
+```
 
 ## Future Architecture
 

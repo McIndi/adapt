@@ -33,6 +33,8 @@ def get_current_user(request: Request) -> User | None:
     logger.debug("No authentication found for request")
     return None
 
+
+
 def require_auth(request: Request) -> User:
     """Require authentication, raising HTTPException if not authenticated."""
     user = get_current_user(request)

@@ -19,6 +19,7 @@ Drop a CSV, Excel file, Markdown document, HTML page, Parquet-style dataset, aud
 * Authentication, users, groups, and permissions
 * API Keys for programmatic access
 * Audit logging for security and compliance
+* Health check endpoint for monitoring
 * Row-Level Security (RLS) for granular data access
 * Admin dashboard for managing users, groups, locks, caches, and keys
 

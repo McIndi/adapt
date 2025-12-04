@@ -378,3 +378,39 @@ def test_audit_logs_filtering(client):
     response = client.get("/admin/audit-logs?action=login")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
+
+def test_health_unauthenticated(client):
+    """Test /health endpoint for unauthenticated users."""
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "version" in data
+    assert "timestamp" in data
+    # Should not include authenticated-only fields
+    assert "uptime_seconds" not in data
+    assert "cache_size" not in data
+    assert "endpoint_count" not in data
+
+
+def test_health_authenticated(client):
+    """Test /health endpoint for authenticated users."""
+    # Login first
+    response = client.post("/auth/login", data={"username": "admin", "password": "admin"})
+    assert response.status_code == 200
+
+    # Now test health endpoint
+    response = client.get("/health")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert "version" in data
+    assert "timestamp" in data
+    # Should include authenticated-only fields
+    assert "uptime_seconds" in data
+    assert isinstance(data["uptime_seconds"], int)
+    assert "cache_size" in data
+    assert isinstance(data["cache_size"], int) or data["cache_size"] is None
+    assert "endpoint_count" in data
+    assert isinstance(data["endpoint_count"], int)

@@ -5,7 +5,12 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
+from fastapi.responses import JSONResponse
+from datetime import datetime, timezone
+import time
+from .auth.dependencies import get_current_user
+_START_TIME = time.time()
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select, delete
@@ -123,6 +128,42 @@ def create_app(config: AdaptConfig) -> FastAPI:
 
     # Generate and mount routes
     generate_routes(app, resources, config)
+    
+    @app.get("/health", tags=["system"])
+    async def health(request: Request, user=Depends(get_current_user)):
+        """
+        Health check endpoint.
+        - Unauthenticated: returns minimal info (status, version, timestamp)
+        - Authenticated: adds uptime, cache size, and endpoint count
+        """
+        info = {
+            "status": "ok",
+            "version": getattr(config, "version", "unknown"),
+            "timestamp": datetime.now(timezone.utc).isoformat() + "Z"
+        }
+        if user:
+            # Add extra info for authenticated users
+            uptime = time.time() - _START_TIME
+            # Try to get cache size if available
+            cache_size = None
+            try:
+                from . import cache
+                conn = cache._get_conn()
+                cursor = conn.cursor()
+                cursor.execute(f"SELECT COUNT(*) FROM {cache.CACHE_TABLE}")
+                cache_size = cursor.fetchone()[0]
+                conn.close()
+            except Exception:
+                pass
+            # Count endpoints
+            endpoint_count = len(app.routes)
+            info.update({
+                "uptime_seconds": int(uptime),
+                "cache_size": cache_size,
+                "endpoint_count": endpoint_count
+            })
+        return JSONResponse(info)
+
 
     # Media gallery route
     @app.get("/ui/media")

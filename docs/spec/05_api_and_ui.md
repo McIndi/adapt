@@ -154,6 +154,7 @@ The Admin UI is backed by REST endpoints at `/admin/*`. All admin endpoints requ
 #### **System**
 * Active locks (Force unlock)
 * Cache viewer (Inspect and clear cache entries)
+* Health check endpoint (`/health`)
 
 #### **API Keys**
 * Generate new keys
