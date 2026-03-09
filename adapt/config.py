@@ -109,6 +109,7 @@ class AdaptConfig:
                 "tls_cert": str(self.tls_cert) if self.tls_cert else None,
                 "tls_key": str(self.tls_key) if self.tls_key else None,
                 "secure_cookies": self.secure_cookies,
+                "readonly": self.readonly,
                 "logging": self.logging.copy(),
             }
             with conf_path.open('w') as f:
@@ -120,7 +121,7 @@ class AdaptConfig:
             logger.error(f"Invalid JSON in {conf_path}: {e}")
             sys.exit(1)
         # Validate keys
-        allowed_keys = {"plugin_registry", "tls_cert", "tls_key", "secure_cookies", "logging"}
+        allowed_keys = {"plugin_registry", "tls_cert", "tls_key", "secure_cookies", "readonly", "logging"}
         for key in data:
             if key not in allowed_keys:
                 logger.error(f"Unknown key in {conf_path}: {key}")
@@ -146,6 +147,10 @@ class AdaptConfig:
             if not isinstance(data["secure_cookies"], bool):
                 logger.error("secure_cookies must be bool")
                 sys.exit(1)
+        if "readonly" in data:
+            if not isinstance(data["readonly"], bool):
+                logger.error("readonly must be bool")
+                sys.exit(1)
         if "logging" in data:
             if not isinstance(data["logging"], dict):
                 logger.error("logging must be a dict")
@@ -159,5 +164,7 @@ class AdaptConfig:
             self.tls_key = Path(data["tls_key"])
         if "secure_cookies" in data:
             self.secure_cookies = data["secure_cookies"]
+        if "readonly" in data:
+            self.readonly = data["readonly"]
         if "logging" in data:
             self.logging.update(data["logging"])

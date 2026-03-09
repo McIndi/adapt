@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Query
 from sqlmodel import Session, select
 from typing import List
 import logging
@@ -12,11 +12,54 @@ from . import router
 logger = logging.getLogger(__name__)
 
 @router.get("/locks", response_model=List[LockRecord])
-def list_locks(db: Session = Depends(get_db_session), user = Depends(require_superuser)):
-    """List all active locks."""
+def list_locks(
+    db: Session = Depends(get_db_session),
+    limit: int = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    sort: str = Query(None, pattern="^(id|resource|owner|acquired_at|expires_at|reason)$"),
+    order: str = Query("asc", pattern="^(asc|desc)$"),
+    filter: str = None,
+    user = Depends(require_superuser)
+):
+    """List all active locks with optional query parameters."""
+    from ..utils.query import apply_filter, apply_sort, apply_pagination
+    import json
+    
     locks = db.exec(select(LockRecord)).all()
-    logger.debug("Listed %d active locks", len(locks))
-    return locks
+    
+    # Convert to dicts for filtering/sorting
+    lock_dicts = []
+    for l in locks:
+        lock_dicts.append({
+            "id": l.id,
+            "resource": l.resource,
+            "owner": l.owner,
+            "acquired_at": l.acquired_at.isoformat() if l.acquired_at else None,
+            "expires_at": l.expires_at.isoformat() if l.expires_at else None,
+            "reason": l.reason
+        })
+    
+    # Apply filters
+    if filter:
+        filter_dict = json.loads(filter)
+        lock_dicts = apply_filter(lock_dicts, filter_dict)
+    
+    # Apply sorting
+    if sort:
+        lock_dicts = apply_sort(lock_dicts, sort, order)
+    
+    # Apply pagination
+    lock_dicts = apply_pagination(lock_dicts, offset, limit)
+    
+    # Convert back to LockRecord objects
+    result = []
+    for ld in lock_dicts:
+        l = db.get(LockRecord, ld["id"])
+        if l:
+            result.append(l)
+    
+    logger.debug("Listed %d active locks with query params", len(result))
+    return result
 
 @router.delete("/locks/{lock_id}")
 def release_lock(lock_id: int, request: Request, user = Depends(require_superuser)):

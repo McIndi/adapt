@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Query
 from sqlmodel import Session, select
 from typing import List
 import logging
@@ -12,15 +12,63 @@ from .models import UserCreate
 logger = logging.getLogger(__name__)
 
 @router.get("/users", response_model=List[User])
-def list_users(db: Session = Depends(get_db_session), user: User = Depends(require_superuser)):
-    """List all users."""
-    users = db.exec(select(User)).all()
-    logger.debug("Listed %d users", len(users))
-    return users
+def list_users(
+    db: Session = Depends(get_db_session),
+    limit: int = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    sort: str = Query(None, pattern="^(username|created_at|is_active|is_superuser)$"),
+    order: str = Query("asc", pattern="^(asc|desc)$"),
+    filter: str = None,
+    user: User = Depends(require_superuser)
+):
+    """List all users with optional query parameters."""
+    from ..utils.query import apply_filter, apply_sort, apply_pagination
+    import json
+    
+    query = select(User)
+    users = db.exec(query).all()
+    
+    # Convert to dicts for filtering/sorting
+    user_dicts = []
+    for u in users:
+        user_dicts.append({
+            "id": u.id,
+            "username": u.username,
+            "is_active": u.is_active,
+            "is_superuser": u.is_superuser,
+            "created_at": u.created_at.isoformat() if u.created_at else None
+        })
+    
+    # Apply filters
+    if filter:
+        filter_dict = json.loads(filter)
+        user_dicts = apply_filter(user_dicts, filter_dict)
+    
+    # Apply sorting
+    if sort:
+        user_dicts = apply_sort(user_dicts, sort, order)
+    
+    # Apply pagination
+    user_dicts = apply_pagination(user_dicts, offset, limit)
+    
+    # Convert back to User objects
+    result = []
+    for ud in user_dicts:
+        u = db.get(User, ud["id"])
+        if u:
+            result.append(u)
+    
+    logger.debug("Listed %d users with query params", len(result))
+    return result
 
 @router.post("/users", response_model=User)
 def create_user(user_data: UserCreate, request: Request, db: Session = Depends(get_db_session), user: User = Depends(require_superuser)):
     """Create a new user."""
+    # Check if server is in read-only mode
+    if request.app.state.config.readonly:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=405, detail="Server is in read-only mode")
+    
     existing = db.exec(select(User).where(User.username == user_data.username)).first()
     if existing:
         logger.warning("Attempted to create user with existing username %s", user_data.username)
@@ -44,6 +92,11 @@ def create_user(user_data: UserCreate, request: Request, db: Session = Depends(g
 @router.delete("/users/{user_id}")
 def delete_user(user_id: int, request: Request, db: Session = Depends(get_db_session), user: User = Depends(require_superuser)):
     """Delete a user by ID."""
+    # Check if server is in read-only mode
+    if request.app.state.config.readonly:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=405, detail="Server is in read-only mode")
+    
     target = db.get(User, user_id)
     if not target:
         logger.warning("Attempted to delete non-existent user %d", user_id)

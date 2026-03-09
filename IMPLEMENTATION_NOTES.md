@@ -1,105 +1,75 @@
-## Adapt — Implementation Notes and Known Mismatches
+## 🟢 **Very Easy (5-15 minutes each)**
 
-This repository contains a working prototype of the Adapt server and includes design and implementation documentation in `README.md` and `docs/spec/`.
+### 1. **Host & Port in Config File**
+Currently CLI-only, but adding to `AdaptConfig` and config loading would be trivial:
 
-The `README.md` and `docs/spec` describe the intended architecture and features; however some items are still roadmapped, partially implemented, or only scaffolding. This file lists the most important inconsistencies and suggested next steps.
+```python
+# In AdaptConfig class
+host: str = "127.0.0.1"
+port: int = 8000
 
-### How this file is organized
-- Summary: high-level list of items that differ from README/spec
-- Details: per-item description with file references
-- Suggested fixes and priority
+# In load_from_file()
+allowed_keys.add("host", "port")
+# Add validation and merging logic
+```
 
----
+### 2. **Environment Variable Support**
+Simple addition to `load_from_file()`:
 
-## Summary of important mismatches
+```python
+import os
+# After loading from file, override with env vars
+if "ADAPT_HOST" in os.environ:
+    self.host = os.environ["ADAPT_HOST"]
+if "ADAPT_PORT" in os.environ:
+    self.port = int(os.environ["ADAPT_PORT"])
+# etc.
+```
 
-1. Write override stubs are generated but not actually loaded or invoked.
-2. Cache engine: `CacheEntry` exists but cache behavior, invalidation, and admin controls are not implemented.
-3. Parquet support is a placeholder – `.parquet` is mapped to CSV plugin by default.
-4. Row-Level Security (RLS) is a plugin hook; built-in plugins do not provide example RLS enforcement.
-5. Lock retry strategy now uses exponential backoff as claimed in README.
-6. DataTables UI lacks column-hiding controls and schema-based field formatters (e.g., datetime formatting).
-7. Schema inference lacks `datetime` and `enum` detection.
-8. The Admin UI lacks a cache tab and the ability to filter audit logs server-side (API lacks filtering parameters for audit logs).
-9. CLI/service does not generate self-signed certs automatically - roadmap item.
-10. Cache invalidation on write is not implemented.
-11. Self-issue API keys (non-admin users) are not implemented (roadmap item noted in the README).
-12. The README contains optimistic claims about the plugin marketplace and some features (like GraphQL auto-introspection) which are not implemented.
-13. HTML companion files are now implemented as Jinja2 templates with pre-computed schema data for UI overrides.
+### 3. **Debug Mode**
+Just a boolean flag that enables verbose logging:
 
----
+```python
+debug: bool = False
+# In __post_init__ or load_from_file
+if self.debug:
+    self.logging["root"]["level"] = "DEBUG"
+```
 
-## Per-item details & file references
+## 🟡 **Easy (30-60 minutes each)**
 
-1) Cache engine & admin UI (high)
-- Symptom: `CacheEntry` model exists, but no cache behaviour in the core nor admin endpoints/UI to list/clear cached entries.
-- Files: `adapt/storage.py` (CacheEntry), `docs/spec/03_core_engine.md`, `adapt/admin.py` (no cache endpoints), `adapt/plugins/dataset_plugin.py` (no caching logic).
-- Suggested fix: Implement a simple cache for GETs (in-memory or SQLite-backed) and invalidate on writes; add `/admin/cache` endpoints to list/clear entries and a small admin UI tab. Add tests for caching and invalidation.
+### 4. **Basic User Management Commands**
+The infrastructure is already there - just need to add CLI commands:
 
-2) Parquet support is a placeholder (medium)
-- Symptom: `.parquet` maps to the CSV plugin by default — no Parquet-specific schema or read/write handling.
-- Files: `adapt/config.py` (`plugin_registry` mapping `.parquet` to CSV plugin)
-- Suggested fix: Implement `ParquetPlugin` or update docs to indicate that Parquet is not fully supported yet.
+- **`adapt admin list-users`**: Query `User` table (like list_groups.py)
+- **`adapt admin create-user`**: Use existing `hash_password()` function
+- **`adapt admin delete-user`**: Simple delete with validation
 
-3) RLS plugin hook (medium)
-- Symptom: `filter_for_user` exists in `Plugin` and is invoked by `DatasetPlugin.read` but no example plugin demonstrates RLS in the repo; `tests/test_phase3.py` has `test_rls_filtering` as a no-op placeholder.
-- Files: `adapt/plugins/base.py` (filter_for_user), `adapt/plugins/dataset_plugin.py` (read), `tests/test_phase3.py` (test stub)
-- Suggested fix: Add an example dataset plugin (or extend CSV/Excel) to demonstrate `filter_for_user`, and write a test verifying only matching rows are returned.
+### 5. **List Permissions Command**
+Similar to list_groups.py but for the `Permission` table.
 
-5) Lock backoff behavior (FIXED)
-- Symptom: Previously used constant backoff; now implements exponential backoff as documented.
-- Files: `adapt/locks.py`, `tests/test_locks.py`
-- Fix: Implemented exponential backoff with cap at 1.0s, added test for verification.
+### 6. **Read-only Mode in Config**
+Already a CLI flag, just add to config file support.
 
-6) UI: column hiding and schema-based formatting (low/medium)
-- Symptom: `datatable.html` provides basic DataTables features but not column hide toggles or per-type formatting for datetimes/booleans.
-- Files: `adapt/templates/datatable.html`, `adapt/plugins/dataset_plugin.py`
-- Suggested fix: Add DataTables column visibility plugin or UI toggle and implement per-column cell renderers based on schema types.
+## 🟠 **Medium Effort (1-2 hours)**
 
-7) Schema engine: datetime and enum detection missing (low/medium)
-- Symptom: `_guess_type` only detects integer, number, boolean, string.
-- Files: `adapt/plugins/dataset_plugin.py`
-- Suggested fix: Add attempts to parse datetimes (via `dateutil.parser`) and enum detection heuristics (e.g., small set of unique values below a threshold).
+### 7. **Log Level Configuration**
+Add a `log_level` field that sets the root logger level dynamically.
 
-8) `default_write` not implemented (high)
-- Symptom: Generated write overrides rely on `context.default_write`, but `PluginContext` doesn't have this attribute; the plugin default write is implemented but the `context` wrapper isn't provided.
-- Files: `adapt/plugins/base.py`, `adapt/plugins/dataset_plugin.py`
-- Suggested fix: Expose a `default_write` in `PluginContext` (a wrapper to call the plugin.write()), or change the override stub to import the plugin's `default_write` explicitly.
+### 8. **More Admin Commands**
+- `create-group` / `delete-group`: Similar to user commands
+- `add-to-group` / `remove-from-group`: Manage `UserGroup` associations
 
-9) Admin UI cache tab and audit filters missing (low)
-- Symptom: Admin UI includes Audit Logs but no filter controls (server side API lacks query by `user`, `action`, `resource`), Admin UI has no cache view to clear entries despite README claims.
-- Files: `adapt/admin.py` (no cache API), `adapt/static/admin/index.html` (no cache tab), `adapt/admin.py` (audit-logs endpoint has no query params)
-- Suggested fix: Add a cache viewer and implement query options for `GET /admin/audit-logs` to filter by `user_id`, `action`, `resource`, and optional dates; update UI.
+## 🔴 **Would Need More Work**
 
-10) Self-signed cert generation (roadmap) — not implemented (low)
-- Symptom: CLI accepts `--tls-cert` / `--tls-key`; no code yet to generate self-signed certs.
-- Files: `adapt/cli.py`
-- Suggested fix: Implement a `--generate-self-signed` or similar option to create a cert on demand, or explicitly mark this feature as not implemented in README.
+- **Database configuration**: Would require significant changes to support PostgreSQL
+- **Cache system**: Not implemented at all
+- **Performance tuning**: Workers, threads, etc. (Uvicorn handles this)
+- **Advanced security**: Password policies, session management
+- **Monitoring/metrics**: Would need additional dependencies
 
-11) Cache invalidation on write missing (high)
-- Symptom: No cache invalidation is triggered on write, because there is no centralized cache implementation or invalidation logic.
-- Files: `adapt/plugins/dataset_plugin.py` (write method), `adapt/storage.py` (CacheEntry unused)
-- Suggested fix: After implementing caching, ensure writes call a cache invalidation routine for the affected resource (namespace).
+## **My Recommendation**
 
-12) Self-issue API keys by non-admins (roadmap)
-- Symptom: Only admin endpoints for API keys exist. `adapt/admin.py` requires superuser for `/admin/api-keys`.
-- Files: `adapt/admin.py`
-- Suggested fix: Add an endpoint that lets logged-in users create keys for themselves, with limits and expiration options.
+Start with the **Very Easy** ones - host/port and environment variables would give immediate value and are truly trivial. Then the user management commands would make the admin interface much more complete.
 
-13) Roadmap claims and non-implemented features
-- Symptom: README includes several roadmap items that are not implemented yet, e.g., GraphQL auto-introspection and plugin marketplace.
-- Suggested fix: Keep roadmap items in README under a "Roadmap" heading to avoid accidental assumptions that the features are implemented.
-
----
-
-## Recommended short next steps (sprint plan)
-1. Implement write override wiring and `PluginContext.default_write` (high impact, small patch)
-2. Add a simple cache prototype (in-memory with DB records) and admin endpoints to list/clear caches (high impact)
-3. Add an RLS example and tests (medium)
-4. Add tests for cache invalidation and companion write override behavior (medium)
-5. Clarify README for features still in roadmap or partial implementation (low)
-
----
-Generated on: 2025-11-25
-
-If you'd like me to open PRs for any of these changes or implement a top-priority item, tell me which one to start with and I'll prepare a small self-contained change with tests and documentation.
+Would you like me to implement any of these? I'd suggest starting with **host/port configuration** since you mentioned it, then **environment variables**, then maybe **list-users** command. What do you think?

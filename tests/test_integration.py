@@ -49,8 +49,40 @@ def superuser_client(app):
     return client
 
 @pytest.fixture
-def client(app):
-    return TestClient(app)
+def readonly_app(tmp_path):
+    # Setup a temporary environment with readonly=True
+    config = AdaptConfig(root=tmp_path, readonly=True)
+    
+    # Create a dummy CSV file
+    csv_file = tmp_path / "data.csv"
+    csv_file.write_text("name,age\nAlice,30\nBob,25")
+
+    config = AdaptConfig(root=tmp_path, readonly=True)
+    engine = init_database(config.db_path)
+    app = create_app(config)
+    if not hasattr(app.state, 'lock_manager'):
+        app.state.lock_manager = LockManager(engine)
+
+    return app
+
+@pytest.fixture
+def readonly_superuser_client(readonly_app):
+    from adapt.storage import User
+    from adapt.auth.password import hash_password
+    from adapt.auth.session import create_session, SESSION_COOKIE
+    from sqlmodel import Session
+    
+    # Create superuser
+    with Session(readonly_app.state.db_engine) as db:
+        admin = User(username="admin", password_hash=hash_password("admin"), is_superuser=True)
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+        token = create_session(db, admin.id)
+        
+    client = TestClient(readonly_app)
+    client.cookies.set(SESSION_COOKIE, token)
+    return client
 
 def test_api_read(superuser_client):
     response = superuser_client.get("/api/data")
@@ -186,5 +218,53 @@ def test_build_accessible_ui_links(app):
         names = [l["name"] for l in links]
         assert "doc" in names
         assert "data" in names
+
+
+def test_readonly_mode_read_operations(readonly_superuser_client):
+    """Test that read operations work in readonly mode."""
+    response = readonly_superuser_client.get("/api/data")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert data[0]["name"] == "Alice"
+    assert data[1]["name"] == "Bob"
+
+
+def test_readonly_mode_create_blocked(readonly_superuser_client):
+    """Test that create operations are blocked in readonly mode."""
+    new_row = {"name": "Charlie", "age": 35}
+    response = readonly_superuser_client.post("/api/data", json={"action": "create", "data": [new_row]})
+    assert response.status_code == 405
+    assert "read-only mode" in response.json()["detail"].lower()
+
+
+def test_readonly_mode_update_blocked(readonly_superuser_client):
+    """Test that update operations are blocked in readonly mode."""
+    update_data = {"_row_id": 1, "age": 31}
+    response = readonly_superuser_client.patch("/api/data", json={"action": "update", "data": update_data})
+    assert response.status_code == 405
+    assert "read-only mode" in response.json()["detail"].lower()
+
+
+def test_readonly_mode_delete_blocked(readonly_superuser_client):
+    """Test that delete operations are blocked in readonly mode."""
+    delete_data = {"_row_id": 2}
+    response = readonly_superuser_client.request("DELETE", "/api/data", json={"action": "delete", "data": delete_data})
+    assert response.status_code == 405
+    assert "read-only mode" in response.json()["detail"].lower()
+
+
+def test_readonly_mode_ui_hides_buttons(readonly_superuser_client):
+    """Test that UI hides create/edit/delete buttons in readonly mode."""
+    response = readonly_superuser_client.get("/ui/data")
+    assert response.status_code == 200
+    html = response.text
+    # Should not contain the "Add New Record" button
+    assert "Add New Record" not in html
+    # Should not contain the Actions column header
+    assert "<th>Actions</th>" not in html
+    # Should not contain edit/delete buttons
+    assert "btn-warning" not in html  # Edit button class
+    assert "btn-danger" not in html   # Delete button class
 
 

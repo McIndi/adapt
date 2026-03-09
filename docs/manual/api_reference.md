@@ -212,38 +212,57 @@ Admin endpoints require superuser access.
 
 ### Users
 
-**GET** `/admin/api/users` - List users
-**POST** `/admin/api/users` - Create user
-**DELETE** `/admin/api/users/{id}` - Delete user
+**GET** `/admin/users` - List users  
+**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
+**POST** `/admin/users` - Create user  
+**DELETE** `/admin/users/{id}` - Delete user
 
 ### Groups
 
-**GET** `/admin/api/groups` - List groups
-**POST** `/admin/api/groups` - Create group
-**PUT** `/admin/api/groups/{id}/users` - Manage group membership
-**PUT** `/admin/api/groups/{id}/permissions` - Assign permissions
+**GET** `/admin/groups` - List groups  
+**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
+**POST** `/admin/groups` - Create group  
+**GET** `/admin/groups/{id}` - Get group details  
+**DELETE** `/admin/groups/{id}` - Delete group  
+**POST** `/admin/groups/{id}/users/{user_id}` - Add user to group  
+**DELETE** `/admin/groups/{id}/users/{user_id}` - Remove user from group  
+**GET** `/admin/groups/{id}/permissions` - List group permissions  
+**POST** `/admin/groups/{id}/permissions/{perm_id}` - Add permission to group  
+**DELETE** `/admin/groups/{id}/permissions/{perm_id}` - Remove permission from group
 
 ### Permissions
 
-**GET** `/admin/api/permissions` - List permissions
-**POST** `/admin/api/permissions` - Create permission
-**DELETE** `/admin/api/permissions/{id}` - Delete permission
+**GET** `/admin/permissions` - List permissions  
+**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
+**POST** `/admin/permissions` - Create permission  
+**DELETE** `/admin/permissions/{id}` - Delete permission
 
 ### Locks
 
-**GET** `/admin/api/locks` - List active locks
-**DELETE** `/admin/api/locks/{id}` - Release lock
+**GET** `/admin/locks` - List active locks  
+**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
+**DELETE** `/admin/locks/{id}` - Release lock  
+**POST** `/admin/locks/clean` - Clean stale locks
 
 ### Cache
 
-**GET** `/admin/api/cache` - List cache entries
-**DELETE** `/admin/api/cache/{key}` - Clear cache entry
-**DELETE** `/admin/api/cache` - Clear all cache
+**GET** `/admin/cache` - List cache entries  
+**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
+**DELETE** `/admin/cache/{key}` - Clear cache entry  
+**DELETE** `/admin/cache` - Clear all cache
+
+### API Keys
+
+**GET** `/admin/api-keys` - List API keys  
+**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
+**POST** `/admin/api-keys` - Create API key  
+**DELETE** `/admin/api-keys/{id}` - Delete API key
 
 ### Audit Logs
 
-**GET** `/admin/api/audit` - List audit entries
-**GET** `/admin/api/audit?user={id}&action={action}` - Filtered logs
+**GET** `/admin/audit-logs` - List audit entries  
+**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`, `user_id`, `action`, `resource`  
+**Additional filters:** `user_id`, `action`, `resource` (query parameters)
 
 ## System Endpoints
 
@@ -352,39 +371,46 @@ Adapt supports these JSON schema types:
 
 ## Filtering and Querying
 
-Advanced filtering support:
+Advanced filtering support for both dataset and admin endpoints:
 
 ```bash
-# Simple filters
+# Simple equality
 GET /api/products?filter={"category":"Electronics"}
 
-# Range filters
+# Comparison operators
 GET /api/products?filter={"price":{"$gte":100,"$lte":1000}}
+GET /api/products?filter={"price":{"$gt":100}}
+GET /api/products?filter={"price":{"$lt":1000}}
 
-# Text search
-GET /api/products?filter={"name":{"$regex":"laptop"}}
+# Text matching
+GET /api/products?filter={"name":{"$contains":"laptop"}}
+GET /api/products?filter={"name":{"$startswith":"Mac"}}
+GET /api/products?filter={"name":{"$regex":"laptop.*pro"}}
 
-# Multiple conditions
-GET /api/products?filter={"$and":[{"category":"Electronics"},{"in_stock":true}]}
+# Exact match operators
+GET /api/products?filter={"in_stock":{"$eq":true}}
+GET /api/products?filter={"category":{"$ne":"Books"}}
+
+# Multiple field conditions (AND logic)
+GET /api/products?filter={"category":"Electronics","in_stock":true}
+
+# Complex queries with multiple operators
+GET /admin/users?filter={"is_active":{"$eq":true},"created_at":{"$gte":"2024-01-01"}}
 ```
 
 ## Pagination
 
-Large result sets are paginated:
+Large result sets are paginated using query parameters:
 
-```json
-{
-  "data": [...],
-  "pagination": {
-    "page": 1,
-    "per_page": 50,
-    "total": 250,
-    "total_pages": 5,
-    "has_next": true,
-    "has_prev": false
-  }
-}
+- `limit`: Maximum number of records to return (default varies by endpoint)
+- `offset`: Number of records to skip (default 0)
+
+**Example:**
+```bash
+GET /admin/users?limit=50&offset=100
 ```
+
+**Response:** Plain array of records
 
 ## WebSocket Support
 

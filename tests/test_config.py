@@ -21,6 +21,7 @@ class TestAdaptConfig:
             "tls_cert": None,
             "tls_key": None,
             "secure_cookies": False,
+            "readonly": False,
             "logging": config.logging.copy(),
         }
         assert data == expected
@@ -116,3 +117,17 @@ class TestAdaptConfig:
             config.load_from_file()
 
         assert "logging must be a dict" in caplog.text
+
+    def test_load_from_file_invalid_type_readonly(self, tmp_path, caplog):
+        """Test that invalid readonly type causes exit."""
+        conf_path = tmp_path / ".adapt" / "conf.json"
+        conf_path.parent.mkdir(parents=True)
+        data = {"readonly": "not_a_bool"}
+        with conf_path.open('w') as f:
+            json.dump(data, f)
+
+        config = AdaptConfig(root=tmp_path)
+        with pytest.raises(SystemExit):
+            config.load_from_file()
+
+        assert "readonly must be bool" in caplog.text

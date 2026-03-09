@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Query
 from pydantic import BaseModel
 from typing import List, Optional
 import logging
@@ -18,11 +18,47 @@ class CacheEntry(BaseModel):
     user: Optional[str]
 
 @router.get("/cache", response_model=List[CacheEntry])
-def list_cache_entries(resource: Optional[str] = None, user = Depends(require_superuser)):
-    """List cache entries, optionally filtered by resource."""
+def list_cache_entries(
+    resource: Optional[str] = None,
+    limit: int = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    sort: str = Query(None, pattern="^(key|expires_at|resource|user)$"),
+    order: str = Query("asc", pattern="^(asc|desc)$"),
+    filter: str = None,
+    user = Depends(require_superuser)
+):
+    """List cache entries with optional query parameters."""
+    from ..utils.query import apply_filter, apply_sort, apply_pagination
+    import json
+    
     entries = list_cache(resource)
-    result = [CacheEntry(key=entry['key'], expires_at=entry['expires_at'], resource=entry['resource'], user=entry['user']) for entry in entries]
-    logger.debug("Listed %d cache entries for resource %s", len(result), resource or "all")
+    
+    # Convert to dicts for filtering/sorting
+    entry_dicts = []
+    for e in entries:
+        entry_dicts.append({
+            "key": e['key'],
+            "expires_at": e['expires_at'],
+            "resource": e['resource'],
+            "user": e['user']
+        })
+    
+    # Apply filters
+    if filter:
+        filter_dict = json.loads(filter)
+        entry_dicts = apply_filter(entry_dicts, filter_dict)
+    
+    # Apply sorting
+    if sort:
+        entry_dicts = apply_sort(entry_dicts, sort, order)
+    
+    # Apply pagination
+    entry_dicts = apply_pagination(entry_dicts, offset, limit)
+    
+    # Convert back to CacheEntry objects
+    result = [CacheEntry(key=e['key'], expires_at=e['expires_at'], resource=e['resource'], user=e['user']) for e in entry_dicts]
+    
+    logger.debug("Listed %d cache entries with query params", len(result))
     return result
 
 @router.delete("/cache")

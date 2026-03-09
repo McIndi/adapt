@@ -103,6 +103,10 @@ def create_api_key(
     db: Session = Depends(get_db_session)
 ):
     """Create a new API key for the authenticated user."""
+    # Check if server is in read-only mode
+    if req.app.state.config.readonly:
+        raise HTTPException(status_code=405, detail="Server is in read-only mode")
+    
     logger.debug("User %s creating API key", user.username)
     
     # Validate expiration
@@ -174,6 +178,10 @@ def revoke_api_key(
     db: Session = Depends(get_db_session)
 ):
     """Revoke an API key owned by the authenticated user."""
+    # Check if server is in read-only mode
+    if req.app.state.config.readonly:
+        raise HTTPException(status_code=405, detail="Server is in read-only mode")
+    
     logger.debug("User %s revoking API key %d", user.username, key_id)
     
     api_key = db.get(APIKey, key_id)

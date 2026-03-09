@@ -2,7 +2,7 @@ from __future__ import annotations
 from adapt.cache import get_cache, set_cache, invalidate_cache
 
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Sequence, Optional
 import logging
 
 from fastapi import Request
@@ -95,7 +95,7 @@ class DatasetPlugin(Plugin):
         logger.debug("Generated schema for %s", resource.path)
         return schema
 
-    def read(self, resource: ResourceDescriptor, request: Request) -> Sequence[dict[str, Any]]:
+    def read(self, resource: ResourceDescriptor, request: Request, query_params: Optional['QueryParams'] = None) -> Sequence[dict[str, Any]]:
         """Read data from the resource, applying RLS filtering."""
         header = resource.metadata.get("header", [])
         schema = self.schema(resource)
@@ -115,6 +115,16 @@ class DatasetPlugin(Plugin):
                     col_type = columns.get(col_name, {}).get("type", "string")
                     row_dict[col_name] = self._convert_value(value, col_type)
             rows.append(row_dict)
+        
+        # Apply query parameters if provided
+        if query_params:
+            from ..utils.query import apply_filter, apply_sort, apply_pagination
+            if query_params.filter:
+                rows = apply_filter(rows, query_params.filter)
+            if query_params.sort:
+                rows = apply_sort(rows, query_params.sort, query_params.order)
+            rows = apply_pagination(rows, query_params.offset, query_params.limit)
+        
         logger.debug("Read %d rows from %s", len(rows), resource.path)
         return rows
 
@@ -143,6 +153,10 @@ class DatasetPlugin(Plugin):
     def write(self, resource: ResourceDescriptor, data: Any, request: Request, context: PluginContext) -> dict[str, Any]:
         """Write data to the resource, handling create/update/delete operations."""
         from fastapi import HTTPException
+        
+        # Check if server is in read-only mode
+        if context.readonly:
+            raise HTTPException(status_code=405, detail="Server is in read-only mode")
         
         action = data.get("action")
         payload = data.get("data", [])
@@ -204,9 +218,27 @@ class DatasetPlugin(Plugin):
         # API routes
         api_router = APIRouter()
         @api_router.get("/")
-        def read_all(request: Request):
-            """Read all data from the dataset."""
-            return self.read(descriptor, request)
+        def read_all(
+            request: Request,
+            limit: int = None,
+            offset: int = 0,
+            sort: str = None,
+            order: str = "asc",
+            filter: str = None
+        ):
+            """Read all data from the dataset with query parameters."""
+            from ..models import QueryParams
+            import json
+            query_params = QueryParams(
+                limit=limit,
+                offset=offset,
+                sort=sort,
+                order=order,
+                filter=json.loads(filter) if filter else None
+            )
+            return self.read(descriptor, request, query_params)
+        
+        # Only add write routes if not in read-only mode
         @api_router.post("/")
         def create(data: dict, request: Request):
             """Create new data in the dataset."""
@@ -216,6 +248,9 @@ class DatasetPlugin(Plugin):
                 readonly=request.app.state.config.readonly,
                 lock_manager=request.app.state.lock_manager
             )
+            if context.readonly:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=405, detail="Server is in read-only mode")
             return self.write(descriptor, data, request, context)
         @api_router.patch("/")
         def update(data: dict, request: Request):
@@ -226,6 +261,9 @@ class DatasetPlugin(Plugin):
                 readonly=request.app.state.config.readonly,
                 lock_manager=request.app.state.lock_manager
             )
+            if context.readonly:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=405, detail="Server is in read-only mode")
             return self.write(descriptor, data, request, context)
         @api_router.delete("/")
         def delete(data: dict, request: Request):
@@ -236,6 +274,9 @@ class DatasetPlugin(Plugin):
                 readonly=request.app.state.config.readonly,
                 lock_manager=request.app.state.lock_manager
             )
+            if context.readonly:
+                from fastapi import HTTPException
+                raise HTTPException(status_code=405, detail="Server is in read-only mode")
             return self.write(descriptor, data, request, context)
         configs.append(("api", api_router))
 
@@ -252,7 +293,7 @@ class DatasetPlugin(Plugin):
         @ui_router.get("/", response_class=HTMLResponse)
         def get_ui(request: Request):
             """Get the UI for the dataset."""
-            template_name, context = self.get_ui_template(descriptor)
+            template_name, context = self.get_ui_template(descriptor, request.app.state.config.readonly)
             
             # Calculate API URL from UI URL
             # Assumes /ui/... -> /api/... mapping
@@ -280,7 +321,7 @@ class DatasetPlugin(Plugin):
                 "ui_links": ui_links
             })
             
-            if descriptor.ui_path and descriptor.ui_path.exists():
+            if descriptor.ui_path and descriptor.ui_path.exists() and not request.app.state.config.readonly:
                 with descriptor.ui_path.open('r', encoding='utf-8') as f:
                     template_content = f.read()
                 template = request.app.state.templates.env.from_string(template_content)
@@ -328,7 +369,7 @@ class DatasetPlugin(Plugin):
             ensure_file(descriptor.ui_path, ui_html)
             logger.debug(f"Generated index.html at {descriptor.ui_path}")
 
-    def get_ui_template(self, descriptor: ResourceDescriptor) -> tuple[str, dict[str, Any]]:
+    def get_ui_template(self, descriptor: ResourceDescriptor, readonly: bool = False) -> tuple[str, dict[str, Any]]:
         """Return template name and context for DataTables UI."""
         logger.debug(f"Getting UI template for {descriptor.path}")
         schema = self.schema(descriptor)
@@ -336,6 +377,7 @@ class DatasetPlugin(Plugin):
             "schema": schema,
             "api_url": "",  # Will be filled by core
             "schema_url": "",  # Will be filled by core
+            "readonly": readonly,
         }
 
     def routes(self, resource: ResourceDescriptor) -> Sequence[APIRouter]:

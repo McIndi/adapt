@@ -13,12 +13,72 @@ from .models import APIKeyCreate
 
 logger = logging.getLogger(__name__)
 
+from fastapi import Depends, HTTPException, Request, Query
+from sqlmodel import Session, select
+from typing import List
+from datetime import datetime, timedelta, timezone
+import logging
+
+from ..auth import require_superuser
+from ..storage import User, APIKey, get_db_session
+from ..api_keys import generate_api_key
+from ..audit import log_action
+from . import router
+from .models import APIKeyCreate
+
+logger = logging.getLogger(__name__)
+
 @router.get("/api-keys", response_model=List[APIKey])
-def list_api_keys(db: Session = Depends(get_db_session), user = Depends(require_superuser)):
-    """List all API keys in the system."""
+def list_api_keys(
+    db: Session = Depends(get_db_session),
+    limit: int = Query(None, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+    sort: str = Query(None, pattern="^(created_at|expires_at|last_used_at|is_active|description)$"),
+    order: str = Query("asc", pattern="^(asc|desc)$"),
+    filter: str = None,
+    user = Depends(require_superuser)
+):
+    """List all API keys in the system with optional query parameters."""
+    from ..utils.query import apply_filter, apply_sort, apply_pagination
+    import json
+    
     keys = db.exec(select(APIKey)).all()
-    logger.debug("Listed %d API keys", len(keys))
-    return keys
+    
+    # Convert to dicts for filtering/sorting
+    key_dicts = []
+    for k in keys:
+        key_dicts.append({
+            "id": k.id,
+            "key_hash": k.key_hash,
+            "user_id": k.user_id,
+            "description": k.description,
+            "created_at": k.created_at.isoformat() if k.created_at else None,
+            "expires_at": k.expires_at.isoformat() if k.expires_at else None,
+            "last_used_at": k.last_used_at.isoformat() if k.last_used_at else None,
+            "is_active": k.is_active
+        })
+    
+    # Apply filters
+    if filter:
+        filter_dict = json.loads(filter)
+        key_dicts = apply_filter(key_dicts, filter_dict)
+    
+    # Apply sorting
+    if sort:
+        key_dicts = apply_sort(key_dicts, sort, order)
+    
+    # Apply pagination
+    key_dicts = apply_pagination(key_dicts, offset, limit)
+    
+    # Convert back to APIKey objects
+    result = []
+    for kd in key_dicts:
+        k = db.get(APIKey, kd["id"])
+        if k:
+            result.append(k)
+    
+    logger.debug("Listed %d API keys with query params", len(result))
+    return result
 
 @router.post("/api-keys")
 def create_api_key(key_data: APIKeyCreate, request: Request, db: Session = Depends(get_db_session), user = Depends(require_superuser)):

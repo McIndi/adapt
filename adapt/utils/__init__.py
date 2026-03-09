@@ -39,7 +39,7 @@ def build_accessible_ui_links(request: Request, user: User | None) -> list[dict[
     Filters based on permissions for datasets, includes all html/markdown.
     Superusers have access to all resources.
     """
-    from .permissions import PermissionChecker
+    from ..permissions import PermissionChecker
     from sqlmodel import Session
     
     accessible_resources = []
