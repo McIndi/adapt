@@ -4,6 +4,7 @@ import logging
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from .config import AdaptConfig
 from .plugins.base import Plugin, ResourceDescriptor
@@ -33,7 +34,21 @@ def should_ignore(path: Path) -> bool:
     Returns:
         True if the path should be ignored, False otherwise.
     """
-    return path.name.startswith(".") or ".adapt" in path.parts
+    ignored_dir_names = {
+        ".adapt",
+        ".venv",
+        "venv",
+        "__pycache__",
+        "node_modules",
+    }
+
+    for part in path.parts:
+        if part in ignored_dir_names:
+            return True
+        if part.startswith("."):
+            return True
+
+    return False
 
 
 def ensure_file(path: Path, content: str) -> None:

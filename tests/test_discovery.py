@@ -16,6 +16,7 @@ def test_should_ignore():
     assert should_ignore(Path(".adapt"))
     assert should_ignore(Path("subdir/.adapt"))
     assert should_ignore(Path(".env"))
+    assert should_ignore(Path("project/.venv/Lib/site-packages/adapt/api_keys.py"))
     assert not should_ignore(Path("data.csv"))
     assert not should_ignore(Path("subdir/data.csv"))
 

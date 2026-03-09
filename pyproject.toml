@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adapt-server"
-version = "0.1.0"
+version = "0.1.1"
 description = "Adaptive file-backed FastAPI server that turns datasets into CRUD APIs and UIs."
 readme = "README.md"
 requires-python = ">=3.11"

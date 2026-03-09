@@ -84,8 +84,15 @@ class PythonHandlerPlugin(Plugin):
         logger.debug(f"Getting route configs for Python handler: {descriptor.path}")
         import importlib.util
         spec = importlib.util.spec_from_file_location(descriptor.path.stem, descriptor.path)
+        if spec is None or spec.loader is None:
+            logger.warning("Skipping Python handler %s: could not create import spec", descriptor.path)
+            return []
         module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        try:
+            spec.loader.exec_module(module)
+        except Exception as exc:
+            logger.warning("Skipping Python handler %s due to import error: %s", descriptor.path, exc)
+            return []
         routes = []
         if hasattr(module, 'router') and isinstance(module.router, APIRouter):
             routes = [("api", module.router)]
