@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable
 import logging
 import json
+import os
 import sys
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,10 @@ class AdaptConfig:
         logging: Logging configuration dictionary for dictConfig.
     """
     root: Path
+    host: str = "127.0.0.1"
+    port: int = 8000
     readonly: bool = False
+    debug: bool = False
     version: str = "0.1.0"
     tls_cert: Path | None = None
     tls_key: Path | None = None
@@ -38,6 +42,7 @@ class AdaptConfig:
         ".parquet": "adapt.plugins.parquet_plugin.ParquetPlugin",
         ".py": "adapt.plugins.python_plugin.PythonHandlerPlugin",
         ".html": "adapt.plugins.html_plugin.HtmlPlugin",
+        ".txt": "adapt.plugins.html_plugin.HtmlPlugin",
         ".md": "adapt.plugins.markdown_plugin.MarkdownPlugin",
         ".mp4": "adapt.plugins.media_plugin.MediaPlugin",
         ".mp3": "adapt.plugins.media_plugin.MediaPlugin",
@@ -75,6 +80,16 @@ class AdaptConfig:
         self.db_path = self.root / ".adapt" / "adapt.db"
         logger.debug("Config initialized: root=%s, db_path=%s, readonly=%s", self.root, self.db_path, self.readonly)
 
+    @staticmethod
+    def _parse_env_bool(value: str, key: str) -> bool:
+        lowered = value.strip().lower()
+        if lowered in {"1", "true", "yes", "on"}:
+            return True
+        if lowered in {"0", "false", "no", "off"}:
+            return False
+        logger.error("Invalid boolean value for %s: %s", key, value)
+        sys.exit(1)
+
     def get_plugin_factory(self, extension: str) -> Callable[..., Any]:
         """Get the plugin factory for a given file extension.
 
@@ -106,10 +121,13 @@ class AdaptConfig:
         if not conf_path.exists():
             defaults = {
                 "plugin_registry": self.plugin_registry.copy(),
+                "host": self.host,
+                "port": self.port,
                 "tls_cert": str(self.tls_cert) if self.tls_cert else None,
                 "tls_key": str(self.tls_key) if self.tls_key else None,
                 "secure_cookies": self.secure_cookies,
                 "readonly": self.readonly,
+                "debug": self.debug,
                 "logging": self.logging.copy(),
             }
             with conf_path.open('w') as f:
@@ -121,7 +139,7 @@ class AdaptConfig:
             logger.error(f"Invalid JSON in {conf_path}: {e}")
             sys.exit(1)
         # Validate keys
-        allowed_keys = {"plugin_registry", "tls_cert", "tls_key", "secure_cookies", "readonly", "logging"}
+        allowed_keys = {"plugin_registry", "host", "port", "tls_cert", "tls_key", "secure_cookies", "readonly", "debug", "logging"}
         for key in data:
             if key not in allowed_keys:
                 logger.error(f"Unknown key in {conf_path}: {key}")
@@ -135,6 +153,17 @@ class AdaptConfig:
                 if not isinstance(ext, str) or not isinstance(path, str):
                     logger.error("plugin_registry values must be str: str")
                     sys.exit(1)
+        if "host" in data:
+            if not isinstance(data["host"], str):
+                logger.error("host must be str")
+                sys.exit(1)
+        if "port" in data:
+            if not isinstance(data["port"], int):
+                logger.error("port must be int")
+                sys.exit(1)
+            if data["port"] < 1 or data["port"] > 65535:
+                logger.error("port must be between 1 and 65535")
+                sys.exit(1)
         if "tls_cert" in data and data["tls_cert"] is not None:
             if not isinstance(data["tls_cert"], str):
                 logger.error("tls_cert must be str or null")
@@ -151,6 +180,10 @@ class AdaptConfig:
             if not isinstance(data["readonly"], bool):
                 logger.error("readonly must be bool")
                 sys.exit(1)
+        if "debug" in data:
+            if not isinstance(data["debug"], bool):
+                logger.error("debug must be bool")
+                sys.exit(1)
         if "logging" in data:
             if not isinstance(data["logging"], dict):
                 logger.error("logging must be a dict")
@@ -158,6 +191,10 @@ class AdaptConfig:
         # Merge
         if "plugin_registry" in data:
             self.plugin_registry.update(data["plugin_registry"])
+        if "host" in data:
+            self.host = data["host"]
+        if "port" in data:
+            self.port = data["port"]
         if "tls_cert" in data and data["tls_cert"]:
             self.tls_cert = Path(data["tls_cert"])
         if "tls_key" in data and data["tls_key"]:
@@ -166,5 +203,28 @@ class AdaptConfig:
             self.secure_cookies = data["secure_cookies"]
         if "readonly" in data:
             self.readonly = data["readonly"]
+        if "debug" in data:
+            self.debug = data["debug"]
         if "logging" in data:
             self.logging.update(data["logging"])
+
+        if "ADAPT_HOST" in os.environ:
+            self.host = os.environ["ADAPT_HOST"]
+        if "ADAPT_PORT" in os.environ:
+            try:
+                port = int(os.environ["ADAPT_PORT"])
+            except ValueError:
+                logger.error("ADAPT_PORT must be an integer")
+                sys.exit(1)
+            if port < 1 or port > 65535:
+                logger.error("ADAPT_PORT must be between 1 and 65535")
+                sys.exit(1)
+            self.port = port
+        if "ADAPT_READONLY" in os.environ:
+            self.readonly = self._parse_env_bool(os.environ["ADAPT_READONLY"], "ADAPT_READONLY")
+        if "ADAPT_DEBUG" in os.environ:
+            self.debug = self._parse_env_bool(os.environ["ADAPT_DEBUG"], "ADAPT_DEBUG")
+
+        if self.debug:
+            self.logging.setdefault("root", {})
+            self.logging["root"]["level"] = "DEBUG"

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import logging
-from fastapi import Depends, HTTPException, status
 from sqlmodel import Session, select
 
-from .storage import User, Permission, UserGroup, GroupPermission, init_database
+from .storage import User, Permission, UserGroup, GroupPermission
 
 
 logger = logging.getLogger(__name__)
@@ -56,42 +55,3 @@ class PermissionChecker:
             if perm.resource == resource and perm.action.value == action:
                 return True
         return False
-
-def require_permission(resource: str, action: str):
-    """Create a FastAPI dependency that requires specific permission.
-
-    Args:
-        resource: The resource name.
-        action: The action required.
-
-    Returns:
-        A dependency function.
-    """
-    def dependency(request, db: Session = Depends(lambda: request.app.state.db_engine)):
-        logger.debug(f"Checking permission {resource}:{action} for request")
-        # Retrieve current user from request (assumes auth dependency already applied)
-        user = request.state.user  # set by auth middleware
-        if not user:
-            logger.warning("Permission check failed: not authenticated")
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-        checker = PermissionChecker(db)
-        if not checker.has_permission(user, resource, action):
-            logger.warning(f"Permission denied for user {user.username} on {resource}:{action}")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
-        return True
-    return dependency
-
-def require_admin():
-    """Create a FastAPI dependency that requires admin privileges.
-
-    Returns:
-        A dependency function.
-    """
-    def dependency(request):
-        logger.debug("Checking admin privilege for request")
-        user = request.state.user
-        if not user or not getattr(user, "is_superuser", False):
-            logger.warning("Admin check failed")
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin required")
-        return True
-    return dependency

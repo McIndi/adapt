@@ -157,6 +157,40 @@ def test_permission_flow(client):
     assert response.status_code == 200
 
 
+def test_admin_api_key_validation_and_soft_revoke(client, db_session):
+    """Admin API key create should validate expiration; revoke should deactivate, not delete."""
+    from adapt.storage import APIKey
+
+    # Login
+    client.post("/auth/login", data={"username": "admin", "password": "admin"})
+
+    # Create key with too-large expiration should fail
+    response = client.post("/admin/api-keys", json={
+        "user_id": 1,
+        "description": "test key",
+        "expires_in_days": 366,
+    })
+    assert response.status_code == 400
+
+    # Valid key creation
+    response = client.post("/admin/api-keys", json={
+        "user_id": 1,
+        "description": "test key",
+        "expires_in_days": 30,
+    })
+    assert response.status_code == 200
+    data = response.json()
+    assert "created_at" in data
+    key_id = data["id"]
+
+    # Revoke should deactivate instead of delete
+    response = client.delete(f"/admin/api-keys/{key_id}")
+    assert response.status_code == 200
+    record = db_session.get(APIKey, key_id)
+    assert record is not None
+    assert record.is_active is False
+
+
 # CLI Command Tests
 
 @pytest.fixture
@@ -323,6 +357,37 @@ def test_run_create_permissions(tmp_path, capsys):
         permissions = db.exec(select(Permission)).all()
         assert len(permissions) == 4  # 2 resources * 2 actions
 
+
+def test_run_user_and_group_admin_commands(tmp_path, capsys):
+    """Test user/group CRUD and membership admin CLI commands."""
+    from adapt.commands.admin import (
+        run_create_user,
+        run_list_users,
+        run_delete_user,
+        run_create_group,
+        run_delete_group,
+        run_add_to_group,
+        run_remove_from_group,
+    )
+
+    run_create_user(tmp_path, username="alice", password="pw", is_superuser=False)
+    run_create_group(tmp_path, name="editors", description="Editors group")
+    run_add_to_group(tmp_path, username="alice", group_name="editors")
+
+    run_list_users(tmp_path)
+    output = capsys.readouterr().out
+    assert "Added user 'alice' to group 'editors'" in output
+    assert "alice (active)" in output
+
+    run_remove_from_group(tmp_path, username="alice", group_name="editors")
+    run_delete_group(tmp_path, name="editors")
+    run_delete_user(tmp_path, username="alice")
+
+    output = capsys.readouterr().out
+    assert "Removed user 'alice' from group 'editors'" in output
+    assert "Deleted group 'editors'" in output
+    assert "Deleted user 'alice'" in output
+
 def test_cache_admin(client):
     # Login first
     response = client.post("/auth/login", data={"username": "admin", "password": "admin"})
@@ -414,3 +479,10 @@ def test_health_authenticated(client):
     assert isinstance(data["cache_size"], int) or data["cache_size"] is None
     assert "endpoint_count" in data
     assert isinstance(data["endpoint_count"], int)
+
+
+def test_media_gallery_redirects_when_unauthenticated(client):
+    """Unauthenticated users should be redirected to login for media UI."""
+    response = client.get("/ui/media", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["location"] == "/auth/login?next=/ui/media"

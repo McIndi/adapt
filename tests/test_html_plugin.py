@@ -24,7 +24,8 @@ def sample_html():
 def test_html_plugin_detect(sample_html):
     plugin = HtmlPlugin()
     assert plugin.detect(sample_html)
-    assert not plugin.detect(Path("test.txt"))
+    assert plugin.detect(Path("test.txt"))
+    assert not plugin.detect(Path("test.md"))
 
 
 def test_html_plugin_load(sample_html):

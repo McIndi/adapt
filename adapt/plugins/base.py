@@ -53,6 +53,16 @@ class Plugin(ABC):
         """Return the schema for the resource."""
         return "", {}
 
+    @abstractmethod
+    def read(self, resource: ResourceDescriptor, request: Request) -> Any:
+        """Read data/content for the resource."""
+        ...
+
+    @abstractmethod
+    def write(self, resource: ResourceDescriptor, data: Any, request: Request, context: PluginContext) -> Any:
+        """Write data/content for the resource."""
+        ...
+
     def get_route_configs(self, descriptor: ResourceDescriptor) -> list[tuple[str, APIRouter]]:
         """Return list of (prefix, router) tuples for mounting routes."""
         logger.debug(f"Getting route configs for resource: {descriptor.path}")

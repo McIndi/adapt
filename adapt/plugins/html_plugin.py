@@ -25,7 +25,7 @@ class HtmlPlugin(Plugin):
         Returns:
             True if the file has .html extension, False otherwise.
         """
-        return path.suffix.lower() == ".html"
+        return path.suffix.lower() in {".html", ".txt"}
 
     def load(self, path: Path) -> ResourceDescriptor:
         """Load the HTML file as a resource descriptor.

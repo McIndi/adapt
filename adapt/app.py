@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from datetime import datetime, timezone
 import time
 from .auth.dependencies import get_current_user
@@ -22,6 +22,7 @@ from .routes import generate_routes
 from .storage import User, DBSession, init_database
 from .locks import LockManager
 from .utils import build_accessible_ui_links
+from . import cache
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,7 @@ def create_app(config: AdaptConfig) -> FastAPI:
     """
     logger.debug("Creating FastAPI app with config: %s", config)
     engine = init_database(config.db_path)
+    cache.configure(str(config.db_path))
     app = FastAPI(title="Adapt", version=config.version, lifespan=lifespan)
     app.state.config = config
     app.state.db_engine = engine
@@ -147,7 +149,6 @@ def create_app(config: AdaptConfig) -> FastAPI:
             # Try to get cache size if available
             cache_size = None
             try:
-                from . import cache
                 conn = cache._get_conn()
                 cursor = conn.cursor()
                 cursor.execute(f"SELECT COUNT(*) FROM {cache.CACHE_TABLE}")
@@ -236,8 +237,6 @@ def create_app(config: AdaptConfig) -> FastAPI:
 
     # Exception handler for auth redirects
     from fastapi import HTTPException
-    from fastapi.responses import JSONResponse, RedirectResponse
-    from fastapi import Request
 
     @app.exception_handler(HTTPException)
     async def auth_exception_handler(request: Request, exc: HTTPException):

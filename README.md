@@ -130,12 +130,14 @@ The plugin system is extensible, allowing any plugin to create sub-resources by 
 Adapt now includes a robust, SQLite-backed caching system:
 
 * GET responses for datasets, media metadata, and rendered content are cached for performance.
-* Cache is stored in `.adapt.db` and managed per resource.
+* Cache is stored in `DOCROOT/.adapt/adapt.db` and managed per resource.
 * Plugins control what is cached and for how long (TTL).
 * Cache is automatically invalidated on resource mutation (POST/PATCH/DELETE).
 * Admin UI supports cache inspection and manual invalidation.
 
 All major plugins (CSV, Excel, Parquet, HTML, Markdown, Media, Python handler) now support caching where appropriate. Parquet, CSV, Excel plugins use cache for reads and schema inference. Media plugin caches metadata. Python handler plugin does not cache routers (for safety).
+
+Cache storage is configured at application startup, so plugin cache operations and Admin cache views use the same database path.
 
 All cache expiry logic uses timezone-aware UTC datetimes.
 
@@ -387,12 +389,16 @@ Adapt supports configuration via a `conf.json` file in `DOCROOT/.adapt/`. If the
 The configuration allows customizing:
 
 - `plugin_registry`: Map file extensions to plugin classes (e.g., add custom handlers).
+- `host`: Bind host for `adapt serve`.
+- `port`: Bind port for `adapt serve`.
 - `tls_cert`: Path to TLS certificate file.
 - `tls_key`: Path to TLS key file.
 - `secure_cookies`: Whether to set secure flags on cookies.
+- `readonly`: Enable read-only mode.
+- `debug`: Enable debug logging.
 - `logging`: Logging configuration dictionary for Python's dictConfig.
 
-Precedence: CLI arguments > `conf.json` > defaults.
+Precedence: explicit CLI flags > environment variables > `conf.json` > defaults.
 
 Example `conf.json`:
 
@@ -401,9 +407,13 @@ Example `conf.json`:
   "plugin_registry": {
     ".custom": "my_plugin.CustomPlugin"
   },
+  "host": "127.0.0.1",
+  "port": 8000,
   "tls_cert": "/path/to/cert.pem",
   "tls_key": "/path/to/key.pem",
   "secure_cookies": true,
+  "readonly": false,
+  "debug": false,
   "logging": {
     "root": {
       "level": "DEBUG"
@@ -433,7 +443,7 @@ The plugin system is backed by a strict interface contract (`adapt.plugins.base.
 
 The `adapt` CLI includes a few core commands:
 
-* `adapt serve <root>` — serve the given document root (supports `--host`, `--port`, `--tls-cert`, `--tls-key`, `--reload`, `--readonly`).
+* `adapt serve <root>` — serve the given document root (supports `--host`, `--port`, `--tls-cert`, `--tls-key`, `--reload`, `--readonly`, `--debug`).
 * `adapt check <root>` — sanity-check the configuration, initialize `.adapt.db`, and print the discovered datasets.
 * `adapt addsuperuser <root> --username <name>` — create a local superuser backed by `.adapt.db`.
 * `adapt list-endpoints <root>` — show the automatically generated `/api/*`, `/ui/*`, and `/schema/*` paths for every resource.
@@ -445,6 +455,13 @@ Adapt includes administrative commands for managing users, groups, and permissio
 * `adapt admin list-resources <root>` — list all discovered resources in the document root, including sub-namespaces for multi-resource files (e.g., Excel sheets).
 * `adapt admin create-permissions <root> <resources>...` — create permissions and groups for specified resources (use `__all__` for all resources, including sub-namespaces).
 * `adapt admin list-groups <root>` — display all groups with their associated permissions and assigned users.
+* `adapt admin list-users <root>` — list local users.
+* `adapt admin create-user <root> --username <name> [--password <pw>] [--superuser]` — create a user.
+* `adapt admin delete-user <root> --username <name>` — delete a user.
+* `adapt admin create-group <root> --name <group> [--description <text>]` — create a group.
+* `adapt admin delete-group <root> --name <group>` — delete a group.
+* `adapt admin add-to-group <root> --username <name> --group <group>` — add a user to a group.
+* `adapt admin remove-from-group <root> --username <name> --group <group>` — remove a user from a group.
 
 ## Installation
 

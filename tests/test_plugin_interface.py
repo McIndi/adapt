@@ -52,3 +52,18 @@ def test_resource_descriptor_structure():
     assert descriptor.metadata == {"key": "value"}
     assert descriptor.schema_path is None
     assert descriptor.ui_path is None
+
+
+def test_plugin_requires_read_and_write_implementations():
+    class IncompletePlugin(Plugin):
+        def detect(self, path):
+            return False
+
+        def load(self, path):
+            return ResourceDescriptor(path=path, resource_type="test")
+
+        def schema(self, resource):
+            return {}
+
+    with pytest.raises(TypeError):
+        IncompletePlugin()

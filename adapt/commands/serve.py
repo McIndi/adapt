@@ -9,7 +9,16 @@ from ..app import create_app
 logger = logging.getLogger(__name__)
 
 
-def run_serve(root: Path, host: str, port: int, tls_cert: str | None, tls_key: str | None, reload: bool, readonly: bool) -> None:
+def run_serve(
+    root: Path,
+    host: str | None,
+    port: int | None,
+    tls_cert: str | None,
+    tls_key: str | None,
+    reload: bool,
+    readonly: bool | None,
+    debug: bool | None,
+) -> None:
     """Start the Adapt server.
 
     Args:
@@ -27,24 +36,43 @@ def run_serve(root: Path, host: str, port: int, tls_cert: str | None, tls_key: s
     Raises:
         None
     """
-    config = AdaptConfig(root=root, readonly=readonly)
+    config = AdaptConfig(root=root)
     config.load_from_file()
+    if host is not None:
+        config.host = host
+    if port is not None:
+        config.port = port
+    if readonly is not None:
+        config.readonly = readonly
+    if debug is not None:
+        config.debug = debug
     if tls_cert:
         config.tls_cert = Path(tls_cert)
     if tls_key:
         config.tls_key = Path(tls_key)
 
+    if config.debug:
+        logging.getLogger().setLevel(logging.DEBUG)
+
     use_tls = bool(config.tls_cert and config.tls_key)
     config.secure_cookies = use_tls  # Set secure cookies when using TLS
-    logger.info("Starting server on %s:%d with TLS=%s, reload=%s, readonly=%s", host, port, use_tls, reload, readonly)
+    logger.info(
+        "Starting server on %s:%d with TLS=%s, reload=%s, readonly=%s, debug=%s",
+        config.host,
+        config.port,
+        use_tls,
+        reload,
+        config.readonly,
+        config.debug,
+    )
     app = create_app(config)
     server_config = Config(
         app=app,
-        host=host,
-        port=port,
+        host=config.host,
+        port=config.port,
         reload=reload,
         ssl_certfile=str(config.tls_cert) if use_tls else None,
         ssl_keyfile=str(config.tls_key) if use_tls else None,
-        log_level="info",
+        log_level="debug" if config.debug else "info",
     )
     Server(config=server_config).run()

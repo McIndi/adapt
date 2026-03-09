@@ -21,12 +21,13 @@ def main() -> None:
 
     serve_parser = subparsers.add_parser("serve", help="Start the Adapt server")
     serve_parser.add_argument("root", nargs="?", default=".", help="Document root to expose")
-    serve_parser.add_argument("--host", default="127.0.0.1")
-    serve_parser.add_argument("--port", type=int, default=8000)
+    serve_parser.add_argument("--host", default=None)
+    serve_parser.add_argument("--port", type=int, default=None)
     serve_parser.add_argument("--tls-cert", help="Path to TLS certificate")
     serve_parser.add_argument("--tls-key", help="Path to TLS key")
     serve_parser.add_argument("--reload", action="store_true", help="Enable auto-reload")
-    serve_parser.add_argument("--readonly", action="store_true", help="Start server in read-only mode")
+    serve_parser.add_argument("--readonly", action="store_true", default=None, help="Start server in read-only mode")
+    serve_parser.add_argument("--debug", action="store_true", default=None, help="Enable debug logging")
 
     check_parser = subparsers.add_parser("check", help="Validate config, database, and discovery")
     check_parser.add_argument("root", nargs="?", default=".", help="Document root to check")
@@ -53,6 +54,38 @@ def main() -> None:
     admin_list_groups_parser = admin_subparsers.add_parser("list-groups", help="List groups with their permissions and users")
     admin_list_groups_parser.add_argument("root", nargs="?", default=".", help="Document root")
 
+    admin_list_users_parser = admin_subparsers.add_parser("list-users", help="List users")
+    admin_list_users_parser.add_argument("root", nargs="?", default=".", help="Document root")
+
+    admin_create_user_parser = admin_subparsers.add_parser("create-user", help="Create user")
+    admin_create_user_parser.add_argument("root", nargs="?", default=".", help="Document root")
+    admin_create_user_parser.add_argument("--username", required=True, help="Username")
+    admin_create_user_parser.add_argument("--password", help="Password (will prompt if missing)")
+    admin_create_user_parser.add_argument("--superuser", action="store_true", help="Create as superuser")
+
+    admin_delete_user_parser = admin_subparsers.add_parser("delete-user", help="Delete user")
+    admin_delete_user_parser.add_argument("root", nargs="?", default=".", help="Document root")
+    admin_delete_user_parser.add_argument("--username", required=True, help="Username")
+
+    admin_create_group_parser = admin_subparsers.add_parser("create-group", help="Create group")
+    admin_create_group_parser.add_argument("root", nargs="?", default=".", help="Document root")
+    admin_create_group_parser.add_argument("--name", required=True, help="Group name")
+    admin_create_group_parser.add_argument("--description", help="Group description")
+
+    admin_delete_group_parser = admin_subparsers.add_parser("delete-group", help="Delete group")
+    admin_delete_group_parser.add_argument("root", nargs="?", default=".", help="Document root")
+    admin_delete_group_parser.add_argument("--name", required=True, help="Group name")
+
+    admin_add_to_group_parser = admin_subparsers.add_parser("add-to-group", help="Add user to group")
+    admin_add_to_group_parser.add_argument("root", nargs="?", default=".", help="Document root")
+    admin_add_to_group_parser.add_argument("--username", required=True, help="Username")
+    admin_add_to_group_parser.add_argument("--group", required=True, help="Group name")
+
+    admin_remove_from_group_parser = admin_subparsers.add_parser("remove-from-group", help="Remove user from group")
+    admin_remove_from_group_parser.add_argument("root", nargs="?", default=".", help="Document root")
+    admin_remove_from_group_parser.add_argument("--username", required=True, help="Username")
+    admin_remove_from_group_parser.add_argument("--group", required=True, help="Group name")
+
     args = parser.parse_args()
     logger.debug("Parsed CLI args: command=%s", args.command)
 
@@ -63,7 +96,7 @@ def main() -> None:
     logging.config.dictConfig(config.logging)
 
     if args.command == "serve":
-        logger.info("Running serve command with root=%s, host=%s, port=%d", args.root, args.host, args.port)
+        logger.info("Running serve command with root=%s", args.root)
         serve.run_serve(
             root=Path(args.root).resolve(),
             host=args.host,
@@ -71,7 +104,8 @@ def main() -> None:
             tls_cert=args.tls_cert,
             tls_key=args.tls_key,
             reload=args.reload,
-            readonly=args.readonly
+            readonly=args.readonly,
+            debug=args.debug,
         )
     elif args.command == "check":
         logger.info("Running check command with root=%s", args.root)

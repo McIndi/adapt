@@ -23,13 +23,6 @@ class LockRecord(SQLModel, table=True):
     expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     reason: str | None = Field(default=None)
 
-class CacheEntry(SQLModel, table=True):
-    """Database model for cache entries."""
-    __tablename__ = "cache_entries"
-    id: int | None = Field(default=None, primary_key=True)
-    resource: str = Field(index=True)
-    description: str | None = None
-
 class User(SQLModel, table=True):
     """Database model for users."""
     __tablename__ = "users"
@@ -92,7 +85,7 @@ class AuditLog(SQLModel, table=True):
     # Keep logs even if users are deleted; use SET NULL to preserve audit trail
     user_id: int | None = Field(default=None, sa_column=Column(Integer, SA_ForeignKey("users.id", ondelete="SET NULL"), index=True))
     action: str = Field(index=True)
-    resource: str = Field(index=True)
+    resource: str | None = Field(default=None, index=True)
     details: str | None = None
     ip_address: str | None = None
 

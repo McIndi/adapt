@@ -11,13 +11,31 @@ import pickle
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', '.adapt.db')
 CACHE_TABLE = "cache"
 _lock = threading.Lock()
+_db_path: str | None = None
+
+
+def _default_db_path() -> str:
+    """Return legacy default cache DB path for non-app usage."""
+    return os.path.join(os.path.dirname(__file__), '..', '.adapt.db')
+
+
+def configure(db_path: str | None) -> None:
+    """Configure cache database path and initialize table.
+
+    Args:
+        db_path: SQLite file path. If None, falls back to legacy default path.
+    """
+    global _db_path
+    _db_path = db_path or _default_db_path()
+    init_cache_table()
+    logger.debug("Cache configured with DB path: %s", _db_path)
 
 def _get_conn():
     """Get a SQLite connection to the cache database."""
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    path = _db_path or _default_db_path()
+    conn = sqlite3.connect(path, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -132,5 +150,3 @@ def list_cache(resource=None):
             rows = conn.execute(f"SELECT * FROM {CACHE_TABLE}").fetchall()
         conn.close()
     return [dict(row) for row in rows]
-
-init_cache_table()
