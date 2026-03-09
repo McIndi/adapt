@@ -525,7 +525,7 @@ Adapt exposes:
 
 ## License
 
-TBD: Open-source core + commercial enterprise plugins/support.
+MIT License. See `LICENSE` file for details.
 
 ---
 

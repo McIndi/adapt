@@ -1,11 +1,28 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "adapt"
+name = "adapt-server"
 version = "0.1.0"
 description = "Adaptive file-backed FastAPI server that turns datasets into CRUD APIs and UIs."
 readme = "README.md"
 requires-python = ">=3.11"
-license = {text = "MIT"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "notesofcliff", email = "notesofcliff@gmail.com" }]
+keywords = ["fastapi", "api", "csv", "excel", "parquet", "markdown", "media"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
+]
 dependencies = [
     "fastapi",
     "uvicorn",
@@ -14,14 +31,36 @@ dependencies = [
     "watchfiles",
     "jinja2",
     "openpyxl",
-    "pytest",
     "markdown",
-    "httpx",
     "python-multipart",
     "mutagen",
     "moviepy",
     "pillow",
     "python-json-logger",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "httpx",
+    "build",
+    "twine",
+]
+
+[project.urls]
+Homepage = "https://github.com/notesofcliff/adapt"
+Repository = "https://github.com/notesofcliff/adapt"
+Issues = "https://github.com/notesofcliff/adapt/issues"
+
 [project.scripts]
 adapt = "adapt.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["adapt*"]
+
+[tool.setuptools.package-data]
+adapt = [
+    "templates/**/*.html",
+    "static/**/*",
+]
