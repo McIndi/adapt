@@ -2,9 +2,6 @@
 
 Adapt is a lightweight, FastAPI-powered adaptive server that automatically turns files and Python modules into fully functional REST APIs.
 
-Note: README vs Implementation
-----------------------------------
-The `README.md` outlines the intended design and functionality. Some features are partially implemented, still in the roadmap, or only scaffolded in the repository. For a detailed list of known differences between README/spec and the current implementation, see `IMPLEMENTATION_NOTES.md` at the project root.
 ---
 Drop a CSV, Excel file, Markdown document, HTML page, Parquet-style dataset, audio/video file, or Python handler into a directory and Adapt instantly generates:
 
@@ -26,6 +23,61 @@ Drop a CSV, Excel file, Markdown document, HTML page, Parquet-style dataset, aud
 A backend that lives in a folder.
 
 ---
+
+## Installation
+
+```
+pip install adapt-server
+```
+
+Add an admin user:
+
+```
+adapt addsuperuser --username admin examples
+```
+
+Serve your directory:
+
+```
+adapt serve ./examples
+```
+
+Runs on Uvicorn with TLS, RBAC, caching, locking, and adaptive routing.
+
+---
+
+## Example Directory Layout
+
+```
+data/
+  employees.csv
+  employees.schema.json
+  sales.xlsx
+  sales.q1.html
+  video.mp4
+  audio.mp3
+  stats.py
+  readme.md
+  index.html
+  docs/
+    guide.md
+```
+
+Adapt exposes:
+
+* `/` — landing page with resource overview
+* `/ui/employees` — DataTables UI
+* `/api/employees` — CRUD API
+* `/api/sales` — sheet listing
+* `/api/sales/<sheet>` — CRUD API for each sheet
+* `/media/video.mp4` — streaming endpoint
+* `/ui/video.mp4` — media player page
+* `/ui/media` — media gallery
+* `/api/stats/*` — handler routes
+* `/readme` — rendered Markdown content
+* `/index` — HTML page content
+* `/docs/guide` — rendered Markdown content
+* `/admin/*` — admin UI
 
 ## Features
 
@@ -462,55 +514,6 @@ Adapt includes administrative commands for managing users, groups, and permissio
 * `adapt admin delete-group <root> --name <group>` — delete a group.
 * `adapt admin add-to-group <root> --username <name> --group <group>` — add a user to a group.
 * `adapt admin remove-from-group <root> --username <name> --group <group>` — remove a user from a group.
-
-## Installation
-
-```
-pip install adapt-server
-```
-
-Serve your directory:
-
-```
-adapt serve ./data
-```
-
-Runs on Uvicorn with TLS, RBAC, caching, locking, and adaptive routing.
-
----
-
-## Example Directory Layout
-
-```
-data/
-  employees.csv
-  employees.schema.json
-  sales.xlsx
-  sales.q1.html
-  video.mp4
-  audio.mp3
-  stats.py
-  readme.md
-  index.html
-  docs/
-    guide.md
-```
-
-Adapt exposes:
-
-* `/` — landing page with resource overview
-* `/ui/employees` — DataTables UI
-* `/api/employees` — CRUD API
-* `/api/sales` — sheet listing
-* `/api/sales/<sheet>` — CRUD API for each sheet
-* `/media/video.mp4` — streaming endpoint
-* `/ui/video.mp4` — media player page
-* `/ui/media` — media gallery
-* `/api/stats/*` — handler routes
-* `/readme` — rendered Markdown content
-* `/index` — HTML page content
-* `/docs/guide` — rendered Markdown content
-* `/admin/*` — admin UI
 
 ---
 
