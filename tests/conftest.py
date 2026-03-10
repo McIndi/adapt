@@ -9,6 +9,27 @@ from adapt.storage import User, init_database
 from adapt.auth.password import hash_password
 
 
+@pytest.fixture(autouse=True)
+def auto_csrf_for_testclient(monkeypatch):
+    """Attach CSRF header automatically for unsafe methods in tests."""
+    original_request = TestClient.request
+
+    def patched_request(self, method, url, *args, **kwargs):
+        method_name = str(method).upper()
+        headers = kwargs.get("headers") or {}
+
+        if method_name in {"POST", "PUT", "PATCH", "DELETE"}:
+            token = self.cookies.get("adapt_csrf")
+            has_csrf_header = any(k.lower() == "x-csrf-token" for k in headers.keys())
+            if token and not has_csrf_header:
+                headers = {**headers, "X-CSRF-Token": token}
+                kwargs["headers"] = headers
+
+        return original_request(self, method, url, *args, **kwargs)
+
+    monkeypatch.setattr(TestClient, "request", patched_request)
+
+
 @pytest.fixture(name="app")
 def app_fixture(tmp_path):
     config = AdaptConfig(root=tmp_path)

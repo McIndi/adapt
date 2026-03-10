@@ -4,6 +4,7 @@ import logging
 
 from ..auth import get_current_user
 from ..utils import build_ui_links
+from ..security_urls import login_redirect_url
 from . import router
 
 logger = logging.getLogger(__name__)
@@ -14,7 +15,7 @@ def admin_ui(request: Request):
     user = get_current_user(request)
     if not user or not getattr(user, "is_superuser", False):
         logger.debug("Non-superuser access to admin UI, redirecting to login")
-        return RedirectResponse(url="/auth/login?next=/admin/", status_code=302)
+        return RedirectResponse(url=login_redirect_url("/admin/"), status_code=302)
 
     # Build context for template
     is_superuser = getattr(user, 'is_superuser', False)

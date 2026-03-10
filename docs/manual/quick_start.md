@@ -2,7 +2,7 @@
 
 [Previous](installation) | [Next](user_guide) | [Index](index)
 
-This guide will get you up and running with Adapt in minutes.
+This guide gets an Adapt server running with realistic examples.
 
 ## Step 1: Install Adapt
 
@@ -10,19 +10,17 @@ This guide will get you up and running with Adapt in minutes.
 pip install adapt-server
 ```
 
-## Step 2: Create Your Data Directory
+## Step 2: Create a Working Directory
 
 ```bash
 mkdir adapt-demo
 cd adapt-demo
 ```
 
-## Step 3: Add Sample Data
+## Step 3: Add Sample Files
 
-Create some sample files to demonstrate Adapt's capabilities:
-
-### CSV Dataset
 Create `products.csv`:
+
 ```csv
 id,name,price,category,in_stock
 1,Laptop,999.99,Electronics,true
@@ -32,56 +30,35 @@ id,name,price,category,in_stock
 5,Mouse,24.99,Electronics,true
 ```
 
-### Excel Spreadsheet
-Create `inventory.xlsx` with a sheet named "Stock" containing:
-```csv
-product_id,warehouse,quantity,last_updated
-1,Warehouse A,50,2024-01-15
-2,Warehouse A,25,2024-01-15
-3,Warehouse B,0,2024-01-10
-4,Warehouse A,100,2024-01-15
-5,Warehouse B,75,2024-01-12
-```
-
-### Markdown Content
 Create `readme.md`:
+
 ```markdown
-# Welcome to Our Store
+# Welcome to Adapt Demo
 
-This is our product catalog and inventory management system, powered by Adapt.
-
-## Features
-- Real-time inventory tracking
-- Product catalog management
-- Automated reporting
+This demo shows generated APIs, schema routes, and UI pages.
 ```
 
-### Python Handler
-Create `reports.py`:
+Optional: create `reports.py`:
+
 ```python
 from fastapi import APIRouter
-from typing import List, Dict
 import csv
 
 router = APIRouter()
 
 @router.get("/summary")
-def get_summary() -> Dict:
-    """Get a summary of products and inventory"""
-    products = []
-    with open('products.csv', 'r') as f:
-        reader = csv.DictReader(f)
-        products = list(reader)
-    
-    total_products = len(products)
-    in_stock = len([p for p in products if p['in_stock'].lower() == 'true'])
-    total_value = sum(float(p['price']) for p in products if p['in_stock'].lower() == 'true')
-    
+def summary():
+    with open("products.csv", newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+
+    in_stock = [r for r in rows if str(r.get("in_stock", "")).lower() == "true"]
+    total_value = sum(float(r.get("price", 0) or 0) for r in in_stock)
+
     return {
-        "total_products": total_products,
-        "in_stock": in_stock,
-        "out_of_stock": total_products - in_stock,
-        "total_inventory_value": round(total_value, 2)
+        "total_products": len(rows),
+        "in_stock": len(in_stock),
+        "out_of_stock": len(rows) - len(in_stock),
+        "total_inventory_value": round(total_value, 2),
     }
 ```
 
@@ -91,129 +68,96 @@ def get_summary() -> Dict:
 adapt serve .
 ```
 
-You'll see output like:
-```
-INFO: Started server process [12345]
-INFO: Waiting for application startup.
-INFO: Application startup complete.
-INFO: Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
-```
+Open `http://localhost:8000`.
 
-## Step 5: Explore Your Server
+## Step 5: Explore Generated Routes
 
-Open `http://localhost:8000` in your browser.
+Try these endpoints in a browser first:
 
-### Landing Page
-The root URL shows:
-- Welcome message
-- List of available resources
-- Quick start guide
-- Links to admin (if superuser)
+- `/ui/products`
+- `/schema/products`
+- `/readme`
+- `/api/reports/summary` (if you created `reports.py`)
 
-### DataTables UI
-Visit `/ui/products` to see:
-- Sortable, searchable table
-- Pagination
-- Inline editing capabilities
-- Add/delete rows
+## Step 6: Use the Dataset API
 
-### API Endpoints
-Try these API calls:
+Dataset mutations are action-based and target `/api/{resource}`.
+
+Get rows:
 
 ```bash
-# Get all products
 curl http://localhost:8000/api/products
+```
 
-# Get product schema
-curl http://localhost:8000/schema/products
+Create a row:
 
-# Add a new product
+```bash
 curl -X POST http://localhost:8000/api/products \
   -H "Content-Type: application/json" \
-  -d '{"name":"Keyboard","price":49.99,"category":"Electronics","in_stock":true}'
-
-# Get inventory summary
-curl http://localhost:8000/api/reports/summary
+  -d '{"action":"create","data":[{"name":"Keyboard","price":49.99,"category":"Electronics","in_stock":true}]}'
 ```
 
-### Excel Sheets
-For multi-sheet Excel files, Adapt creates per-sheet resources:
-- `/api/inventory/Stock` - CRUD API for the Stock sheet
-- `/ui/inventory/Stock` - DataTables UI for the Stock sheet
-- `/schema/inventory/Stock` - Schema for the Stock sheet
-
-### Content Serving
-- `/readme` - Renders the Markdown file
-- Direct file access for HTML files
-
-## Step 6: Set Up Security (Optional)
-
-For production use, set up authentication:
+Update a row by `_row_id`:
 
 ```bash
-# Create a superuser
+curl -X PATCH http://localhost:8000/api/products \
+  -H "Content-Type: application/json" \
+  -d '{"action":"update","data":{"_row_id":1,"price":899.99}}'
+```
+
+Delete a row by `_row_id`:
+
+```bash
+curl -X DELETE http://localhost:8000/api/products \
+  -H "Content-Type: application/json" \
+  -d '{"action":"delete","data":{"_row_id":1}}'
+```
+
+## Step 7: Optional Security Setup
+
+Create a superuser:
+
+```bash
 adapt addsuperuser . --username admin
-
-# Create permissions for your resources
-adapt admin create-permissions . products inventory readme reports
-
-# Start server (will prompt for login)
-adapt serve .
 ```
 
-## Step 7: Customize (Optional)
+Create permissions for discovered resources:
 
-### Custom Schema
-Create `.adapt/products.schema.json`:
-```json
-{
-  "type": "object",
-  "properties": {
-    "id": {"type": "integer", "title": "ID"},
-    "name": {"type": "string", "title": "Product Name", "minLength": 1},
-    "price": {"type": "number", "title": "Price ($)", "minimum": 0},
-    "category": {"type": "string", "title": "Category", "enum": ["Electronics", "Books", "Stationery"]},
-    "in_stock": {"type": "boolean", "title": "In Stock"}
-  },
-  "required": ["name", "price", "category"]
-}
+```bash
+adapt admin create-permissions . __all__
 ```
 
-### Custom UI
-Edit `.adapt/products.index.html` to customize the interface.
+List groups and users:
 
-## What You've Built
+```bash
+adapt admin list-groups .
+adapt admin list-users .
+```
 
-In minutes, you've created:
-- ✅ REST API for CSV data
-- ✅ Web UI for data management
-- ✅ Excel sheet APIs
-- ✅ Markdown content serving
-- ✅ Custom Python endpoints
-- ✅ Authentication system
-- ✅ Admin interface
+## Step 8: Optional Serve Flags
+
+```bash
+adapt serve . --host 127.0.0.1 --port 8000 --debug
+```
+
+Read-only mode:
+
+```bash
+adapt serve . --readonly
+```
+
+## What You Have Running
+
+- Generated dataset API at `/api/products`
+- Generated schema at `/schema/products`
+- Generated UI at `/ui/products`
+- Markdown route at `/readme`
+- Optional Python handler route(s) under `/api/reports/*`
 
 ## Next Steps
 
-- Explore the [User Guide](user_guide) for detailed usage
-- Learn about [Plugin Development](plugin_development) to extend Adapt
-- Set up [Security](security) for production
-- Check [Configuration](configuration) options
-
-## Troubleshooting
-
-### Server Won't Start
-- Check if port 8000 is available
-- Ensure you have write permissions in the directory
-- Try `adapt check .` to diagnose issues
-
-### Files Not Detected
-- Ensure files are in the document root (not subdirectories unless configured)
-- Check file extensions match supported types
-- Restart the server after adding files
-
-### API Returns 403 Forbidden
-- You may need to log in or set up permissions
-- Check the admin interface for user/group permissions
+- Continue to the [User Guide](user_guide)
+- Review complete routes in the [API Reference](api_reference)
+- Use the [Admin Guide](admin_guide) for user/group management
 
 [Previous](installation) | [Next](user_guide) | [Index](index)

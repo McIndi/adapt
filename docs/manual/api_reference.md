@@ -2,460 +2,264 @@
 
 [Previous](user_guide) | [Next](admin_guide) | [Index](index)
 
-This document provides comprehensive API documentation for Adapt's REST endpoints.
+This document describes the API surface that is currently implemented by Adapt.
 
 ## Authentication
 
-All API endpoints require authentication unless otherwise noted. Use one of:
+Adapt supports two authentication methods:
 
-1. **Session Cookie**: Log in via `/auth/login` endpoint or web UI
-2. **API Key**: Include `X-API-Key: <your-key>` header
+1. Session cookie (`adapt_session`) from web login
+2. API key using `X-API-Key: <key>`
+
+Authentication endpoints:
+
+- `GET /auth/login` - Login page (HTML)
+- `POST /auth/login` - Login using form fields (`username`, `password`)
+- `POST /auth/logout` - Logout current session
+- `GET /auth/me` - Current authenticated user
+- `GET /profile` - Authenticated profile page
+
+User API key endpoints (for the currently authenticated user):
+
+- `POST /api/apikeys`
+- `GET /api/apikeys`
+- `DELETE /api/apikeys/{key_id}` — deactivates the key (`is_active = false`), returns `204`. The key record is retained in the database but will no longer authenticate.
 
 ## Base URL
 
-All endpoints are relative to the server root. Default: `http://localhost:8000`
+Default local URL: `http://localhost:8000`
 
-## Dataset APIs
+## Generated Dataset APIs
 
-For CSV, Excel sheets, and Parquet files, Adapt generates CRUD endpoints.
+For dataset resources (CSV, Excel sheets, Parquet), Adapt generates routes under:
+
+- `/api/{resource}`
+- `/schema/{resource}`
+- `/ui/{resource}`
+
+Examples:
+
+- CSV `products.csv` -> `/api/products`
+- Excel `inventory.xlsx` sheet `Stock` -> `/api/inventory/Stock`
 
 ### List Records
 
 **GET** `/api/{resource}`
 
-Retrieve all records from a dataset.
+Query parameters:
 
-**Parameters:**
-- `limit` (optional): Maximum number of records to return
-- `offset` (optional): Number of records to skip
-- `sort` (optional): Field to sort by
-- `order` (optional): Sort order (`asc` or `desc`)
-- `filter` (optional): Filter conditions (JSON object)
+- `limit` (optional)
+- `offset` (optional, default `0`)
+- `sort` (optional)
+- `order` (optional: `asc` or `desc`, default `asc`)
+- `filter` (optional JSON string)
 
-**Example:**
+Example:
+
 ```bash
-curl -H "X-API-Key: key" "http://localhost:8000/api/products?limit=10&sort=name"
+curl -H "X-API-Key: key" "http://localhost:8000/api/products?limit=10&sort=name&order=asc"
 ```
 
-**Response:**
-```json
-[
-  {
-    "id": 1,
-    "name": "Laptop",
-    "price": 999.99,
-    "category": "Electronics",
-    "in_stock": true
-  }
-]
-```
+### Mutations (Create, Update, Delete)
 
-### Get Single Record
-
-**GET** `/api/{resource}/{id}`
-
-Retrieve a specific record by ID.
-
-**Example:**
-```bash
-curl -H "X-API-Key: key" http://localhost:8000/api/products/1
-```
-
-### Create Record
+Adapt uses action-based mutation payloads at the collection endpoint.
 
 **POST** `/api/{resource}`
 
-Create a new record.
-
-**Body:** JSON object with record data
-
-**Example:**
-```bash
-curl -X POST -H "X-API-Key: key" \
-  -H "Content-Type: application/json" \
-  http://localhost:8000/api/products \
-  -d '{"name":"Mouse","price":24.99,"category":"Electronics","in_stock":true}'
-```
-
-**Response:** Created record with generated ID
-
-### Update Record
-
-**PATCH** `/api/{resource}/{id}`
-
-Update an existing record. Only specified fields are updated.
-
-**Body:** JSON object with fields to update
-
-**Example:**
-```bash
-curl -X PATCH -H "X-API-Key: key" \
-  -H "Content-Type: application/json" \
-  http://localhost:8000/api/products/1 \
-  -d '{"price":899.99}'
-```
-
-### Delete Record
-
-**DELETE** `/api/{resource}/{id}`
-
-Delete a record by ID.
-
-**Example:**
-```bash
-curl -X DELETE -H "X-API-Key: key" \
-  http://localhost:8000/api/products/1
-```
-
-**Response:** `204 No Content`
-
-## Schema Endpoints
-
-### Get Schema
-
-**GET** `/schema/{resource}`
-
-Retrieve the JSON schema for a dataset.
-
-**Example:**
-```bash
-curl http://localhost:8000/schema/products
-```
-
-**Response:**
 ```json
 {
-  "type": "object",
-  "properties": {
-    "id": {"type": "integer", "title": "ID"},
-    "name": {"type": "string", "title": "Product Name"},
-    "price": {"type": "number", "title": "Price ($)"},
-    "category": {"type": "string", "title": "Category"},
-    "in_stock": {"type": "boolean", "title": "In Stock"}
-  },
-  "required": ["name", "price"]
-}
-```
-
-## Content Endpoints
-
-### HTML Content
-
-**GET** `/{filename}` (without .html extension)
-
-Serve HTML files directly.
-
-### Markdown Content
-
-**GET** `/{filename}` (without .md extension)
-
-Render Markdown files to HTML.
-
-## Media Endpoints
-
-### Streaming
-
-**GET** `/media/{filename}`
-
-Stream audio/video files with HTTP range request support.
-
-**Headers:**
-- `Range`: For partial content requests
-- `Accept-Ranges`: `bytes`
-- `Content-Type`: Appropriate MIME type
-
-### Media Gallery
-
-**GET** `/ui/media`
-
-HTML page with media gallery (requires authentication).
-
-### Individual Player
-
-**GET** `/ui/{filename}`
-
-HTML player page for media files.
-
-## Python Handler Endpoints
-
-Custom endpoints defined in `.py` files are mounted under `/api/{filename}/`.
-
-Example: `reports.py` with router defines endpoints under `/api/reports/`.
-
-## Authentication Endpoints
-
-### Login
-
-**POST** `/auth/login`
-
-Authenticate user and establish session.
-
-**Body:**
-```json
-{
-  "username": "user",
-  "password": "pass"
-}
-```
-
-**Response:** Redirect to landing page or specified URL
-
-### Logout
-
-**POST** `/auth/logout`
-
-End current session.
-
-## Admin Endpoints
-
-Admin endpoints require superuser access.
-
-### Users
-
-**GET** `/admin/users` - List users  
-**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
-**POST** `/admin/users` - Create user  
-**DELETE** `/admin/users/{id}` - Delete user
-
-### Groups
-
-**GET** `/admin/groups` - List groups  
-**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
-**POST** `/admin/groups` - Create group  
-**GET** `/admin/groups/{id}` - Get group details  
-**DELETE** `/admin/groups/{id}` - Delete group  
-**POST** `/admin/groups/{id}/users/{user_id}` - Add user to group  
-**DELETE** `/admin/groups/{id}/users/{user_id}` - Remove user from group  
-**GET** `/admin/groups/{id}/permissions` - List group permissions  
-**POST** `/admin/groups/{id}/permissions/{perm_id}` - Add permission to group  
-**DELETE** `/admin/groups/{id}/permissions/{perm_id}` - Remove permission from group
-
-### Permissions
-
-**GET** `/admin/permissions` - List permissions  
-**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
-**POST** `/admin/permissions` - Create permission  
-**DELETE** `/admin/permissions/{id}` - Delete permission
-
-### Locks
-
-**GET** `/admin/locks` - List active locks  
-**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
-**DELETE** `/admin/locks/{id}` - Release lock  
-**POST** `/admin/locks/clean` - Clean stale locks
-
-### Cache
-
-**GET** `/admin/cache` - List cache entries  
-**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
-**DELETE** `/admin/cache/{key}` - Clear cache entry  
-**DELETE** `/admin/cache` - Clear all cache
-
-### API Keys
-
-**GET** `/admin/api-keys` - List API keys  
-**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`  
-**POST** `/admin/api-keys` - Create API key  
-**DELETE** `/admin/api-keys/{id}` - Delete API key
-
-### Audit Logs
-
-**GET** `/admin/audit-logs` - List audit entries  
-**Parameters:** `limit`, `offset`, `sort`, `order`, `filter`, `user_id`, `action`, `resource`  
-**Additional filters:** `user_id`, `action`, `resource` (query parameters)
-
-## System Endpoints
-
-### Health Check
-
-**GET** `/health`
-
-Check application health and status. No authentication required for basic info.
-
-**Response (unauthenticated):**
-```json
-{
-  "status": "ok",
-  "version": "1.0.0",
-  "timestamp": "2025-12-04T12:34:56Z"
-}
-```
-
-**Response (authenticated):**
-```json
-{
-  "status": "ok",
-  "version": "1.0.0",
-  "timestamp": "2025-12-04T12:34:56Z",
-  "uptime_seconds": 3600,
-  "cache_size": 42,
-  "endpoint_count": 15
-}
-```
-
-## Error Responses
-
-### 400 Bad Request
-Invalid request data or schema validation failure.
-
-```json
-{
-  "detail": "Validation error",
-  "errors": [
+  "action": "create",
+  "data": [
     {
-      "field": "price",
-      "message": "Must be a number"
+      "name": "Keyboard",
+      "price": 49.99,
+      "category": "Electronics",
+      "in_stock": true
     }
   ]
 }
 ```
 
-### 401 Unauthorized
-Missing or invalid authentication.
+**PATCH** `/api/{resource}`
 
 ```json
 {
-  "detail": "Authentication required"
+  "action": "update",
+  "data": {
+    "_row_id": 1,
+    "price": 39.99
+  }
 }
 ```
 
-### 403 Forbidden
-Insufficient permissions.
+**DELETE** `/api/{resource}`
 
 ```json
 {
-  "detail": "Permission denied"
+  "action": "delete",
+  "data": {
+    "_row_id": 1
+  }
 }
 ```
 
-### 404 Not Found
-Resource or record not found.
+Notes:
 
-```json
-{
-  "detail": "Resource not found"
-}
-```
+- Dataset mutations are row-oriented and use `_row_id`.
+- In read-only mode, mutation endpoints return `405`.
 
-### 409 Conflict
-Concurrent modification or lock conflict.
+## Schema Endpoint
 
-```json
-{
-  "detail": "Resource is locked by another user"
-}
-```
+**GET** `/schema/{resource}`
 
-### 422 Unprocessable Entity
-Schema validation errors.
+Returns the inferred or companion schema.
 
-```json
-{
-  "detail": "Validation failed",
-  "errors": [...]
-}
-```
-
-
-## Data Types
-
-Adapt supports these JSON schema types:
-
-- `string`: Text data
-- `number`: Numeric values (integers/floats)
-- `integer`: Whole numbers
-- `boolean`: True/false values
-- `array`: Lists of values
-- `object`: Nested objects
-- `null`: Nullable fields
-
-## Filtering and Querying
-
-Advanced filtering support for both dataset and admin endpoints:
+Example:
 
 ```bash
-# Simple equality
-GET /api/products?filter={"category":"Electronics"}
-
-# Comparison operators
-GET /api/products?filter={"price":{"$gte":100,"$lte":1000}}
-GET /api/products?filter={"price":{"$gt":100}}
-GET /api/products?filter={"price":{"$lt":1000}}
-
-# Text matching
-GET /api/products?filter={"name":{"$contains":"laptop"}}
-GET /api/products?filter={"name":{"$startswith":"Mac"}}
-GET /api/products?filter={"name":{"$regex":"laptop.*pro"}}
-
-# Exact match operators
-GET /api/products?filter={"in_stock":{"$eq":true}}
-GET /api/products?filter={"category":{"$ne":"Books"}}
-
-# Multiple field conditions (AND logic)
-GET /api/products?filter={"category":"Electronics","in_stock":true}
-
-# Complex queries with multiple operators
-GET /admin/users?filter={"is_active":{"$eq":true},"created_at":{"$gte":"2024-01-01"}}
+curl http://localhost:8000/schema/products
 ```
 
-## Pagination
+## Content Endpoints
 
-Large result sets are paginated using query parameters:
+For HTML and Markdown resources, Adapt mounts content routes using file path namespaces.
 
-- `limit`: Maximum number of records to return (default varies by endpoint)
-- `offset`: Number of records to skip (default 0)
+- HTML content route: `/{resource}`
+- Markdown content route: `/{resource}`
 
-**Example:**
+Depending on mount namespace, resources may also be available with extension-qualified paths.
+
+Examples:
+
+- `readme.md` -> `/readme`
+- `index.html` -> `/index`
+
+## Media Endpoints
+
+Media resources generate:
+
+- Streaming endpoint: `/media/{resource}`
+- Player UI: `/ui/{resource}`
+- Gallery UI: `/ui/media`
+
+Example:
+
 ```bash
-GET /admin/users?limit=50&offset=100
+curl -H "X-API-Key: key" http://localhost:8000/media/sample.mp4
 ```
 
-**Response:** Plain array of records
+## Python Handler Endpoints
 
-## WebSocket Support
+Python handler files (`.py`) with an `APIRouter` named `router` are mounted under:
 
-Real-time updates available at `/ws/{resource}` for datasets that support it.
+- `/api/{handler_name}`
 
-## API Versioning
+Example:
 
-Current API version: v1
+- `reports.py` with `@router.get("/summary")` -> `/api/reports/summary`
 
-All endpoints are prefixed with `/api/` for v1.
+## Admin Endpoints
 
-## SDKs and Libraries
+All admin endpoints require superuser authentication and are prefixed with `/admin`.
 
-While Adapt provides a REST API, you can use any HTTP client:
+Users:
 
-- **curl**: Command-line tool
-- **requests**: Python library
-- **axios**: JavaScript library
-- **Postman**: GUI API client
+- `GET /admin/users`
+- `POST /admin/users`
+- `DELETE /admin/users/{user_id}`
 
-Example Python client:
+Groups:
 
-```python
-import requests
+- `GET /admin/groups`
+- `GET /admin/groups/{group_id}`
+- `POST /admin/groups`
+- `DELETE /admin/groups/{group_id}`
+- `POST /admin/groups/{group_id}/users/{user_id}`
+- `DELETE /admin/groups/{group_id}/users/{user_id}`
 
-class AdaptClient:
-    def __init__(self, base_url, api_key):
-        self.base_url = base_url
-        self.session = requests.Session()
-        self.session.headers.update({'X-API-Key': api_key})
-    
-    def get_records(self, resource):
-        return self.session.get(f"{self.base_url}/api/{resource}").json()
-    
-    def create_record(self, resource, data):
-        return self.session.post(f"{self.base_url}/api/{resource}", json=data).json()
+Permissions:
+
+- `GET /admin/permissions`
+- `POST /admin/permissions`
+- `DELETE /admin/permissions/{perm_id}`
+- `GET /admin/groups/{group_id}/permissions`
+- `POST /admin/groups/{group_id}/permissions/{perm_id}`
+- `DELETE /admin/groups/{group_id}/permissions/{perm_id}`
+
+Locks:
+
+- `GET /admin/locks`
+- `DELETE /admin/locks/{lock_id}`
+- `POST /admin/locks/clean`
+
+Cache:
+
+- `GET /admin/cache`
+- `DELETE /admin/cache`
+- `DELETE /admin/cache/{key}` (requires `resource` query parameter)
+
+API keys (admin-managed):
+
+- `GET /admin/api-keys`
+- `POST /admin/api-keys`
+- `DELETE /admin/api-keys/{key_id}`
+
+Audit logs:
+
+- `GET /admin/audit-logs`
+
+Admin UI page:
+
+- `GET /admin/`
+
+## System Endpoint
+
+### Health
+
+**GET** `/health`
+
+- Unauthenticated callers receive base status info.
+- Authenticated callers receive additional metrics.
+
+Example fields:
+
+- `status`
+- `version`
+- `timestamp`
+- `uptime_seconds` (authenticated)
+- `cache_size` (authenticated)
+- `endpoint_count` (authenticated)
+
+## Filtering, Sorting, and Pagination
+
+Dataset and many admin list endpoints support:
+
+- `filter` as JSON
+- `sort`
+- `order`
+- `offset`
+- `limit`
+
+Supported filter operators include:
+
+- `$eq`, `$ne`
+- `$gt`, `$gte`, `$lt`, `$lte`
+- `$contains`, `$startswith`, `$regex`
+- `$and`
+
+Example:
+
+```bash
+curl "http://localhost:8000/api/products?filter={\"price\":{\"$gte\":100},\"category\":\"Electronics\"}"
 ```
 
-## Best Practices
+## Common Error Codes
 
-1. **Use API Keys**: For programmatic access, prefer API keys over sessions
-2. **Handle Errors**: Check HTTP status codes and error responses
-4. **Use Pagination**: For large datasets, use limit/offset parameters
-5. **Cache Responses**: Leverage HTTP caching headers
-6. **Validate Data**: Use schema endpoints to understand data structure
-7. **Monitor Usage**: Check audit logs for API usage patterns
+- `400` - Invalid request data
+- `401` - Not authenticated
+- `403` - Permission denied
+- `404` - Resource not found
+- `405` - Method not allowed (including read-only mode mutations)
+- `409` - Lock conflict
 
 [Previous](user_guide) | [Next](admin_guide) | [Index](index)

@@ -62,6 +62,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const createForm = document.getElementById('create-key-form');
     const keysList = document.getElementById('keys-list');
 
+    function csrfHeaders(headers = {}) {
+        const token = window.getAdaptCsrfToken ? window.getAdaptCsrfToken() : '';
+        if (!token) {
+            return headers;
+        }
+        return { ...headers, 'X-CSRF-Token': token };
+    }
+
     // Load existing keys
     loadKeys();
 
@@ -78,9 +86,9 @@ document.addEventListener('DOMContentLoaded', function() {
         try {
             const response = await fetch('/api/apikeys', {
                 method: 'POST',
-                headers: {
+                headers: csrfHeaders({
                     'Content-Type': 'application/json',
-                },
+                }),
                 body: JSON.stringify(data)
             });
 
@@ -151,7 +159,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         try {
             const response = await fetch(`/api/apikeys/${keyId}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: csrfHeaders()
             });
 
             if (response.ok) {

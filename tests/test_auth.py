@@ -340,3 +340,113 @@ def test_revoke_api_key_self(tmp_path):
     with Session(engine) as db:
         api_key = db.get(APIKey, key_id)
         assert api_key.is_active == False
+
+
+def test_csrf_missing_cookie_rejected(tmp_path):
+    """Cookie-authenticated write should be rejected when CSRF cookie is missing."""
+    from fastapi.testclient import TestClient
+    from adapt.config import AdaptConfig
+    from adapt.app import create_app
+    from adapt.storage import init_database, User
+    from adapt.auth.password import hash_password
+
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+
+    from sqlmodel import Session
+    with Session(engine) as db:
+        user = User(username="user", password_hash=hash_password("pass"), is_superuser=False, is_active=True)
+        db.add(user)
+        db.commit()
+
+    app = create_app(config)
+    client = TestClient(app)
+
+    login_response = client.post("/auth/login", data={"username": "user", "password": "pass"})
+    assert login_response.status_code == 200
+
+    client.cookies.pop("adapt_csrf", None)
+
+    response = client.post("/api/apikeys", json={"description": "Should fail"})
+    assert response.status_code == 403
+    assert "csrf" in response.json()["detail"].lower()
+
+
+def test_csrf_invalid_token_rejected(tmp_path):
+    """Cookie-authenticated write should be rejected for invalid CSRF token."""
+    from fastapi.testclient import TestClient
+    from adapt.config import AdaptConfig
+    from adapt.app import create_app
+    from adapt.storage import init_database, User
+    from adapt.auth.password import hash_password
+
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+
+    from sqlmodel import Session
+    with Session(engine) as db:
+        user = User(username="user", password_hash=hash_password("pass"), is_superuser=False, is_active=True)
+        db.add(user)
+        db.commit()
+
+    app = create_app(config)
+    client = TestClient(app)
+
+    login_response = client.post("/auth/login", data={"username": "user", "password": "pass"})
+    assert login_response.status_code == 200
+
+    response = client.post(
+        "/api/apikeys",
+        json={"description": "Should fail"},
+        headers={"X-CSRF-Token": "invalid-token"},
+    )
+    assert response.status_code == 403
+    assert "csrf" in response.json()["detail"].lower()
+
+
+def test_csrf_enforced_when_session_and_api_key_present(tmp_path):
+    """If both session cookie and API key header are present, CSRF must still be required."""
+    from fastapi.testclient import TestClient
+    from adapt.config import AdaptConfig
+    from adapt.app import create_app
+    from adapt.storage import init_database, User, APIKey
+    from adapt.auth.password import hash_password
+    from adapt.api_keys import generate_api_key
+    from datetime import datetime, timezone
+
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+
+    from sqlmodel import Session
+    with Session(engine) as db:
+        user = User(username="user", password_hash=hash_password("pass"), is_superuser=False, is_active=True)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        raw_key, key_hash = generate_api_key()
+        api_key = APIKey(
+            key_hash=key_hash,
+            user_id=user.id,
+            description="Mixed auth test",
+            created_at=datetime.now(tz=timezone.utc),
+            is_active=True,
+        )
+        db.add(api_key)
+        db.commit()
+
+    app = create_app(config)
+    client = TestClient(app)
+
+    login_response = client.post("/auth/login", data={"username": "user", "password": "pass"})
+    assert login_response.status_code == 200
+
+    client.cookies.pop("adapt_csrf", None)
+
+    response = client.post(
+        "/api/apikeys",
+        json={"description": "Should fail due to missing CSRF"},
+        headers={"X-API-Key": raw_key},
+    )
+    assert response.status_code == 403
+    assert "csrf" in response.json()["detail"].lower()

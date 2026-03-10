@@ -104,6 +104,14 @@
     let dataTable;
     const apiUrl = '{{ api_url }}';
 
+    function csrfHeaders(headers = {}) {
+        const token = window.getAdaptCsrfToken ? window.getAdaptCsrfToken() : '';
+        if (!token) {
+            return headers;
+        }
+        return { ...headers, 'X-CSRF-Token': token };
+    }
+
     $(document).ready(function () {
         dataTable = $('#dataTable').DataTable({
             serverSide: false,
@@ -147,7 +155,7 @@
 
         fetch(apiUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ action: 'create', data: [data] })
         })
             .then(response => response.json())
@@ -189,7 +197,7 @@
 
         fetch(apiUrl, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ action: 'update', data: data })
         })
             .then(response => response.json())
@@ -212,7 +220,7 @@
         if (confirm('Are you sure you want to delete this record?')) {
             fetch(apiUrl, {
                 method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
+                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ action: 'delete', data: { _row_id: rowId } })
             })
                 .then(response => response.json())

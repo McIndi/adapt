@@ -69,9 +69,11 @@ graph TB
 | `.xlsx`/`.xls` | Per-sheet CRUD APIs, UIs, Schemas |
 | `.parquet` | CRUD API, DataTables UI, Schema |
 | `.html` | Direct content serving |
+| `.txt` | Direct content serving (same as `.html`) |
 | `.md` | Rendered Markdown content |
 | `.mp4`/`.mp3`/etc. | Streaming endpoints, Player UIs, Gallery |
 | `.py` | Custom FastAPI router mounting |
+| unrecognized | Direct content serving |
 
 ## Core Principles
 

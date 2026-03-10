@@ -208,6 +208,56 @@ class DatasetPlugin(Plugin):
             logger.warning("Write failed for %s: %s", resource.path, str(e))
             raise HTTPException(status_code=409, detail=str(e))
 
+    @staticmethod
+    def _inject_csrf_bootstrap(template_content: str) -> str:
+        """Ensure custom UI templates attach CSRF token to unsafe fetch requests."""
+        marker = "window.__adaptCsrfFetchPatched"
+        if marker in template_content:
+            return template_content
+
+        script = """
+<script>
+(function() {
+    if (window.__adaptCsrfFetchPatched) {
+        return;
+    }
+    window.__adaptCsrfFetchPatched = true;
+
+    function getCookie(name) {
+        const cookies = document.cookie ? document.cookie.split('; ') : [];
+        for (const entry of cookies) {
+            const [cookieName, ...rest] = entry.split('=');
+            if (cookieName === name) {
+                return decodeURIComponent(rest.join('='));
+            }
+        }
+        return '';
+    }
+
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = function(input, init) {
+        const requestInit = init ? { ...init } : {};
+        const method = String(requestInit.method || 'GET').toUpperCase();
+        if (!['GET', 'HEAD', 'OPTIONS', 'TRACE'].includes(method)) {
+            const token = getCookie('adapt_csrf');
+            if (token) {
+                const headers = new Headers(requestInit.headers || {});
+                if (!headers.has('X-CSRF-Token')) {
+                    headers.set('X-CSRF-Token', token);
+                }
+                requestInit.headers = headers;
+            }
+        }
+        return originalFetch(input, requestInit);
+    };
+})();
+</script>
+""".strip()
+
+        if "</body>" in template_content:
+            return template_content.replace("</body>", script + "\n</body>")
+        return template_content + "\n" + script
+
     def get_route_configs(self, descriptor: ResourceDescriptor) -> list[tuple[str, APIRouter]]:
         """Return route configs for dataset: api, schema, ui."""
         logger.debug("Generating route configs for %s", descriptor.path)
@@ -324,6 +374,7 @@ class DatasetPlugin(Plugin):
             if descriptor.ui_path and descriptor.ui_path.exists() and not request.app.state.config.readonly:
                 with descriptor.ui_path.open('r', encoding='utf-8') as f:
                     template_content = f.read()
+                template_content = self._inject_csrf_bootstrap(template_content)
                 template = request.app.state.templates.env.from_string(template_content)
                 return HTMLResponse(template.render(**context))
             else:

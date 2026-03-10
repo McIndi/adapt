@@ -17,6 +17,7 @@ from PIL import Image
 import numpy as np
 
 from .base import Plugin, ResourceDescriptor, PluginContext
+from ..security_urls import login_redirect_url
 
 
 logger = logging.getLogger(__name__)
@@ -136,7 +137,7 @@ class MediaPlugin(Plugin):
             user = get_current_user(request)
             if not user:
                 from fastapi.responses import RedirectResponse
-                return RedirectResponse(url=f"/auth/login?next={request.url}", status_code=302)
+                return RedirectResponse(url=login_redirect_url(request.url.path), status_code=302)
             
             media_url = f"/media/{descriptor.path.relative_to(request.app.state.config.root).as_posix()}"
             accessible_resources = build_accessible_ui_links(request, user)

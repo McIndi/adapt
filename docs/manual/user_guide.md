@@ -2,228 +2,146 @@
 
 [Previous](quick_start) | [Next](api_reference) | [Index](index)
 
-This guide covers how to use Adapt as an end user, including navigating the web interface, interacting with data, and managing content.
+This guide explains day-to-day use of Adapt through its web UI and APIs.
 
 ## Landing Page
 
-When you first visit Adapt at the root URL (`/`), you'll see the landing page:
+Visit `/` to see the landing page.
 
-### For Authenticated Users
-- **Welcome message** with your username
-- **Quick start guide** for new users
-- **Resource overview** showing datasets, HTML pages, and Markdown documents you can access
-- **Media gallery link** for audio/video content
-- **Admin dashboard link** (visible to superusers)
-- **Logout button**
+For authenticated users, the page shows accessible UI links based on permissions.
 
-### For Unauthenticated Users
-- Public HTML and Markdown content
-- Login prompt for protected resources
+For unauthenticated users:
 
-The landing page adapts based on your permissions, showing only resources you can access.
+- You can reach login at `/auth/login`.
+- Access to generated resource routes depends on authentication and permissions.
 
-## DataTables User Interface
+## Generated UI Pages
 
-For CSV, Excel, and Parquet datasets, Adapt provides rich DataTables interfaces at `/ui/<resource>`.
+For dataset resources (CSV, Excel sheets, Parquet), Adapt provides DataTables-based UIs at:
 
-### Features
+- `/ui/<resource>`
 
-#### Navigation
-- **Common navigation bar** with:
-  - Home link
-  - Dropdown menu of all accessible datasets
-  - API Documentation link
-  - Admin Dashboard (for superusers)
-  - Logout
+Examples:
 
-#### Table Features
-- **Sorting**: Click column headers to sort ascending/descending
-- **Searching**: Global search box filters all rows
-- **Pagination**: Navigate through large datasets
-- **Column visibility**: Hide/show columns as needed
-- **Responsive design**: Adapts to mobile screens
+- `/ui/products`
+- `/ui/inventory/Stock`
 
-#### Data Operations
-- **View**: Browse data in a clean, formatted table
-- **Add**: Click "Add Row" to create new records
-- **Edit**: Click the edit icon or double-click cells for inline editing
-- **Delete**: Click the delete icon to remove records
+Typical capabilities include:
 
-### Inline Editing
-
-1. Click the edit button (pencil icon) in a row
-2. Modify values directly in the table cells
-3. Click "Save" to commit changes or "Cancel" to discard
-
-### Adding Records
-
-1. Click the "Add Row" button
-2. Fill in the form fields
-3. Click "Create" to add the record
-
-### Schema Validation
-
-The UI enforces data types and constraints defined in the schema:
-- Numbers, dates, booleans are validated
-- Required fields are marked
-- Custom validation rules from schema overrides apply
-
-## Media Gallery
-
-For audio and video files, Adapt provides a gallery interface at `/ui/media`.
-
-### Features
-- **Card-based layout** showing file thumbnails and metadata
-- **Search functionality** by filename
-- **Responsive grid** that adapts to screen size
-- **Metadata display** (duration, bitrate, artist, title, etc.)
-- **Direct playback** links
-
-### Individual Player Pages
-
-Click on any media file to open its dedicated player page (`/ui/<filename>`):
-
-- **HTML5 video/audio elements** for native playback
-- **Full metadata display**
-- **Streaming support** for efficient delivery
-- **Responsive design**
+- Sort and filter table data
+- Pagination
+- Create/update/delete via UI controls (unless server is read-only)
 
 ## Content Pages
 
 ### HTML Files
-Directly served at extensionless URLs (e.g., `index.html` → `/index`)
+
+HTML resources are served at path-based routes such as `/index`.
 
 ### Markdown Files
-Rendered to HTML with syntax highlighting and table support (e.g., `readme.md` → `/readme`)
 
-All resources in Adapt are accessible via extensionless URLs for cleaner, more user-friendly access (e.g., `data.csv` → `/data`).
+Markdown resources are rendered as HTML at routes such as `/readme`.
+
+## Media
+
+If media files are discovered, Adapt provides:
+
+- `/ui/media` - media gallery
+- `/ui/<media-resource>` - individual player page
+- `/media/<media-resource>` - streaming endpoint
 
 ## API Usage
 
-While the web UI is user-friendly, you can also interact programmatically.
+### Authentication Options
 
-### Authentication
-For API access, you have two options:
+For API calls, use either:
 
-1. **Session Cookies**: Log in through the web UI
-2. **API Keys**: Generate keys in the Admin UI and use `X-API-Key` header
+1. Session cookie from login
+2. `X-API-Key` header
 
-### Basic CRUD Operations
+### Dataset Read
 
 ```bash
-# Get all records
 curl -H "X-API-Key: your-key" http://localhost:8000/api/products
+```
 
-# Get specific record
-curl -H "X-API-Key: your-key" http://localhost:8000/api/products/1
+### Dataset Write Contract
 
-# Create new record
+Dataset writes are action-based and target `/api/<resource>`.
+
+Create:
+
+```bash
 curl -X POST -H "X-API-Key: your-key" \
   -H "Content-Type: application/json" \
   http://localhost:8000/api/products \
-  -d '{"name":"New Product","price":29.99}'
+  -d '{"action":"create","data":[{"name":"New Product","price":29.99}]}'
+```
 
-# Update record
+Update:
+
+```bash
 curl -X PATCH -H "X-API-Key: your-key" \
   -H "Content-Type: application/json" \
-  http://localhost:8000/api/products/1 \
-  -d '{"price":39.99}'
+  http://localhost:8000/api/products \
+  -d '{"action":"update","data":{"_row_id":1,"price":39.99}}'
+```
 
-# Delete record
+Delete:
+
+```bash
 curl -X DELETE -H "X-API-Key: your-key" \
-  http://localhost:8000/api/products/1
+  -H "Content-Type: application/json" \
+  http://localhost:8000/api/products \
+  -d '{"action":"delete","data":{"_row_id":1}}'
 ```
 
 ### Schema Endpoint
-
-Get the JSON schema for any resource:
 
 ```bash
 curl http://localhost:8000/schema/products
 ```
 
-## File Uploads and Downloads
-
-### Exporting Data
-- Use the API to retrieve data in JSON format
-- DataTables UI doesn't currently support CSV export (roadmap feature)
-
-### File Management
-- Add files directly to the filesystem
-- Restart server or use file watchers (when implemented) to detect changes
-- Companion files in `.adapt/` directory are auto-generated
-
 ## Permissions and Access Control
 
-### Resource Permissions
-- **Read permission**: View data and UIs
-- **Write permission**: Create, update, delete records
+Adapt uses users, groups, and resource permissions.
 
-### Group Membership
-Users inherit permissions from groups they're members of.
+- `read` permissions control read access.
+- `write` permissions control mutation access.
+- Superusers bypass normal permission checks.
 
-### Superuser Access
-Superusers bypass all permission checks and can access the admin interface.
+## Caching and Locks
 
-## Caching
-
-Adapt caches responses for performance:
-
-- GET requests are cached by default
-- Cache is invalidated on data modifications
-- Cache status visible in Admin UI
+- Read responses are cached using SQLite-backed cache tables.
+- Mutations use locking to reduce concurrent write conflicts.
+- Lock and cache state can be inspected in the admin endpoints/UI.
 
 ## Troubleshooting
 
-### Common Issues
+### `401` or `403` Responses
 
-#### "403 Forbidden" Errors
-- Check if you're logged in
-- Verify you have appropriate permissions
-- Contact administrator for access
+- Verify login or API key
+- Confirm group membership and permissions
 
-#### Data Not Appearing
-- Ensure file is in the document root
-- Check file format and extension
-- Restart server if files were added after startup
+### Mutation Fails with `405`
 
-#### Changes Not Saved
-- Check write permissions on files
-- Look for lock conflicts in Admin UI
-- Verify schema validation
+- Server may be running with `--readonly`
 
-#### Slow Performance
-- Check cache status in Admin UI
-- Consider pagination for large datasets
-- Review server logs for bottlenecks
+### Mutation Fails with `409`
 
-### Getting Help
+- A lock conflict occurred; retry after a short delay
 
-1. Check the Admin UI for system status
-2. Review audit logs for recent activity
-3. Contact your system administrator
-4. Check server logs for error details
+### Data Not Detected
+
+- Confirm file extension is supported
+- Confirm file is under docroot
+- Restart server after adding files
 
 ## Best Practices
 
-### Data Management
-- Use consistent data types in CSV files
-- Leverage schema overrides for validation
-- Keep backup copies of important data
-
-### Security
-- Use strong passwords
-- Log out when finished
-- Don't share API keys
-
-### Performance
-- Use pagination for large datasets
-- Leverage caching for read-heavy workloads
-- Monitor lock status for concurrent access
-
-### Organization
-- Use descriptive filenames
-- Group related files in subdirectories
-- Document your data with README.md files
+- Keep CSV/Excel/Parquet schemas consistent
+- Use group-based permissions rather than per-user exceptions
+- Rotate/revoke API keys when no longer needed
+- Use read-only mode for browse-only environments
 
 [Previous](quick_start) | [Next](api_reference) | [Index](index)

@@ -8,6 +8,7 @@ from adapt.locks import LockManager
 from adapt.storage import User
 from adapt.auth.password import hash_password
 from adapt.auth.session import create_session, SESSION_COOKIE
+from adapt.security import CSRF_COOKIE_NAME, generate_csrf_token
 from sqlmodel import Session
 
 
@@ -46,6 +47,7 @@ def superuser_client(app):
         
     client = TestClient(app)
     client.cookies.set(SESSION_COOKIE, token)
+    client.cookies.set(CSRF_COOKIE_NAME, generate_csrf_token())
     return client
 
 @pytest.fixture
@@ -82,6 +84,7 @@ def readonly_superuser_client(readonly_app):
         
     client = TestClient(readonly_app)
     client.cookies.set(SESSION_COOKIE, token)
+    client.cookies.set(CSRF_COOKIE_NAME, generate_csrf_token())
     return client
 
 def test_api_read(superuser_client):

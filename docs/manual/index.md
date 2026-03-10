@@ -18,6 +18,4 @@ Welcome to the comprehensive manual for Adapt, the adaptive file-backed web serv
 
 ## About This Manual
 
-This manual is generated from the project's README.md, specification documents in `docs/spec/`, and implementation notes from the blog posts. It provides a complete reference for all aspects of Adapt.
-
-For the latest updates, check the [blog posts](../blog-posts/) in the project repository.
+This manual is generated from the project's README.md, specification documents in `docs/spec/`, and implementation notes from the blog posts. It attempts to provide a complete reference for all aspects of Adapt.

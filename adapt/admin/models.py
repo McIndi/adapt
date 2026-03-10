@@ -1,8 +1,7 @@
+from datetime import datetime
 from pydantic import BaseModel
 from typing import List, Optional
 import logging
-
-from ..storage import User
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +16,31 @@ class GroupCreate(BaseModel):
     name: str
     description: Optional[str] = None
 
-class GroupRead(BaseModel):
-    """Model for reading group data with users."""
+
+class UserPublic(BaseModel):
+    """Safe user response model without sensitive fields."""
+    id: int
+    username: str
+    is_active: bool
+    is_superuser: bool
+    created_at: datetime
+
+
+class GroupUserRead(BaseModel):
+    """Safe group user representation."""
+    id: int
+    username: str
+    is_active: bool
+    is_superuser: bool
+    created_at: datetime
+
+
+class GroupReadSafe(BaseModel):
+    """Safe model for reading group data with users."""
     id: int
     name: str
     description: Optional[str] = None
-    users: List[User] = []
+    users: List[GroupUserRead] = []
 
 class PermissionCreate(BaseModel):
     """Model for creating a new permission."""

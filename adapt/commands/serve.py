@@ -46,6 +46,9 @@ def run_serve(
         config.readonly = readonly
     if debug is not None:
         config.debug = debug
+    if (tls_cert and not tls_key) or (tls_key and not tls_cert):
+        raise ValueError("Both --tls-cert and --tls-key must be provided together")
+
     if tls_cert:
         config.tls_cert = Path(tls_cert)
     if tls_key:

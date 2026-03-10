@@ -4,210 +4,137 @@
 
 ## System Requirements
 
-- Python 3.8 or higher
-- pip package manager
-- SQLite (included with Python)
+- Python 3.11 or higher
+- `pip`
+- SQLite (bundled with Python)
 
-## Installation
-
-Install Adapt from PyPI:
+## Install from PyPI
 
 ```bash
 pip install adapt-server
+
+# With development dependencies:
+pip install adapt-server[dev]
 ```
 
-For development or to build from source:
+## Install from Source
 
 ```bash
-git clone https://github.com/your-org/adapt.git
+git clone https://github.com/McInci/adapt.git
 cd adapt
 pip install -e .
 ```
 
-## Quick Start
-
-1. Create a directory for your data:
+## First Run
 
 ```bash
 mkdir my-adapt-server
 cd my-adapt-server
-```
-
-2. Add some sample data files:
-
-```bash
-# Create a CSV file
-echo "name,age,city
-Alice,25,New York
-Bob,30,San Francisco
-Charlie,35,Chicago" > employees.csv
-
-# Create a simple HTML page
-echo "<h1>Welcome to Adapt</h1><p>This is a test page.</p>" > index.html
-```
-
-3. Start the server:
-
-```bash
+# Add some files here, e.g. data.csv, readme.md, etc.
+adapt addsuperuser --username admin .
 adapt serve .
 ```
 
-4. Open your browser to `http://localhost:8000`
+Open `http://localhost:8000`.
 
-Adapt will automatically:
-- Generate a landing page at `/`
-- Create API endpoints at `/api/employees`
-- Create a UI at `/ui/employees`
-- Serve the HTML page at `/index`
-
-## CLI Commands
-
-### Basic Commands
+## Core CLI Commands
 
 ```bash
-# Start the server
 adapt serve <directory> [options]
-
-# Check configuration and list resources
 adapt check <directory>
-
-# Create a superuser
 adapt addsuperuser <directory> --username <username>
-
-# List all generated endpoints
 adapt list-endpoints <directory>
 ```
 
-### Administrative Commands
+## Admin CLI Commands
 
 ```bash
-# List all discovered resources
 adapt admin list-resources <directory>
-
-# Create permissions for resources
-adapt admin create-permissions <directory> <resource>... [--all-group] [--read-group]
-
-# List groups and their permissions
+adapt admin create-permissions <directory> <resource>...
 adapt admin list-groups <directory>
+adapt admin list-users <directory>
+adapt admin create-user <directory> --username <username> [--password <password>] [--superuser]
+adapt admin delete-user <directory> --username <username>
+adapt admin create-group <directory> --name <group>
+adapt admin delete-group <directory> --name <group>
+adapt admin add-to-group <directory> --username <username> --group <group>
+adapt admin remove-from-group <directory> --username <username> --group <group>
 ```
 
-### Command Options
+## `serve` Options
 
 ```bash
 adapt serve <directory> [OPTIONS]
 
 Options:
-  --host TEXT          Host to bind to (default: 127.0.0.1)
-  --port INTEGER       Port to bind to (default: 8000)
-  --tls-cert PATH      Path to TLS certificate file
-  --tls-key PATH        Path to TLS private key file
-  --read-only           Start server in read-only mode
-  --admin               Enable admin interface (default: enabled)
-  --log-level TEXT      Set logging level (DEBUG, INFO, WARNING, ERROR)
-  --reload              Enable auto-reload on file changes (development)
+  --host TEXT        Host to bind to
+  --port INTEGER     Port to bind to
+  --tls-cert PATH    Path to TLS certificate file
+  --tls-key PATH     Path to TLS private key file
+  --reload           Enable auto-reload for development
+  --readonly         Start server in read-only mode
+  --debug            Enable debug logging
 ```
+
+Notes:
+
+- `--tls-cert` and `--tls-key` must be provided together.
+- `--readonly` blocks write operations.
 
 ## Configuration File
 
-Adapt uses a configuration file at `DOCROOT/.adapt/conf.json`. If it doesn't exist, it's created with defaults on first run.
+Adapt uses `DOCROOT/.adapt/conf.json`. It is created automatically on first run.
 
-Example `conf.json`:
+Supported top-level keys:
 
-```json
-{
-  "plugin_registry": {
-    ".csv": "adapt.plugins.csv_plugin.CsvPlugin",
-    ".xlsx": "adapt.plugins.excel_plugin.ExcelPlugin",
-    ".parquet": "adapt.plugins.parquet_plugin.ParquetPlugin",
-    ".html": "adapt.plugins.html_plugin.HtmlPlugin",
-    ".md": "adapt.plugins.markdown_plugin.MarkdownPlugin",
-    ".py": "adapt.plugins.python_plugin.PythonPlugin"
-  },
-  "tls_cert": null,
-  "tls_key": null,
-  "secure_cookies": false,
-  "logging": {
-    "version": 1,
-    "root": {
-      "level": "INFO",
-      "handlers": ["console"]
-    },
-    "handlers": {
-      "console": {
-        "class": "logging.StreamHandler",
-        "formatter": "default",
-        "stream": "ext://sys.stdout"
-      }
-    },
-    "formatters": {
-      "default": {
-        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-      }
-    }
-  }
-}
-```
+- `plugin_registry`
+- `host`
+- `port`
+- `tls_cert`
+- `tls_key`
+- `secure_cookies`
+- `readonly`
+- `debug`
+- `logging`
 
-Configuration precedence: CLI arguments > `conf.json` > defaults.
+Environment overrides:
 
-## TLS/HTTPS Setup
+- `ADAPT_HOST`
+- `ADAPT_PORT`
+- `ADAPT_READONLY`
+- `ADAPT_DEBUG`
 
-To enable HTTPS:
+Effective precedence for serve behavior:
 
-1. Obtain or generate TLS certificates
-2. Configure in `conf.json` or via CLI:
+1. Defaults
+2. `conf.json`
+3. Environment variables
+4. `adapt serve` CLI arguments
 
-```json
-{
-  "tls_cert": "/path/to/certificate.pem",
-  "tls_key": "/path/to/private-key.pem",
-  "secure_cookies": true
-}
-```
-
-Or via CLI:
+## TLS Setup
 
 ```bash
 adapt serve . --tls-cert /path/to/cert.pem --tls-key /path/to/key.pem
 ```
 
-## Directory Structure
+## Created Directory Structure
 
-Adapt creates a `.adapt/` directory in your document root for companion files:
+Adapt creates a `.adapt/` directory in docroot:
 
-```
+```text
 your-data-directory/
 ├── data.csv
-├── document.md
-├── .adapt/
-│   ├── conf.json          # Configuration file
-│   ├── adapt.db           # SQLite database (auth, cache, locks)
-│   ├── data.schema.json   # Inferred schema for data.csv
-│   ├── data.index.html    # Generated UI template for data.csv
-│   └── data.db            # Additional metadata if needed
+└── .adapt/
+    ├── conf.json
+    ├── adapt.db
+    ├── data.schema.json
+    └── data.index.html
 ```
 
-## Troubleshooting Installation
-
-### Common Issues
-
-1. **Port already in use**: Use `--port` to specify a different port
-2. **Permission denied**: Ensure write access to the document root
-3. **Import errors**: Verify Python version and pip installation
-4. **Database errors**: Delete `.adapt/adapt.db` and restart
-
-### Verifying Installation
-
-Run the check command to verify everything is working:
+## Verify Installation
 
 ```bash
 adapt check .
 ```
-
-This will:
-- Initialize the database
-- Check configuration
-- List discovered resources
-- Report any issues
 
 [Previous](overview) | [Next](quick_start) | [Index](index)

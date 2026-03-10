@@ -54,6 +54,7 @@ def test_admin_flow(client):
     users = response.json()
     assert len(users) >= 1
     assert users[0]["username"] == "admin"
+    assert "password_hash" not in users[0]
     
     # 4. Create user
     new_user = {"username": "testuser", "password": "password", "is_superuser": False}
@@ -62,6 +63,7 @@ def test_admin_flow(client):
     data = response.json()
     assert data["username"] == "testuser"
     assert data["is_superuser"] is False
+    assert "password_hash" not in data
     
     # 5. Delete user
     user_id = data["id"]
@@ -98,6 +100,7 @@ def test_group_flow(client):
     data = response.json()
     assert len(data["users"]) == 1
     assert data["users"][0]["username"] == "member"
+    assert "password_hash" not in data["users"][0]
     
     # Remove Member
     response = client.delete(f"/admin/groups/{group_id}/users/{user_id}")
@@ -111,6 +114,22 @@ def test_group_flow(client):
     # Delete Group
     response = client.delete(f"/admin/groups/{group_id}")
     assert response.status_code == 200
+
+
+def test_login_next_open_redirect_blocked(client):
+    """Unsafe absolute next URLs should be blocked and replaced by root path."""
+    response = client.get("/auth/login?next=https://evil.example", follow_redirects=False)
+    assert response.status_code == 200
+    assert "sanitizeNextPath" in response.text
+
+
+def test_unauth_redirect_uses_safe_next(client):
+    """Unauthenticated HTML redirects should keep a relative next path only."""
+    response = client.get("/admin/users", headers={"Accept": "text/html"}, follow_redirects=False)
+    assert response.status_code == 302
+    location = response.headers["location"]
+    assert location.startswith("/auth/login?next=")
+    assert "http" not in location
 
 def test_permission_flow(client):
     # Login

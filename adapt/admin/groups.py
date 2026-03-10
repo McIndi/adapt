@@ -7,7 +7,7 @@ from ..auth import require_superuser
 from ..storage import User, Group, UserGroup, get_db_session
 from ..audit import log_action
 from . import router
-from .models import GroupCreate, GroupRead
+from .models import GroupCreate, GroupReadSafe, GroupUserRead
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def list_groups(
     logger.debug("Listed %d groups with query params", len(result))
     return result
 
-@router.get("/groups/{group_id}", response_model=GroupRead)
+@router.get("/groups/{group_id}", response_model=GroupReadSafe)
 def get_group(group_id: int, db: Session = Depends(get_db_session), user = Depends(require_superuser)):
     """Get a group by ID, including its users."""
     group = db.get(Group, group_id)
@@ -72,11 +72,20 @@ def get_group(group_id: int, db: Session = Depends(get_db_session), user = Depen
     users = db.exec(stmt).all()
     
     logger.debug("Retrieved group %s with %d users", group.name, len(users))
-    return GroupRead(
+    return GroupReadSafe(
         id=group.id,
         name=group.name,
         description=group.description,
-        users=users
+        users=[
+            GroupUserRead(
+                id=u.id,
+                username=u.username,
+                is_active=u.is_active,
+                is_superuser=u.is_superuser,
+                created_at=u.created_at,
+            )
+            for u in users
+        ]
     )
 
 @router.post("/groups", response_model=Group)

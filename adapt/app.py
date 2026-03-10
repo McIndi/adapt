@@ -7,6 +7,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from datetime import datetime, timezone
 import time
 from .auth.dependencies import get_current_user
@@ -23,6 +24,14 @@ from .storage import User, DBSession, init_database
 from .locks import LockManager
 from .utils import build_accessible_ui_links
 from . import cache
+from .security import (
+    apply_security_headers,
+    build_allowed_hosts,
+    generate_csrf_token,
+    set_csrf_cookie,
+    validate_csrf,
+)
+from .security_urls import login_redirect_url
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +85,11 @@ def create_app(config: AdaptConfig) -> FastAPI:
     app = FastAPI(title="Adapt", version=config.version, lifespan=lifespan)
     app.state.config = config
     app.state.db_engine = engine
+    app.state.use_tls = bool(config.tls_cert and config.tls_key)
+
+    allowed_hosts = build_allowed_hosts(config.host)
+    if allowed_hosts != ["*"]:
+        app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
     
     # Initialize lock manager
     lock_manager = LockManager(engine)
@@ -99,6 +113,30 @@ def create_app(config: AdaptConfig) -> FastAPI:
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
     # Authentication middleware
+    @app.middleware("http")
+    async def security_middleware(request: Request, call_next):
+        """Middleware for CSRF validation and response security headers."""
+        csrf_token = request.cookies.get("adapt_csrf")
+        should_set_csrf_cookie = False
+        if not csrf_token:
+            csrf_token = generate_csrf_token()
+            should_set_csrf_cookie = True
+
+        request.state.csrf_token = csrf_token
+
+        csrf_error = await validate_csrf(request)
+        if csrf_error:
+            apply_security_headers(csrf_error, use_tls=request.app.state.use_tls)
+            if should_set_csrf_cookie:
+                set_csrf_cookie(csrf_error, csrf_token, secure=request.app.state.config.secure_cookies)
+            return csrf_error
+
+        response = await call_next(request)
+        apply_security_headers(response, use_tls=request.app.state.use_tls)
+        if should_set_csrf_cookie:
+            set_csrf_cookie(response, csrf_token, secure=request.app.state.config.secure_cookies)
+        return response
+
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
         """Middleware to handle user authentication via session cookies."""
@@ -175,7 +213,7 @@ def create_app(config: AdaptConfig) -> FastAPI:
         if not user:
             # Redirect to login if not authenticated
             logger.debug("Unauthenticated access to media gallery, redirecting to login")
-            return RedirectResponse(url=f"/auth/login?next=/ui/media", status_code=302)
+            return RedirectResponse(url=login_redirect_url("/ui/media"), status_code=302)
         
         media_resources = [r for r in request.app.state.resources if r.resource_type == "media"]
         media_items = []
@@ -245,7 +283,7 @@ def create_app(config: AdaptConfig) -> FastAPI:
             accept = request.headers.get("accept", "")
             if "text/html" in accept:
                 logger.debug("Redirecting unauthenticated request to login for %s", request.url)
-                return RedirectResponse(url=f"/auth/login?next={request.url}", status_code=302)
+                return RedirectResponse(url=login_redirect_url(request.url.path), status_code=302)
         
         logger.warning("HTTP exception %d: %s for request %s", exc.status_code, exc.detail, request.url)
         return JSONResponse(

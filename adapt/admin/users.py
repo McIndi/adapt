@@ -7,11 +7,11 @@ from ..auth import require_superuser, hash_password
 from ..storage import User, get_db_session
 from ..audit import log_action
 from . import router
-from .models import UserCreate
+from .models import UserCreate, UserPublic
 
 logger = logging.getLogger(__name__)
 
-@router.get("/users", response_model=List[User])
+@router.get("/users", response_model=List[UserPublic])
 def list_users(
     db: Session = Depends(get_db_session),
     limit: int = Query(None, ge=1, le=1000),
@@ -59,9 +59,18 @@ def list_users(
             result.append(u)
     
     logger.debug("Listed %d users with query params", len(result))
-    return result
+    return [
+        UserPublic(
+            id=u.id,
+            username=u.username,
+            is_active=u.is_active,
+            is_superuser=u.is_superuser,
+            created_at=u.created_at,
+        )
+        for u in result
+    ]
 
-@router.post("/users", response_model=User)
+@router.post("/users", response_model=UserPublic)
 def create_user(user_data: UserCreate, request: Request, db: Session = Depends(get_db_session), user: User = Depends(require_superuser)):
     """Create a new user."""
     # Check if server is in read-only mode
@@ -87,7 +96,13 @@ def create_user(user_data: UserCreate, request: Request, db: Session = Depends(g
     log_action(request, "create_user", "user", f"Created user {new_user.username}", user.id)
     logger.info("Created user %s", new_user.username)
     
-    return new_user
+    return UserPublic(
+        id=new_user.id,
+        username=new_user.username,
+        is_active=new_user.is_active,
+        is_superuser=new_user.is_superuser,
+        created_at=new_user.created_at,
+    )
 
 @router.delete("/users/{user_id}")
 def delete_user(user_id: int, request: Request, db: Session = Depends(get_db_session), user: User = Depends(require_superuser)):

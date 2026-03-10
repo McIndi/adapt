@@ -58,6 +58,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const usernameDisplay = document.getElementById('current-username');
 
+    function csrfHeaders(headers = {}) {
+        const token = window.getAdaptCsrfToken ? window.getAdaptCsrfToken() : '';
+        if (!token) {
+            return headers;
+        }
+        return { ...headers, 'X-CSRF-Token': token };
+    }
+
     // Init
     init();
 
@@ -201,7 +209,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function createUser(data) {
         const res = await fetch('/admin/users', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(data)
         });
         if (!res.ok) {
@@ -212,7 +220,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function deleteUser(id) {
         if (!confirm('Are you sure you want to delete this user?')) return;
-        const res = await fetch(`/admin/users/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/admin/users/${id}`, { method: 'DELETE', headers: csrfHeaders() });
         if (res.ok) loadUsers();
         else alert('Failed to delete user');
     }
@@ -226,12 +234,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function releaseLock(id) {
-        const res = await fetch(`/admin/locks/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/admin/locks/${id}`, { method: 'DELETE', headers: csrfHeaders() });
         if (res.ok) loadLocks();
     }
 
     async function cleanLocks() {
-        const res = await fetch('/admin/locks/clean', { method: 'POST' });
+        const res = await fetch('/admin/locks/clean', { method: 'POST', headers: csrfHeaders() });
         if (res.ok) {
             const data = await res.json();
             alert(`Released ${data.released} stale locks`);
@@ -250,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function createGroup(data) {
         const res = await fetch('/admin/groups', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(data)
         });
         if (!res.ok) {
@@ -261,7 +269,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function deleteGroup(id) {
         if (!confirm('Are you sure you want to delete this group?')) return;
-        const res = await fetch(`/admin/groups/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/admin/groups/${id}`, { method: 'DELETE', headers: csrfHeaders() });
         if (res.ok) loadGroups();
         else alert('Failed to delete group');
     }
@@ -277,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function createPermission(data) {
         const res = await fetch('/admin/permissions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(data)
         });
         if (!res.ok) {
@@ -288,7 +296,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function deletePermission(id) {
         if (!confirm('Are you sure you want to delete this permission?')) return;
-        const res = await fetch(`/admin/permissions/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/admin/permissions/${id}`, { method: 'DELETE', headers: csrfHeaders() });
         if (res.ok) loadPermissions();
         else alert('Failed to delete permission');
     }
@@ -311,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function addGroupMember(groupId, userId) {
-        const res = await fetch(`/admin/groups/${groupId}/users/${userId}`, { method: 'POST' });
+        const res = await fetch(`/admin/groups/${groupId}/users/${userId}`, { method: 'POST', headers: csrfHeaders() });
         if (res.ok) {
             openMembersModal(groupId); // Reload
         } else {
@@ -321,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function removeGroupMember(groupId, userId) {
         if (!confirm('Remove user from group?')) return;
-        const res = await fetch(`/admin/groups/${groupId}/users/${userId}`, { method: 'DELETE' });
+        const res = await fetch(`/admin/groups/${groupId}/users/${userId}`, { method: 'DELETE', headers: csrfHeaders() });
         if (res.ok) {
             openMembersModal(groupId); // Reload
         } else {
@@ -352,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function addGroupPermission(groupId, permId) {
-        const res = await fetch(`/admin/groups/${groupId}/permissions/${permId}`, { method: 'POST' });
+        const res = await fetch(`/admin/groups/${groupId}/permissions/${permId}`, { method: 'POST', headers: csrfHeaders() });
         if (res.ok) {
             openGroupPermissionsModal(groupId); // Reload
         } else {
@@ -362,7 +370,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function removeGroupPermission(groupId, permId) {
         if (!confirm('Remove permission from group?')) return;
-        const res = await fetch(`/admin/groups/${groupId}/permissions/${permId}`, { method: 'DELETE' });
+        const res = await fetch(`/admin/groups/${groupId}/permissions/${permId}`, { method: 'DELETE', headers: csrfHeaders() });
         if (res.ok) {
             openGroupPermissionsModal(groupId); // Reload
         } else {
@@ -371,7 +379,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function logout() {
-        await fetch('/auth/logout', { method: 'POST' });
+        await fetch('/auth/logout', { method: 'POST', headers: csrfHeaders() });
         window.location.reload();
     }
 
@@ -516,7 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function createApiKey(data) {
         const res = await fetch('/admin/api-keys', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify(data)
         });
         if (res.ok) {
@@ -533,7 +541,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function revokeApiKey(id) {
         if (!confirm('Revoke this API Key?')) return;
-        const res = await fetch(`/admin/api-keys/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/admin/api-keys/${id}`, { method: 'DELETE', headers: csrfHeaders() });
         if (res.ok) loadApiKeys();
         else alert('Failed to revoke API Key');
     }
@@ -621,7 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function deleteCacheEntry(key, resource) {
-        const res = await fetch(`/admin/cache/${encodeURIComponent(key)}?resource=${encodeURIComponent(resource)}`, { method: 'DELETE' });
+        const res = await fetch(`/admin/cache/${encodeURIComponent(key)}?resource=${encodeURIComponent(resource)}`, { method: 'DELETE', headers: csrfHeaders() });
         if (res.ok) loadCache();
         else alert('Failed to delete cache entry');
     }
@@ -630,7 +638,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function clearCache() {
         if (!confirm('Are you sure you want to clear all cache?')) return;
-        const res = await fetch('/admin/cache', { method: 'DELETE' });
+        const res = await fetch('/admin/cache', { method: 'DELETE', headers: csrfHeaders() });
         if (res.ok) loadCache();
         else alert('Failed to clear cache');
     }
