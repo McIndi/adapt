@@ -33,13 +33,13 @@ pip install adapt-server
 Add an admin user:
 
 ```
-adapt addsuperuser --username admin examples
+adapt addsuperuser --username admin /path/to/docroot
 ```
 
 Serve your directory:
 
 ```
-adapt serve ./examples
+adapt serve /path/to/docroot
 ```
 
 Runs on Uvicorn with TLS, RBAC, caching, locking, and adaptive routing.
