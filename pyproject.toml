@@ -38,6 +38,8 @@ dependencies = [
     "moviepy",
     "pillow",
     "python-json-logger",
+    "pandas",
+    "fastparquet",
 ]
 
 [project.optional-dependencies]
