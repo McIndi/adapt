@@ -48,10 +48,12 @@
                     {% endif %}
                 </ul>
             </div>
+            {% if user %}
             <form class="d-flex" method="post" action="/auth/logout">
                 <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token if request and request.state else '' }}">
                 <button class="btn btn-outline-light" type="submit">Logout</button>
             </form>
+            {% endif %}
         </div>
     </nav>
     <div class="container-fluid mt-4">

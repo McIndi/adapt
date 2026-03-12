@@ -147,6 +147,18 @@ def test_root_landing_page_html(superuser_client):
     assert response.status_code == 200
     assert "Welcome to Adapt" in response.text
     assert "Your Accessible Resources" in response.text
+    assert "Logout" in response.text
+    assert "Sign in to access this Adapt workspace" not in response.text
+
+
+def test_root_landing_page_html_anonymous(client):
+    """Test that anonymous browser requests receive the sign-in landing page."""
+    response = client.get("/", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "Sign in to access this Adapt workspace" in response.text
+    assert "contact your Adapt administrator" in response.text
+    assert "Logout" not in response.text
+    assert "Your Accessible Resources" not in response.text
 
 
 def test_root_api_json(superuser_client):
