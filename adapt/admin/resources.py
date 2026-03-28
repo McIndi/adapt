@@ -2,8 +2,10 @@ from pathlib import Path
 from typing import List
 import logging
 
+from .. import cache
 from ..config import AdaptConfig
 from ..discovery import discover_resources
+from ..storage import init_database
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +16,9 @@ def list_resources(root: Path) -> List[str]:
     Returns a list of resource identifiers including sub-namespaces for multi-resource files.
     """
     config = AdaptConfig(root=root)
+    config.load_from_file()
+    init_database(config.db_path)
+    cache.configure(str(config.db_path))
     resources = discover_resources(root, config)
     resource_names = []
     for r in resources:

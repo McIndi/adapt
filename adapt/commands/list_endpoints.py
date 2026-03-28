@@ -1,8 +1,10 @@
 from pathlib import Path
 import logging
 
+from .. import cache
 from ..config import AdaptConfig
 from ..discovery import discover_resources
+from ..storage import init_database
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,9 @@ def run_list_endpoints(root: Path) -> None:
         None
     """
     config = AdaptConfig(root=root)
+    config.load_from_file()
+    init_database(config.db_path)
+    cache.configure(str(config.db_path))
     resources = discover_resources(config.root, config)
     if not resources:
         logger.info("No resources discovered in root %s", config.root)

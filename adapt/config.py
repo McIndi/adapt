@@ -9,6 +9,7 @@ import json
 import os
 import sys
 
+from adapt import __version__ as adapt_version
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +32,7 @@ class AdaptConfig:
     port: int = 8000
     readonly: bool = False
     debug: bool = False
-    version: str = "0.1.0"
+    version: str = adapt_version
     tls_cert: Path | None = None
     tls_key: Path | None = None
     secure_cookies: bool = False  # Whether to set secure flag on cookies
