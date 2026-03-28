@@ -5,7 +5,7 @@ from adapt.config import AdaptConfig
 from adapt.app import create_app
 from adapt.storage import init_database
 from adapt.locks import LockManager
-from adapt.storage import User
+from adapt.storage import Group, GroupPermission, Permission, User, UserGroup
 from adapt.auth.password import hash_password
 from adapt.auth.session import create_session, SESSION_COOKIE
 from adapt.security import CSRF_COOKIE_NAME, generate_csrf_token
@@ -170,6 +170,70 @@ def test_root_api_json(superuser_client):
     assert isinstance(data["resources"], list)
 
 
+def test_root_api_json_anonymous_hides_resources(client):
+    """Test that anonymous JSON discovery does not enumerate protected resources."""
+    response = client.get("/", headers={"Accept": "application/json"})
+    assert response.status_code == 200
+    assert response.json() == {"resources": []}
+
+
+def test_openapi_json_hides_resource_paths_for_anonymous(client):
+    """Test that anonymous OpenAPI responses omit protected resource routes."""
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+
+    paths = response.json()["paths"]
+    assert "/auth/login" in paths
+    assert all(not path.startswith("/api/data") for path in paths)
+    assert all(not path.startswith("/schema/data") for path in paths)
+    assert all(not path.startswith("/ui/data") for path in paths)
+
+
+def test_openapi_json_only_shows_permitted_resource_paths(tmp_path):
+    """Test that OpenAPI only includes resource routes the authenticated user may read."""
+    (tmp_path / "data.csv").write_text("name,age\nAlice,30\nBob,25")
+    (tmp_path / "secret.csv").write_text("name,age\nMallory,99")
+
+    app = create_app(AdaptConfig(root=tmp_path))
+    client = TestClient(app)
+
+    with Session(app.state.db_engine) as db:
+        user = User(username="reader", password_hash=hash_password("pass"), is_superuser=False)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        permission = Permission(resource="data", action="read")
+        db.add(permission)
+        db.commit()
+        db.refresh(permission)
+
+        group = Group(name="readers")
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+
+        db.add(UserGroup(user_id=user.id, group_id=group.id))
+        db.add(GroupPermission(group_id=group.id, permission_id=permission.id))
+        db.commit()
+
+        token = create_session(db, user.id)
+
+    client.cookies.set(SESSION_COOKIE, token)
+
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+
+    paths = response.json()["paths"]
+    assert any(path.startswith("/api/data") for path in paths)
+    assert any(path.startswith("/schema/data") for path in paths)
+    assert any(path.startswith("/ui/data") for path in paths)
+    assert all(not path.startswith("/api/secret") for path in paths)
+    assert all(not path.startswith("/schema/secret") for path in paths)
+    assert all(not path.startswith("/ui/secret") for path in paths)
+    assert all(not path.startswith("/admin") for path in paths)
+
+
 def test_build_accessible_ui_links(app):
     """Test filtering of accessible UI links based on user permissions."""
     from adapt.utils import build_accessible_ui_links
@@ -197,12 +261,9 @@ def test_build_accessible_ui_links(app):
     
     request = MockRequest(app, resources)
     
-    # Test with no user (unauthenticated)
+    # Test with no user (unauthenticated) — no resources visible
     links = build_accessible_ui_links(request, None)
-    assert len(links) == 1
-    assert links[0]["name"] == "doc"
-    assert links[0]["url"] == "/doc"
-    assert links[0]["type"] == "markdown"
+    assert len(links) == 0
     
     # Test with user having permission
     with Session(app.state.db_engine) as db:
@@ -229,10 +290,10 @@ def test_build_accessible_ui_links(app):
         assert checker.has_permission(user, "data", "read") == True
 
         links = build_accessible_ui_links(request, user)
-        assert len(links) == 2  # markdown + permitted csv
+        assert len(links) == 1  # only the explicitly permitted csv
         names = [l["name"] for l in links]
-        assert "doc" in names
         assert "data" in names
+        assert "doc" not in names  # no explicit permission for the markdown resource
 
 
 def test_readonly_mode_read_operations(readonly_superuser_client):
@@ -281,5 +342,147 @@ def test_readonly_mode_ui_hides_buttons(readonly_superuser_client):
     # Should not contain edit/delete buttons
     assert "btn-warning" not in html  # Edit button class
     assert "btn-danger" not in html   # Delete button class
+
+
+# ---------------------------------------------------------------------------
+# Media gallery RBAC tests
+# ---------------------------------------------------------------------------
+
+def _make_app_with_media(tmp_path):
+    """Create an app with a fake media resource and return (app, namespace)."""
+    media_file = tmp_path / "track.mp3"
+    media_file.write_bytes(b"ID3" + b"\x00" * 128)  # minimal file, metadata extraction may warn
+    return create_app(AdaptConfig(root=tmp_path)), "track"
+
+
+def _add_user_with_media_permission(app, username, namespace):
+    """Create a regular user and grant them read permission to a media namespace."""
+    with Session(app.state.db_engine) as db:
+        user = User(username=username, password_hash=hash_password("pass"), is_superuser=False)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        perm = Permission(resource=namespace, action="read")
+        db.add(perm)
+        db.commit()
+        db.refresh(perm)
+
+        group = Group(name=f"{username}_group")
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+
+        db.add(UserGroup(user_id=user.id, group_id=group.id))
+        db.add(GroupPermission(group_id=group.id, permission_id=perm.id))
+        db.commit()
+
+        token = create_session(db, user.id)
+    return token
+
+
+def test_media_gallery_hides_items_without_permission(tmp_path):
+    """Authenticated user with no media permissions receives 403 from the gallery."""
+    app, _ = _make_app_with_media(tmp_path)
+    client = TestClient(app)
+
+    with Session(app.state.db_engine) as db:
+        user = User(username="noperm", password_hash=hash_password("pass"), is_superuser=False)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        token = create_session(db, user.id)
+
+    client.cookies.set(SESSION_COOKIE, token)
+    response = client.get("/ui/media", headers={"Accept": "text/html"}, follow_redirects=False)
+    assert response.status_code == 403
+
+
+def test_media_gallery_shows_permitted_items(tmp_path):
+    """Authenticated user with media permission sees that file in the gallery."""
+    app, namespace = _make_app_with_media(tmp_path)
+    client = TestClient(app)
+    token = _add_user_with_media_permission(app, "reader", namespace)
+
+    client.cookies.set(SESSION_COOKIE, token)
+    response = client.get("/ui/media", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "track.mp3" in response.text
+
+
+def test_media_gallery_shows_all_items_for_superuser(tmp_path):
+    """Superusers see the full media gallery without needing explicit permissions."""
+    app, _ = _make_app_with_media(tmp_path)
+
+    with Session(app.state.db_engine) as db:
+        admin = User(username="admin", password_hash=hash_password("admin"), is_superuser=True)
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+        token = create_session(db, admin.id)
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, token)
+    response = client.get("/ui/media", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "track.mp3" in response.text
+
+
+def test_root_nav_omits_media_gallery_without_permission(tmp_path):
+    """Landing page nav does not include the Media Gallery link when the user has no media perms."""
+    app, _ = _make_app_with_media(tmp_path)
+    client = TestClient(app)
+
+    with Session(app.state.db_engine) as db:
+        user = User(username="noperm2", password_hash=hash_password("pass"), is_superuser=False)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        token = create_session(db, user.id)
+
+    client.cookies.set(SESSION_COOKIE, token)
+    response = client.get("/", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "Media Gallery" not in response.text
+
+
+def test_root_nav_includes_media_gallery_with_permission(tmp_path):
+    """Landing page nav includes the Media Gallery link when the user has at least one media perm."""
+    app, namespace = _make_app_with_media(tmp_path)
+    client = TestClient(app)
+    token = _add_user_with_media_permission(app, "reader2", namespace)
+
+    client.cookies.set(SESSION_COOKIE, token)
+    response = client.get("/", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "Media Gallery" in response.text
+
+
+def test_openapi_hides_media_gallery_without_media_permission(tmp_path):
+    """OpenAPI schema omits /ui/media for users with no accessible media resources."""
+    app, _ = _make_app_with_media(tmp_path)
+    client = TestClient(app)
+
+    with Session(app.state.db_engine) as db:
+        user = User(username="noperm3", password_hash=hash_password("pass"), is_superuser=False)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        token = create_session(db, user.id)
+
+    client.cookies.set(SESSION_COOKIE, token)
+    paths = client.get("/openapi.json").json()["paths"]
+    assert "/ui/media" not in paths
+
+
+def test_openapi_includes_media_gallery_with_media_permission(tmp_path):
+    """OpenAPI schema includes /ui/media only for users with at least one media permission."""
+    app, namespace = _make_app_with_media(tmp_path)
+    client = TestClient(app)
+    token = _add_user_with_media_permission(app, "reader3", namespace)
+
+    client.cookies.set(SESSION_COOKIE, token)
+    paths = client.get("/openapi.json").json()["paths"]
+    assert "/ui/media" in paths
 
 

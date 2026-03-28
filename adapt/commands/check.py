@@ -4,6 +4,7 @@ import logging
 from ..config import AdaptConfig
 from ..discovery import discover_resources
 from ..storage import init_database
+from .. import cache
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ def run_check(root: Path) -> None:
     config = AdaptConfig(root=root)
     config.load_from_file()
     engine = init_database(config.db_path)
+    cache.configure(str(config.db_path))
     resources = discover_resources(config.root, config)
     count = len(resources)
     logger.info("Discovered %d dataset(s) in root %s", count, config.root)

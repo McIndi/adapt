@@ -63,20 +63,14 @@ def build_accessible_ui_links(request: Request, user: User | None) -> list[dict[
                 namespace = res.relative_path.with_suffix("").as_posix()
                 if "sub_namespace" in res.metadata:
                     namespace += f"/{res.metadata['sub_namespace']}"
+                if not checker.has_permission(user, namespace, "read"):
+                    continue
                 if res.resource_type in ("html", "markdown"):
-                    # Assume public
                     url = f"/{namespace}"
-                    accessible_resources.append({"name": namespace, "url": url, "type": res.resource_type})
-                elif checker.has_permission(user, namespace, "read"):
+                else:
                     url = f"/ui/{namespace}"
-                    accessible_resources.append({"name": namespace, "url": url, "type": res.resource_type})
-    else:
-        # For unauthenticated, show only public html/markdown
-        for res in resources:
-            if res.resource_type in ("html", "markdown"):
-                namespace = res.relative_path.with_suffix("").as_posix()
-                url = f"/{namespace}"
                 accessible_resources.append({"name": namespace, "url": url, "type": res.resource_type})
+    # Unauthenticated users see nothing — all resources require explicit permission.
     
     logger.debug("Built %d accessible UI links for user %s", len(accessible_resources), user.username if user else None)
     return accessible_resources

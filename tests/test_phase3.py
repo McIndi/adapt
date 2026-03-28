@@ -87,7 +87,8 @@ def test_api_key_lifecycle(client, db_session, superuser, auth_headers):
     # 5. Verify Key is gone
     db_session.expire_all()
     stored_key = db_session.get(APIKey, key_id)
-    assert stored_key is None
+    assert stored_key is not None
+    assert stored_key.is_active is False
     
     # 6. Try to use revoked key
     client.cookies.clear()
@@ -124,9 +125,13 @@ def test_audit_logging(client, db_session, superuser, auth_headers):
     # Logout
     cookies = response.cookies
     # Set cookies on client rather than passing per-request to avoid deprecation
-    client.cookies.clear()
     client.cookies.update(cookies)
-    response = client.post("/auth/logout", follow_redirects=False)
+    csrf_token = client.cookies.get("adapt_csrf")
+    response = client.post(
+        "/auth/logout",
+        headers={"X-CSRF-Token": csrf_token} if csrf_token else None,
+        follow_redirects=False,
+    )
     assert response.status_code == 302
     
     # Verify logout log

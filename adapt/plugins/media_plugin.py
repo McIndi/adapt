@@ -132,13 +132,11 @@ class MediaPlugin(Plugin):
         @router_ui.get("")
         def media_player(request: Request):
             """Serve the media player UI."""
-            from ..auth.dependencies import get_current_user
             from ..utils import build_accessible_ui_links
-            user = get_current_user(request)
-            if not user:
-                from fastapi.responses import RedirectResponse
-                return RedirectResponse(url=login_redirect_url(request.url.path), status_code=302)
-            
+            # Auth and permission are enforced by the route dependency injected in routes.py;
+            # request.state.user is populated by auth_middleware.
+            user = getattr(request.state, "user", None)
+
             media_url = f"/media/{descriptor.path.relative_to(request.app.state.config.root).as_posix()}"
             accessible_resources = build_accessible_ui_links(request, user)
             context = {
