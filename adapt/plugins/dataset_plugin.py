@@ -7,8 +7,10 @@ import logging
 
 from fastapi import Request
 from fastapi.routing import APIRouter
+from sqlmodel import Session
 
 from ..utils import build_ui_links
+from ..auth.dependencies import check_permission
 from .base import Plugin, ResourceDescriptor, PluginContext, ensure_file
 
 logger = logging.getLogger(__name__)
@@ -343,7 +345,18 @@ class DatasetPlugin(Plugin):
         @ui_router.get("/", response_class=HTMLResponse)
         def get_ui(request: Request):
             """Get the UI for the dataset."""
-            template_name, context = self.get_ui_template(descriptor, request.app.state.config.readonly)
+            # UI should be read-only when either the server is read-only or the user lacks write permission.
+            user = getattr(request.state, "user", None)
+            can_write = not request.app.state.config.readonly
+            if can_write and user is not None:
+                resource_namespace = request.url.path
+                if resource_namespace.startswith("/ui/"):
+                    resource_namespace = resource_namespace[len("/ui/"):]
+                resource_namespace = resource_namespace.strip("/")
+                with Session(request.app.state.db_engine) as db:
+                    can_write = check_permission(user, db, "write", resource_namespace)
+
+            template_name, context = self.get_ui_template(descriptor, readonly=not can_write)
             
             # Calculate API URL from UI URL
             # Assumes /ui/... -> /api/... mapping
@@ -362,7 +375,6 @@ class DatasetPlugin(Plugin):
             })
             
             # Add common navbar context
-            user = getattr(request.state, 'user', None)
             is_superuser = user and getattr(user, 'is_superuser', False)
             ui_links = build_ui_links(request)
             context.update({

@@ -110,6 +110,45 @@ def test_ui_load(superuser_client):
     assert "Alice" not in response.text 
     assert "name" in response.text 
 
+
+def test_ui_hides_write_controls_for_read_only_user(tmp_path):
+    """UI should hide add/edit/delete controls when user has read but not write permission."""
+    (tmp_path / "data.csv").write_text("name,age\nAlice,30\nBob,25")
+
+    app = create_app(AdaptConfig(root=tmp_path))
+    client = TestClient(app)
+
+    with Session(app.state.db_engine) as db:
+        user = User(username="reader_ui", password_hash=hash_password("pass"), is_superuser=False)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        permission = Permission(resource="data", action="read")
+        db.add(permission)
+        db.commit()
+        db.refresh(permission)
+
+        group = Group(name="ui_readers")
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+
+        db.add(UserGroup(user_id=user.id, group_id=group.id))
+        db.add(GroupPermission(group_id=group.id, permission_id=permission.id))
+        db.commit()
+
+        token = create_session(db, user.id)
+
+    client.cookies.set(SESSION_COOKIE, token)
+
+    response = client.get("/ui/data")
+    assert response.status_code == 200
+    assert "Add New Record" not in response.text
+    assert "<th>Actions</th>" not in response.text
+    assert "Edit</button>" not in response.text
+    assert "Delete</button>" not in response.text
+
 def test_api_create(superuser_client):
     new_row = {"name": "Charlie", "age": 35}
     response = superuser_client.post("/api/data", json={"action": "create", "data": [new_row]})
