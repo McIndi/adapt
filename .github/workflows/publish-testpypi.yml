@@ -9,9 +9,6 @@ permissions:
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/project/adapt-server/
     permissions:
       id-token: write
     steps:
