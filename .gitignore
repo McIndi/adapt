@@ -5,6 +5,7 @@ cookies.txt
 examples/.adapt/
 .adapt/
 .adapt.db
+.cindex/
 
 # Github provided Python.gitignore template below
 ##############################################################################
