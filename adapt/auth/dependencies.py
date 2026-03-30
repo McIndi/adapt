@@ -1,15 +1,17 @@
+"""adapt.auth.dependencies — FastAPI dependency functions for authentication and authorization."""
 from fastapi import Request, HTTPException, status, Depends
 from sqlmodel import Session, select
 import logging
 
 from ..storage import User, UserGroup, GroupPermission, Permission
+from .session import get_session
+from ..api_keys import verify_api_key
 
 logger = logging.getLogger(__name__)
 
 def get_current_user(request: Request) -> User | None:
     """Get the current authenticated user from session or API key."""
     # 1. Try Session Cookie
-    from .session import get_session
     token = request.cookies.get("adapt_session")
     if token:
         with Session(request.app.state.db_engine) as db:
@@ -23,7 +25,6 @@ def get_current_user(request: Request) -> User | None:
     # 2. Try API Key
     api_key_header = request.headers.get("X-API-Key")
     if api_key_header:
-        from ..api_keys import verify_api_key
         with Session(request.app.state.db_engine) as db:
             user = verify_api_key(db, api_key_header)
             if user:

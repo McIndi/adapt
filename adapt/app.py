@@ -1,27 +1,30 @@
+"""adapt.app — FastAPI application factory and middleware configuration."""
 from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.openapi.docs import get_swagger_ui_html, get_swagger_ui_oauth2_redirect_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.routing import APIRoute
-from datetime import datetime, timezone
-import time
-from .auth.dependencies import get_current_user
-_START_TIME = time.time()
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, select, delete
 from datetime import datetime, timezone
 
+from .auth import router as auth_router
+from .auth.dependencies import get_current_user
+from .auth.session import get_session
+from .admin import router as admin_router
 from .config import AdaptConfig
 from .discovery import discover_resources
+from .permissions import PermissionChecker
 from .routes import generate_routes
 from .storage import User, DBSession, init_database
 from .locks import LockManager
@@ -35,6 +38,8 @@ from .security import (
     validate_csrf,
 )
 from .security_urls import login_redirect_url
+
+_START_TIME = time.time()
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +211,23 @@ async def lifespan(app: FastAPI):
         logger.debug("Application shutdown: database engine disposed")
 
 
+def _init_infrastructure(config: AdaptConfig):
+    """Initialize database, cache, lock manager, and resource discovery.
+
+    Returns:
+        Tuple of (engine, lock_manager, resources).
+    """
+    engine = init_database(config.db_path)
+    cache.configure(str(config.db_path))
+    lock_manager = LockManager(engine)
+    cleaned = lock_manager.release_stale_locks(max_age_seconds=300)
+    if cleaned > 0:
+        logging.warning("Cleaned %d stale locks on startup", cleaned)
+    resources = discover_resources(config.root, config)
+    logger.debug("Discovered %d resources", len(resources))
+    return engine, lock_manager, resources
+
+
 def create_app(config: AdaptConfig) -> FastAPI:
     """Create and configure the FastAPI application.
 
@@ -216,28 +238,18 @@ def create_app(config: AdaptConfig) -> FastAPI:
         The configured FastAPI app instance.
     """
     logger.debug("Creating FastAPI app with config: %s", config)
-    engine = init_database(config.db_path)
-    cache.configure(str(config.db_path))
+    engine, lock_manager, resources = _init_infrastructure(config)
+
     app = FastAPI(title="Adapt", version=config.version, lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     app.state.config = config
     app.state.db_engine = engine
     app.state.use_tls = bool(config.tls_cert and config.tls_key)
+    app.state.lock_manager = lock_manager
+    app.state.resources = resources
 
     allowed_hosts = build_allowed_hosts(config.host)
     if allowed_hosts != ["*"]:
         app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
-    
-    # Initialize lock manager
-    lock_manager = LockManager(engine)
-    # Clean up stale locks from previous crash
-    cleaned = lock_manager.release_stale_locks(max_age_seconds=300)  # 5 minutes
-    if cleaned > 0:
-        logging.warning(f"Cleaned {cleaned} stale locks on startup")
-    app.state.lock_manager = lock_manager
-    
-    resources = discover_resources(config.root, config)
-    app.state.resources = resources
-    logger.debug("Discovered %d resources", len(resources))
 
     # Set up Jinja2 templates
     templates_dir = Path(__file__).parent / "templates"
@@ -276,8 +288,6 @@ def create_app(config: AdaptConfig) -> FastAPI:
     @app.middleware("http")
     async def auth_middleware(request: Request, call_next):
         """Middleware to handle user authentication via session cookies."""
-        from .auth.session import get_session
-        from sqlmodel import Session
         token = request.cookies.get("adapt_session")
         request.state.user = None
         if token:
@@ -295,11 +305,9 @@ def create_app(config: AdaptConfig) -> FastAPI:
         return response
 
     # Mount authentication routes
-    from .auth import router as auth_router
     app.include_router(auth_router, prefix="", tags=["auth"])
 
     # Mount admin routes
-    from .admin import router as admin_router
     app.include_router(admin_router)
 
     # Generate and mount routes
@@ -365,18 +373,15 @@ def create_app(config: AdaptConfig) -> FastAPI:
     @app.get("/ui/media")
     def media_gallery(request: Request):
         """Render the media gallery UI for authenticated users."""
-        from .auth.dependencies import get_current_user
         user = get_current_user(request)
         if not user:
-            # Redirect to login if not authenticated
             logger.debug("Unauthenticated access to media gallery, redirecting to login")
             return RedirectResponse(url=login_redirect_url("/ui/media"), status_code=302)
-        
+
         all_media = [r for r in request.app.state.resources if r.resource_type == "media"]
         if getattr(user, "is_superuser", False):
             permitted_media = all_media
         else:
-            from .permissions import PermissionChecker
             with Session(engine) as db:
                 checker = PermissionChecker(db)
                 permitted_media = [
@@ -384,7 +389,6 @@ def create_app(config: AdaptConfig) -> FastAPI:
                     if checker.has_permission(user, r.relative_path.with_suffix("").as_posix(), "read")
                 ]
         if not permitted_media and not getattr(user, "is_superuser", False):
-            from fastapi import HTTPException
             logger.warning("Permission denied for user %s: no accessible media resources", user.username)
             raise HTTPException(status_code=403, detail="No accessible media resources")
 
@@ -417,9 +421,6 @@ def create_app(config: AdaptConfig) -> FastAPI:
     @app.get("/")
     def root(request: Request):
         """Handle root requests, rendering HTML landing page or JSON API response."""
-        from .auth.dependencies import get_current_user
-        from .utils import build_accessible_ui_links
-        
         accept = request.headers.get("accept", "")
         if "text/html" in accept:
             # Render landing page
@@ -445,8 +446,6 @@ def create_app(config: AdaptConfig) -> FastAPI:
             return {"resources": resources}
 
     # Exception handler for auth redirects
-    from fastapi import HTTPException
-
     @app.exception_handler(HTTPException)
     async def auth_exception_handler(request: Request, exc: HTTPException):
         """Handle HTTP exceptions, redirecting to login for 401 errors in HTML requests."""

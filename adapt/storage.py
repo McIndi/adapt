@@ -1,3 +1,4 @@
+"""adapt.storage — SQLModel database models and engine initialization."""
 from __future__ import annotations
 
 import logging

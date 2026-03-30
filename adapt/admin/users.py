@@ -1,10 +1,13 @@
+import json
+import logging
+from typing import List
+
 from fastapi import Depends, HTTPException, Request, Query
 from sqlmodel import Session, select
-from typing import List
-import logging
 
 from ..auth import require_superuser, hash_password
 from ..storage import User, get_db_session
+from ..utils.query import apply_filter, apply_sort, apply_pagination
 from ..audit import log_action
 from . import router
 from .models import UserCreate, UserPublic
@@ -22,9 +25,6 @@ def list_users(
     user: User = Depends(require_superuser)
 ):
     """List all users with optional query parameters."""
-    from ..utils.query import apply_filter, apply_sort, apply_pagination
-    import json
-    
     query = select(User)
     users = db.exec(query).all()
     
@@ -75,7 +75,6 @@ def create_user(user_data: UserCreate, request: Request, db: Session = Depends(g
     """Create a new user."""
     # Check if server is in read-only mode
     if request.app.state.config.readonly:
-        from fastapi import HTTPException
         raise HTTPException(status_code=405, detail="Server is in read-only mode")
     
     existing = db.exec(select(User).where(User.username == user_data.username)).first()
@@ -109,7 +108,6 @@ def delete_user(user_id: int, request: Request, db: Session = Depends(get_db_ses
     """Delete a user by ID."""
     # Check if server is in read-only mode
     if request.app.state.config.readonly:
-        from fastapi import HTTPException
         raise HTTPException(status_code=405, detail="Server is in read-only mode")
     
     target = db.get(User, user_id)

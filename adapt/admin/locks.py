@@ -1,11 +1,14 @@
+import json
+import logging
+from typing import List
+
 from fastapi import Depends, HTTPException, Request, Query
 from sqlmodel import Session, select
-from typing import List
-import logging
 
 from ..auth import require_superuser
 from ..storage import LockRecord, get_db_session
 from ..locks import LockManager
+from ..utils.query import apply_filter, apply_sort, apply_pagination
 from ..audit import log_action
 from . import router
 
@@ -22,9 +25,6 @@ def list_locks(
     user = Depends(require_superuser)
 ):
     """List all active locks with optional query parameters."""
-    from ..utils.query import apply_filter, apply_sort, apply_pagination
-    import json
-    
     locks = db.exec(select(LockRecord)).all()
     
     # Convert to dicts for filtering/sorting

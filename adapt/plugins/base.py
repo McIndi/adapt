@@ -1,3 +1,4 @@
+"""adapt.plugins.base — Abstract plugin interface and shared plugin utilities."""
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

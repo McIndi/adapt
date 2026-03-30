@@ -1,3 +1,4 @@
+"""adapt.routes — Dynamic route generation from discovered resources and plugins."""
 from __future__ import annotations
 
 from fastapi import FastAPI, Request, Depends

@@ -1,15 +1,19 @@
 from __future__ import annotations
-from adapt.cache import get_cache, set_cache, invalidate_cache
 
+import json
+import logging
 from pathlib import Path
 from typing import Any, Sequence, Optional
-import logging
 
-from fastapi import Request
+from fastapi import Request, HTTPException
+from fastapi.responses import HTMLResponse
 from fastapi.routing import APIRouter
 from sqlmodel import Session
 
+from adapt.cache import get_cache, set_cache, invalidate_cache
+from ..models import QueryParams
 from ..utils import build_ui_links
+from ..utils.query import apply_filter, apply_sort, apply_pagination
 from ..auth.dependencies import check_permission
 from .base import Plugin, ResourceDescriptor, PluginContext, ensure_file
 
@@ -80,7 +84,6 @@ class DatasetPlugin(Plugin):
             logger.debug("Using cached schema for %s", resource.path)
             return cached
         if resource.schema_path and resource.schema_path.exists():
-            import json
             with resource.schema_path.open() as f:
                 schema = json.load(f)
         else:
@@ -120,7 +123,6 @@ class DatasetPlugin(Plugin):
         
         # Apply query parameters if provided
         if query_params:
-            from ..utils.query import apply_filter, apply_sort, apply_pagination
             if query_params.filter:
                 rows = apply_filter(rows, query_params.filter)
             if query_params.sort:
@@ -154,8 +156,6 @@ class DatasetPlugin(Plugin):
 
     def write(self, resource: ResourceDescriptor, data: Any, request: Request, context: PluginContext) -> dict[str, Any]:
         """Write data to the resource, handling create/update/delete operations."""
-        from fastapi import HTTPException
-        
         # Check if server is in read-only mode
         if context.readonly:
             raise HTTPException(status_code=405, detail="Server is in read-only mode")
@@ -263,9 +263,6 @@ class DatasetPlugin(Plugin):
     def get_route_configs(self, descriptor: ResourceDescriptor) -> list[tuple[str, APIRouter]]:
         """Return route configs for dataset: api, schema, ui."""
         logger.debug("Generating route configs for %s", descriptor.path)
-        from fastapi import Request
-        from fastapi.responses import HTMLResponse
-
         configs = []
         # API routes
         api_router = APIRouter()
@@ -279,8 +276,6 @@ class DatasetPlugin(Plugin):
             filter: str = None
         ):
             """Read all data from the dataset with query parameters."""
-            from ..models import QueryParams
-            import json
             query_params = QueryParams(
                 limit=limit,
                 offset=offset,
@@ -301,7 +296,6 @@ class DatasetPlugin(Plugin):
                 lock_manager=request.app.state.lock_manager
             )
             if context.readonly:
-                from fastapi import HTTPException
                 raise HTTPException(status_code=405, detail="Server is in read-only mode")
             return self.write(descriptor, data, request, context)
         @api_router.patch("/")
@@ -314,7 +308,6 @@ class DatasetPlugin(Plugin):
                 lock_manager=request.app.state.lock_manager
             )
             if context.readonly:
-                from fastapi import HTTPException
                 raise HTTPException(status_code=405, detail="Server is in read-only mode")
             return self.write(descriptor, data, request, context)
         @api_router.delete("/")
@@ -327,7 +320,6 @@ class DatasetPlugin(Plugin):
                 lock_manager=request.app.state.lock_manager
             )
             if context.readonly:
-                from fastapi import HTTPException
                 raise HTTPException(status_code=405, detail="Server is in read-only mode")
             return self.write(descriptor, data, request, context)
         configs.append(("api", api_router))
@@ -416,8 +408,6 @@ class DatasetPlugin(Plugin):
     def generate_companion_files(self, descriptor: ResourceDescriptor) -> None:
         """Generate companion files for dataset resources."""
         logger.debug(f"Generating companion files for {descriptor.path}")
-        import json
-
         # Generate schema.json
         if descriptor.schema_path:
             schema = self.schema(descriptor)

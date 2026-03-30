@@ -1,9 +1,10 @@
+"""adapt.api_keys — API key generation, verification, and lifecycle helpers."""
 from __future__ import annotations
 
 import logging
 import secrets
 import hashlib
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
 from fastapi import Request, HTTPException, Security
 from fastapi.security import APIKeyHeader
@@ -59,6 +60,55 @@ def verify_api_key(db: Session, raw_key: str) -> User | None:
     
     logger.info(f"API key verified successfully for user {api_key.user_id}")
     return db.get(User, api_key.user_id)
+
+def create_api_key_record(
+    db: Session,
+    user_id: int,
+    description: str | None,
+    expires_in_days: int | None,
+) -> tuple[str, APIKey]:
+    """Create and persist an API key. Returns (raw_key, api_key).
+
+    Raises ValueError if expires_in_days exceeds 365.
+    """
+    if expires_in_days is not None and expires_in_days > 365:
+        raise ValueError("Expiration cannot exceed 1 year (365 days)")
+    expires_at = None
+    if expires_in_days is not None:
+        expires_at = datetime.now(tz=timezone.utc) + timedelta(days=expires_in_days)
+    raw_key, key_hash = generate_api_key()
+    api_key = APIKey(
+        user_id=user_id,
+        key_hash=key_hash,
+        description=description,
+        expires_at=expires_at,
+        created_at=datetime.now(tz=timezone.utc),
+        is_active=True,
+    )
+    db.add(api_key)
+    db.commit()
+    db.refresh(api_key)
+    return raw_key, api_key
+
+
+def revoke_api_key_record(
+    db: Session,
+    key_id: int,
+    *,
+    owner_id: int | None = None,
+) -> APIKey | None:
+    """Set an API key inactive. If owner_id is given, enforces ownership.
+
+    Returns the key on success, None if not found or ownership mismatch.
+    """
+    api_key = db.get(APIKey, key_id)
+    if not api_key or (owner_id is not None and api_key.user_id != owner_id):
+        return None
+    api_key.is_active = False
+    db.add(api_key)
+    db.commit()
+    return api_key
+
 
 def get_user_from_api_key(
     request: Request, 

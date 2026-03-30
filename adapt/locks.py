@@ -1,3 +1,4 @@
+"""adapt.locks — File-level lock manager using the LockRecord database table."""
 from __future__ import annotations
 
 import logging

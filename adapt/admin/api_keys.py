@@ -1,13 +1,14 @@
+import json
+import logging
+from typing import List
+
 from fastapi import Depends, HTTPException, Request, Query
 from sqlalchemy import asc, desc
 from sqlmodel import Session, select
-from typing import List
-from datetime import datetime, timedelta, timezone
-import logging
 
 from ..auth import require_superuser
 from ..storage import User, APIKey, get_db_session
-from ..api_keys import generate_api_key
+from ..api_keys import create_api_key_record, revoke_api_key_record
 from ..audit import log_action
 from . import router
 from .models import APIKeyCreate
@@ -27,8 +28,6 @@ def list_api_keys(
     user = Depends(require_superuser)
 ):
     """List all API keys in the system with optional query parameters."""
-    import json
-
     stmt = select(APIKey)
 
     if user_id is not None:
@@ -73,28 +72,15 @@ def create_api_key(key_data: APIKeyCreate, request: Request, db: Session = Depen
     if not target_user:
         logger.warning("Attempted to create API key for non-existent user %d", key_data.user_id)
         raise HTTPException(status_code=404, detail="User not found")
-        
-    raw_key, key_hash = generate_api_key()
-    
-    expires_at = None
-    if key_data.expires_in_days is not None:
-        if key_data.expires_in_days > 365:
-            raise HTTPException(status_code=400, detail="Expiration cannot exceed 1 year (365 days)")
-        expires_at = datetime.now(tz=timezone.utc) + timedelta(days=key_data.expires_in_days)
-        
-    api_key = APIKey(
-        user_id=key_data.user_id,
-        key_hash=key_hash,
-        description=key_data.description,
-        expires_at=expires_at
-    )
-    db.add(api_key)
-    db.commit()
-    db.refresh(api_key)
-    
+
+    try:
+        raw_key, api_key = create_api_key_record(db, key_data.user_id, key_data.description, key_data.expires_in_days)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
     log_action(request, "create_api_key", "apikey", f"Created API key for user {target_user.username}", user.id)
     logger.info("Created API key %d for user %s", api_key.id, target_user.username)
-    
+
     # Return the raw key only once!
     return {
         "id": api_key.id,
@@ -108,16 +94,12 @@ def create_api_key(key_data: APIKeyCreate, request: Request, db: Session = Depen
 @router.delete("/api-keys/{key_id}")
 def revoke_api_key(key_id: int, request: Request, db: Session = Depends(get_db_session), user = Depends(require_superuser)):
     """Revoke an API key by ID."""
-    api_key = db.get(APIKey, key_id)
+    api_key = revoke_api_key_record(db, key_id)
     if not api_key:
         logger.warning("Attempted to revoke non-existent API key %d", key_id)
         raise HTTPException(status_code=404, detail="API Key not found")
-        
-    api_key.is_active = False
-    db.add(api_key)
-    db.commit()
-    
+
     log_action(request, "revoke_api_key", "apikey", f"Revoked API key {key_id}", user.id)
     logger.info("Revoked API key %d", key_id)
-    
+
     return {"success": True}

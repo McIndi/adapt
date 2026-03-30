@@ -119,33 +119,53 @@ class AdaptConfig:
         """Load configuration from DOCROOT/.adapt/conf.json, creating it with defaults if missing."""
         conf_path = self.root / ".adapt" / "conf.json"
         (self.root / ".adapt").mkdir(parents=True, exist_ok=True)
-        if not conf_path.exists():
-            defaults = {
-                "plugin_registry": self.plugin_registry.copy(),
-                "host": self.host,
-                "port": self.port,
-                "tls_cert": str(self.tls_cert) if self.tls_cert else None,
-                "tls_key": str(self.tls_key) if self.tls_key else None,
-                "secure_cookies": self.secure_cookies,
-                "readonly": self.readonly,
-                "debug": self.debug,
-                "logging": self.logging.copy(),
-            }
-            with conf_path.open('w') as f:
-                json.dump(defaults, f, indent=2)
+        self._ensure_config_file(conf_path)
+        data = self._read_config_file(conf_path)
+        self._validate_config(data, conf_path)
+        self._apply_file_config(data)
+        self._apply_env_overrides()
+        if self.debug:
+            self.logging.setdefault("root", {})
+            self.logging["root"]["level"] = "DEBUG"
+
+    def _ensure_config_file(self, conf_path: Path) -> None:
+        """Write conf.json with current defaults if it does not yet exist."""
+        if conf_path.exists():
+            return
+        defaults = {
+            "plugin_registry": self.plugin_registry.copy(),
+            "host": self.host,
+            "port": self.port,
+            "tls_cert": str(self.tls_cert) if self.tls_cert else None,
+            "tls_key": str(self.tls_key) if self.tls_key else None,
+            "secure_cookies": self.secure_cookies,
+            "readonly": self.readonly,
+            "debug": self.debug,
+            "logging": self.logging.copy(),
+        }
+        with conf_path.open("w") as f:
+            json.dump(defaults, f, indent=2)
+
+    def _read_config_file(self, conf_path: Path) -> dict:
+        """Read and JSON-parse conf.json, exiting on parse error."""
         try:
             with conf_path.open() as f:
-                data = json.load(f)
+                return json.load(f)
         except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in {conf_path}: {e}")
+            logger.error("Invalid JSON in %s: %s", conf_path, e)
             sys.exit(1)
-        # Validate keys
-        allowed_keys = {"plugin_registry", "host", "port", "tls_cert", "tls_key", "secure_cookies", "readonly", "debug", "logging"}
+
+    def _validate_config(self, data: dict, conf_path: Path) -> None:
+        """Validate all keys and types in the loaded config dict, exiting on error."""
+        allowed_keys = {
+            "plugin_registry", "host", "port", "tls_cert", "tls_key",
+            "secure_cookies", "readonly", "debug", "logging",
+        }
         for key in data:
             if key not in allowed_keys:
-                logger.error(f"Unknown key in {conf_path}: {key}")
+                logger.error("Unknown key in %s: %s", conf_path, key)
                 sys.exit(1)
-        # Validate types
+
         if "plugin_registry" in data:
             if not isinstance(data["plugin_registry"], dict):
                 logger.error("plugin_registry must be a dict")
@@ -154,15 +174,14 @@ class AdaptConfig:
                 if not isinstance(ext, str) or not isinstance(path, str):
                     logger.error("plugin_registry values must be str: str")
                     sys.exit(1)
-        if "host" in data:
-            if not isinstance(data["host"], str):
-                logger.error("host must be str")
-                sys.exit(1)
+        if "host" in data and not isinstance(data["host"], str):
+            logger.error("host must be str")
+            sys.exit(1)
         if "port" in data:
             if not isinstance(data["port"], int):
                 logger.error("port must be int")
                 sys.exit(1)
-            if data["port"] < 1 or data["port"] > 65535:
+            if not (1 <= data["port"] <= 65535):
                 logger.error("port must be between 1 and 65535")
                 sys.exit(1)
         if "tls_cert" in data and data["tls_cert"] is not None:
@@ -173,23 +192,16 @@ class AdaptConfig:
             if not isinstance(data["tls_key"], str):
                 logger.error("tls_key must be str or null")
                 sys.exit(1)
-        if "secure_cookies" in data:
-            if not isinstance(data["secure_cookies"], bool):
-                logger.error("secure_cookies must be bool")
+        for bool_key in ("secure_cookies", "readonly", "debug"):
+            if bool_key in data and not isinstance(data[bool_key], bool):
+                logger.error("%s must be bool", bool_key)
                 sys.exit(1)
-        if "readonly" in data:
-            if not isinstance(data["readonly"], bool):
-                logger.error("readonly must be bool")
-                sys.exit(1)
-        if "debug" in data:
-            if not isinstance(data["debug"], bool):
-                logger.error("debug must be bool")
-                sys.exit(1)
-        if "logging" in data:
-            if not isinstance(data["logging"], dict):
-                logger.error("logging must be a dict")
-                sys.exit(1)
-        # Merge
+        if "logging" in data and not isinstance(data["logging"], dict):
+            logger.error("logging must be a dict")
+            sys.exit(1)
+
+    def _apply_file_config(self, data: dict) -> None:
+        """Merge validated file config dict into this instance."""
         if "plugin_registry" in data:
             self.plugin_registry.update(data["plugin_registry"])
         if "host" in data:
@@ -209,6 +221,8 @@ class AdaptConfig:
         if "logging" in data:
             self.logging.update(data["logging"])
 
+    def _apply_env_overrides(self) -> None:
+        """Apply ADAPT_* environment variable overrides to this instance."""
         if "ADAPT_HOST" in os.environ:
             self.host = os.environ["ADAPT_HOST"]
         if "ADAPT_PORT" in os.environ:
@@ -217,7 +231,7 @@ class AdaptConfig:
             except ValueError:
                 logger.error("ADAPT_PORT must be an integer")
                 sys.exit(1)
-            if port < 1 or port > 65535:
+            if not (1 <= port <= 65535):
                 logger.error("ADAPT_PORT must be between 1 and 65535")
                 sys.exit(1)
             self.port = port
@@ -225,7 +239,3 @@ class AdaptConfig:
             self.readonly = self._parse_env_bool(os.environ["ADAPT_READONLY"], "ADAPT_READONLY")
         if "ADAPT_DEBUG" in os.environ:
             self.debug = self._parse_env_bool(os.environ["ADAPT_DEBUG"], "ADAPT_DEBUG")
-
-        if self.debug:
-            self.logging.setdefault("root", {})
-            self.logging["root"]["level"] = "DEBUG"

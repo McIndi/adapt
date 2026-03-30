@@ -1,3 +1,4 @@
+"""adapt.security — CSRF protection, security headers, and allowed-host helpers."""
 from __future__ import annotations
 
 import secrets

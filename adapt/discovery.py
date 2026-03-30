@@ -1,3 +1,4 @@
+"""adapt.discovery — Resource discovery: scanning the document root for supported files."""
 from __future__ import annotations
 
 import logging
@@ -49,21 +50,6 @@ def should_ignore(path: Path) -> bool:
             return True
 
     return False
-
-
-def ensure_file(path: Path, content: str) -> None:
-    """Ensure a file exists with the given content.
-
-    Args:
-        path: The file path.
-        content: The content to write if the file doesn't exist.
-    """
-    if path.exists():
-        logger.debug(f"File already exists: {path}")
-        return
-    logger.debug(f"Creating file: {path}")
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(content, encoding="utf-8")
 
 
 def discover_resources(root: Path, config: AdaptConfig) -> list[DatasetResource]:
