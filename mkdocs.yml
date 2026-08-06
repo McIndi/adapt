@@ -1,0 +1,66 @@
+site_name: Adapt
+site_description: Documentation for the Adapt file-backed FastAPI server
+site_url: https://mcindi.github.io/adapt/
+repo_url: https://github.com/McIndi/adapt
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - tools/docs/generate_rest_api_reference.py
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            docstring_options:
+              warn_missing_types: false
+
+markdown_extensions:
+  - admonition
+
+nav:
+  - Overview: index.md
+  - Documentation Contract: documentation-contract.md
+  - User Manual:
+      - Overview: manual/index.md
+      - Product Overview: manual/overview.md
+      - Installation: manual/installation.md
+      - Quick Start: manual/quick_start.md
+      - User Guide: manual/user_guide.md
+      - API Guide: manual/api_reference.md
+      - Admin Guide: manual/admin_guide.md
+      - Security: manual/security.md
+      - MCP Guide: manual/mcp_guide.md
+      - Configuration: manual/configuration.md
+      - Plugin Development: manual/plugin_development.md
+      - Architecture: manual/architecture.md
+      - Troubleshooting: manual/troubleshooting.md
+      - Known Limitations: manual/known_limitations.md
+  - Reference:
+      - Overview: reference/index.md
+      - REST API: reference/rest-api.md
+      - OpenAPI Schema: reference/openapi.json
+      - Python API: reference/python-api.md
+  - Implementation Spec:
+      - Overview: spec/README.md
+      - 01 Overview: spec/01_overview.md
+      - 02 Auth and Security: spec/02_auth_security.md
+      - 03 Core Engine: spec/03_core_engine.md
+      - 04 Plugins: spec/04_plugins.md
+      - 05 API and UI: spec/05_api_and_ui.md
+      - 06 CLI and Config: spec/06_cli_config.md

@@ -16,5 +16,10 @@ documented behavior.
 - Record implementation defects as limitations. Do not promise behavior that
   is known not to work.
 
-This contract currently covers content accuracy and link repair. Documentation
-site generation and deployment automation are outside its scope.
+This contract also covers documentation build and publish behavior:
+
+- Hosted docs are built with MkDocs from this repository.
+- Generated API reference content is produced from an app built against an
+  empty document root so published docs represent the common Adapt surface.
+- Runtime API docs on a live instance remain request-aware and
+  permission-aware, and may include additional discovered-resource routes.

@@ -27,5 +27,5 @@ specifications, not a roadmap or a promise of future behavior.
 
 Unimplemented ideas are labeled **Future work**. Known implementation defects
 are documented as limitations instead of being described as working behavior.
-See the [documentation contract](../README.md) for the maintenance rules and
+See the [documentation contract](../documentation-contract.md) for the maintenance rules and
 scope.

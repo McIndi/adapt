@@ -42,6 +42,21 @@ User API key endpoints (for the currently authenticated user):
 
 Default local URL: `http://localhost:8000`
 
+## Hosted vs Runtime API Schema
+
+Adapt publishes two intentionally different OpenAPI views:
+
+- **Hosted documentation schema** (this docs site): generated from an app built
+  with an empty docroot, so it documents only the API surface shared by all
+  Adapt deployments.
+- **Runtime schema** (`GET /openapi.json` on a live server): generated per
+  request and filtered by authentication, permissions, and discovered resources
+  in that instance's docroot.
+
+Because runtime routes depend on discovered files and caller permissions, it is
+normal for a live instance to expose additional paths (or fewer visible paths)
+compared with the hosted docs.
+
 ## Generated Dataset APIs
 
 For dataset resources (CSV, Excel sheets, Parquet), Adapt generates routes under:

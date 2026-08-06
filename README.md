@@ -211,6 +211,21 @@ Detailed docs live under `docs/manual/`.
 - Plugin development: [docs/manual/plugin_development.md](docs/manual/plugin_development.md)
 - Known limitations: [docs/manual/known_limitations.md](docs/manual/known_limitations.md)
 
+Generated reference docs live under `docs/reference/` and are published via
+MkDocs and GitHub Pages.
+
+- REST API reference: generated from app routes with an empty docroot
+- OpenAPI schema artifact: generated from that same common-surface schema
+- Python API reference: generated from docstrings and signatures
+
+Build docs locally:
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pip install -r requirements-docs.txt
+mkdocs build --strict
+```
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

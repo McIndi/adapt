@@ -2,7 +2,7 @@
 
 > **Status:** This document describes the current implementation. The running
 > code on `main` wins if it differs. See the
-> [documentation contract](../README.md) and [user manual](../manual/index.md).
+> [documentation contract](../documentation-contract.md) and [user manual](../manual/index.md).
 
 ## 1. Plugin selection
 
