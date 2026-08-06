@@ -10,7 +10,7 @@ behind the current milestone. A milestone counts as reached only when
 every lane below reads `OK` for it.
 
 **Current milestone:** M0 — Walking Skeleton (closed). M1 (security floor
-closure) is next up in `MILESTONES.md`.
+closure) is done; M2 is next up in `MILESTONES.md`.
 
 ## Lane status
 
@@ -23,7 +23,7 @@ closure) is next up in `MILESTONES.md`.
 | 5 | Automation | OK | CI runs the test suite on every push/PR across a FastAPI version matrix, plus a new `dependency-audit` job (`pip-audit`) gating on findings. Release-triggered publish works. No lint job, no Dependabot, no backup/restore path yet — targeted by later milestones. |
 | 6 | Tests | OK | 319 tests, pytest, gated in CI on push and PR — well beyond M0's "one smoke test" bar. No coverage measurement/reporting configured yet — targeted by M4. |
 | 7 | Docs | OK | README plus a genuine Diataxis-ish manual (`docs/manual/*`), a disclaimed spec (`docs/spec/*`), and now `SECURITY.md`. No `CHANGELOG.md` yet — targeted by M4. |
-| 8 | Security | OK | M0 security floor is now closed: no hardcoded secrets, dependencies pinned/constrained, `pip-audit` runs in CI and gates on new findings, TLS/transport assumptions documented, and `SECURITY.md` added with a reporting path and threat-model note. One named, time-boxed exception is tracked openly (pillow CVEs blocked by moviepy's `pillow<12` pin — see `SECURITY.md`). SBOM/signing, secret-scanning, and SAST remain future work — targeted by M2 and beyond. |
+| 8 | Security | OK | M0 security floor is now closed: no hardcoded secrets, dependencies pinned/constrained, `pip-audit` runs clean in CI with zero ignored findings, TLS/transport assumptions documented, and `SECURITY.md` added with a reporting path and threat-model note. `moviepy` (which pinned `pillow<12`, blocking 18 known pillow CVEs from being fixed) was dropped in favor of `imageio`/`imageio-ffmpeg` for the one thing it was used for (video thumbnail frame extraction) — no accepted vulnerabilities remain. SBOM/signing, secret-scanning, and SAST remain future work — targeted by M2 and beyond. |
 
 Keep this table's shape stable (one row per lane, status in column 3) so
 it stays `grep`-able — see the rollup convention at the bottom.
@@ -38,11 +38,10 @@ Business logic, interface, tests, and docs had already run far ahead of a
       reads from `ADAPT_*` env vars).
 - [x] Dependencies are pinned/constrained — `pyproject.toml` deps now
       carry lower + upper version bounds (e.g. `fastapi>=0.115,<1.0`,
-      `pillow>=10.0,<12`) instead of being fully open-ended.
+      `pillow>=12.3,<13`) instead of being fully open-ended.
 - [x] CI runs one automated dependency-vulnerability scan —
       `.github/workflows/test.yml` gained a `dependency-audit` job
-      running `pip-audit`, gating on findings (with one named, documented
-      exception — see `SECURITY.md`).
+      running `pip-audit`, gating on findings, with zero ignored findings.
 - [x] Transport and TLS assumptions are stated somewhere findable —
       `docs/manual/security.md` and the README both document that secure
       cookies/HSTS require `--tls-cert`/`--tls-key`.

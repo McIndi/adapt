@@ -61,11 +61,17 @@ round intentionally targets security/packaging/automation/docs only).
 Result: done. `pyproject.toml` dependencies now carry lower + upper
 version bounds; `.github/workflows/test.yml` gained a `dependency-audit`
 job running `pip-audit` on every push/PR, gating on findings; `SECURITY.md`
-added at the repo root with a reporting path and a threat-model note. One
-finding — pillow CVEs fixed only in pillow>=12, currently blocked by
-moviepy 2.2.1's `pillow<12` pin — is tracked as an explicit, documented
-`--ignore-vuln` exception rather than silently suppressed; see
-`SECURITY.md` for the plan to revisit it. All eight lanes read `OK`.
+added at the repo root with a reporting path and a threat-model note.
+
+`pip-audit` initially found 18 known CVEs in `pillow==11.3.0`, all fixed
+only in pillow>=12, which `moviepy==2.2.1` blocked by pinning
+`pillow<12.0` — and no moviepy release back to 2.0.0 allows pillow>=11.
+Rather than suppress the findings, `moviepy` was dropped: it was only used
+in `adapt/plugins/media_plugin.py` to grab one video frame for a
+thumbnail, which `imageio` + `imageio-ffmpeg` (moviepy's own frame-decode
+dependencies) do directly without the conflicting pin. `pillow` is now
+pinned to `>=12.3,<13`, and `pip-audit` runs with zero ignored findings.
+All eight lanes read `OK`.
 
 ## M2 — Supply-chain hardening at publish time
 

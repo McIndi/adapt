@@ -67,12 +67,6 @@ Known, accepted gaps (tracked, not hidden):
   when `--tls-cert`/`--tls-key` are configured. Operators must supply TLS
   themselves (directly or via a reverse proxy) for any non-local
   deployment.
-- **Dependency scanning has a documented, time-boxed exception**:
-  `pillow`'s known CVEs (fixed in pillow >= 12) cannot currently be
-  resolved because `moviepy` 2.2.1 pins `pillow<12.0`. This is tracked as
-  explicit `--ignore-vuln` entries in `.github/workflows/test.yml`'s
-  `dependency-audit` job, not silently suppressed. Revisit when moviepy
-  relaxes its pillow pin.
 - **No SAST or secret-scanning in CI yet.** Planned for a future
   milestone (see `MILESTONES.md`).
 

@@ -50,27 +50,6 @@ jobs:
           python -m pip install -e ".[dev]"
 
       - name: Run pip-audit
-        # PYSEC-2026-* below are pillow CVEs fixed only in pillow>=12, which
-        # moviepy 2.2.1 blocks via its own `pillow<12.0` pin (see
-        # SECURITY.md). Remove these ignores once moviepy allows pillow 12.
         run: |
           python -m pip install pip-audit
-          python -m pip-audit \
-            --ignore-vuln PYSEC-2026-165 \
-            --ignore-vuln PYSEC-2026-2249 \
-            --ignore-vuln PYSEC-2026-2250 \
-            --ignore-vuln PYSEC-2026-2251 \
-            --ignore-vuln PYSEC-2026-2252 \
-            --ignore-vuln PYSEC-2026-2253 \
-            --ignore-vuln PYSEC-2026-2254 \
-            --ignore-vuln PYSEC-2026-2255 \
-            --ignore-vuln PYSEC-2026-2256 \
-            --ignore-vuln PYSEC-2026-2257 \
-            --ignore-vuln PYSEC-2026-2874 \
-            --ignore-vuln PYSEC-2026-3451 \
-            --ignore-vuln PYSEC-2026-3453 \
-            --ignore-vuln PYSEC-2026-3454 \
-            --ignore-vuln PYSEC-2026-3493 \
-            --ignore-vuln PYSEC-2026-3494 \
-            --ignore-vuln PYSEC-2026-3495 \
-            --ignore-vuln PYSEC-2026-3496
+          python -m pip-audit

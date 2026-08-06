@@ -12,9 +12,8 @@ from fastapi import Request
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.routing import APIRouter
 from mutagen import File
-from moviepy import VideoFileClip
+import imageio.v2 as imageio
 from PIL import Image
-import numpy as np
 
 from .base import Plugin, ResourceDescriptor, PluginContext, SearchDocument
 from ..security_urls import login_redirect_url
@@ -188,8 +187,12 @@ class MediaPlugin(Plugin):
             thumbnail_b64 = None
             if descriptor.metadata["media_type"] == "video":
                 try:
-                    clip = VideoFileClip(str(descriptor.path))
-                    frame = clip.get_frame(1)  # Get frame at 1 second
+                    reader = imageio.get_reader(str(descriptor.path), 'ffmpeg')
+                    try:
+                        fps = reader.get_meta_data().get('fps', 25)
+                        frame = reader.get_data(max(0, round(fps * 1)))  # Frame at 1 second
+                    finally:
+                        reader.close()
                     img = Image.fromarray(frame.astype('uint8'))
                     img.thumbnail((200, 200))
                     buffer = io.BytesIO()
