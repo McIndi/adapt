@@ -76,4 +76,4 @@ jobs:
       - name: Run pip-audit
         run: |
           python -m pip install pip-audit
-          python -m pip-audit
+          python -m pip_audit
