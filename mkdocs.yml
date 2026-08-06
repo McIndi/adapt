@@ -8,6 +8,7 @@ theme:
 
 plugins:
   - search
+  - mermaid2
   - gen-files:
       scripts:
         - tools/docs/generate_rest_api_reference.py
