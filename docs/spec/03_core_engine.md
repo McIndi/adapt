@@ -12,6 +12,32 @@ candidate plugin from `AdaptConfig.plugin_registry` by file extension. It then
 calls `Plugin.detect()`. Discovery loads the file only when this method returns
 `True`.
 
+```mermaid
+flowchart TD
+  A[Scan document root recursively]
+  B{Path excluded?<br/>hidden, .adapt, venv,<br/>__pycache__, node_modules}
+  C[Skip path]
+  D{Extension in<br/>plugin registry?}
+  E[Ignore file]
+  F[Select candidate plugin]
+  G["Run Plugin.detect(path)"]
+  H{Detect returned true?}
+  I[Do not load resource]
+  J[Load resource with plugin]
+  K[Create or refresh companion files]
+
+  A --> B
+  B -->|Yes| C
+  B -->|No| D
+  D -->|No| E
+  D -->|Yes| F
+  F --> G
+  G --> H
+  H -->|No| I
+  H -->|Yes| J
+  J --> K
+```
+
 The default registry contains these mappings:
 
 | Extensions | Plugin |
@@ -96,6 +122,19 @@ It writes JSON metadata to its assigned `ui_path`.
 The lock manager stores one unique lock record for each resource. Built-in
 dataset writes retry a held lock for up to 30 seconds. The retry delay starts
 at 0.1 seconds, doubles, and stops at 1 second.
+
+```mermaid
+flowchart TD
+  A[Start write operation] --> B[Attempt lock acquisition]
+  B --> C{Lock available?}
+  C -->|Yes| D[Write through temp file path]
+  C -->|No| E[Wait current delay]
+  E --> F[Increase delay: 0.1s, 0.2s, 0.4s, 0.8s, then 1.0s cap]
+  F --> G{Elapsed time > 30s?}
+  G -->|No| B
+  G -->|Yes| H[Raise lock timeout]
+  H --> I[Shared write path returns 409]
+```
 
 Locks expire after five minutes by default. Startup deletes locks older than
 five minutes. The Admin UI can list, delete, and clean lock records.

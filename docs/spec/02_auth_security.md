@@ -49,6 +49,39 @@ and `user` columns. The search subsystem creates its own SQLite tables.
 
 ### **Authentication Flow**
 
+```mermaid
+sequenceDiagram
+  actor Client
+  participant Adapt as Adapt API
+  participant Auth as Auth Resolver
+  participant DB as SQLModel DB
+  participant Perm as Permission Check
+
+  alt Session-based (browser)
+    Client->>Adapt: POST /auth/login (username, password)
+    Adapt->>DB: Verify PBKDF2 hash + user active
+    DB-->>Adapt: Valid user
+    Adapt->>DB: Create dbsession (7-day TTL)
+    Adapt-->>Client: Set adapt_session cookie (HttpOnly)
+    Client->>Adapt: Protected request with cookie
+    Adapt->>Auth: Resolve session cookie
+    Auth->>DB: Validate token + user active
+    Auth->>DB: Extend session expiration
+  else API key-based (programmatic)
+    Client->>Adapt: Protected request with X-API-Key
+    Adapt->>Auth: Resolve API key header
+    Auth->>Auth: Compute SHA-256 hash
+    Auth->>DB: Lookup active, unexpired key + user active
+    Auth->>DB: Update last_used_at
+  end
+
+  Auth->>Perm: Map method to read/write action
+  Perm->>DB: Query group permissions
+  DB-->>Perm: Permission match or none
+  Perm-->>Adapt: Allow or 403
+  Adapt-->>Client: Response
+```
+
 #### **Session-Based (Browser)**
 1. Submit credentials to `POST /auth/login`.
 2. The route compares the password with its PBKDF2 hash.
