@@ -200,6 +200,8 @@ root and restarts Adapt after a change.
 
 ## Documentation
 
+Read the full documentation at **https://www.mcindi.com/adapt/**.
+
 Detailed docs live under `docs/manual/`.
 
 - Manual index: [docs/manual/index.md](docs/manual/index.md)

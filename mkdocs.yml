@@ -1,6 +1,6 @@
 site_name: Adapt
 site_description: Documentation for the Adapt file-backed FastAPI server
-site_url: https://mcindi.github.io/adapt/
+site_url: https://www.mcindi.com/adapt/
 repo_url: https://github.com/McIndi/adapt
 
 theme:
