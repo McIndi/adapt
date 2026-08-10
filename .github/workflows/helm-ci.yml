@@ -71,6 +71,13 @@ jobs:
           --charts charts/adapt
           --helm-extra-set-args "--set image.repository=adapt-ci --set image.tag=${{ github.sha }} --set image.pullPolicy=IfNotPresent"
 
+      - name: Run ct install (persistence enabled)
+        run: >-
+          ct install
+          --config .ct.yaml
+          --charts charts/adapt
+          --helm-extra-set-args "--set image.repository=adapt-ci --set image.tag=${{ github.sha }} --set image.pullPolicy=IfNotPresent --set persistence.enabled=true --set persistence.storageClass=standard"
+
   version-increment:
     name: Chart version increment check
     runs-on: ubuntu-latest

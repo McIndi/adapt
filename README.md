@@ -198,6 +198,52 @@ adapt admin create-permissions <root> __all__
 Use `--reload` during development. Uvicorn watches Python files in the document
 root and restarts Adapt after a change.
 
+## Helm (Kubernetes)
+
+A Helm chart is included at `charts/adapt/`.
+
+**Ephemeral (default — data lost on pod restart):**
+
+```bash
+helm install adapt ./charts/adapt
+```
+
+**Dynamic persistent volume (cluster provisions storage automatically):**
+
+```bash
+helm install adapt ./charts/adapt \
+  --set persistence.enabled=true \
+  --set persistence.size=20Gi \
+  --set persistence.storageClass=standard
+```
+
+**Existing PVC (cluster admin creates the PVC beforehand):**
+
+```bash
+# Cluster admin creates the PVC first, e.g.:
+kubectl apply -f my-adapt-pvc.yaml
+
+helm install adapt ./charts/adapt \
+  --set persistence.enabled=true \
+  --set persistence.existingClaim=my-adapt-pvc
+```
+
+Key persistence values:
+
+| Value | Default | Description |
+|---|---|---|
+| `persistence.enabled` | `false` | Enable durable storage at `/data` |
+| `persistence.existingClaim` | `""` | Name of a pre-created PVC to mount |
+| `persistence.storageClass` | `""` | StorageClass name; cluster default if empty |
+| `persistence.accessModes` | `[ReadWriteOnce]` | PVC access modes |
+| `persistence.size` | `10Gi` | Storage request size |
+| `persistence.mountPath` | `""` (uses `adapt.rootPath`) | Mount path inside the container |
+| `persistence.annotations` | `{}` | Annotations added to the PVC |
+
+> **Admin responsibility:** the cluster admin must supply a matching StorageClass
+> and sufficient quota before enabling dynamic provisioning. For `ReadWriteOnce`
+> volumes, keep `replicaCount=1` (the default).
+
 ## Documentation
 
 Read the full documentation at **https://www.mcindi.com/adapt/**.

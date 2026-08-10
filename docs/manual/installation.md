@@ -185,3 +185,65 @@ count. It also reports TLS file problems and top-level route collisions.
 It does not migrate resource schemas or print each discovered resource.
 
 Manual navigation: [Previous: Overview](overview.md) | [Index](index.md) | [Next: Quick Start](quick_start.md)
+
+## Helm (Kubernetes)
+
+The Adapt Helm chart is at `charts/adapt/` in the repository.
+
+### Persistence modes
+
+By default, `/data` uses `emptyDir` and data is lost when the pod restarts.
+Enable persistence to keep document content and `.adapt/` state across restarts
+and rescheduling.
+
+**Ephemeral (default):**
+
+```bash
+helm install adapt ./charts/adapt
+```
+
+**Dynamic PVC — cluster provisions the volume automatically:**
+
+```bash
+helm install adapt ./charts/adapt \
+  --set persistence.enabled=true \
+  --set persistence.size=20Gi \
+  --set persistence.storageClass=standard
+```
+
+The chart creates a `PersistentVolumeClaim` named after the Helm release.
+If `storageClass` is empty, the cluster's default StorageClass is used.
+
+**Existing PVC — cluster admin creates the volume beforehand:**
+
+```bash
+helm install adapt ./charts/adapt \
+  --set persistence.enabled=true \
+  --set persistence.existingClaim=my-adapt-pvc
+```
+
+No `PersistentVolumeClaim` object is created by the chart in this mode.
+
+### Persistence values reference
+
+| Value | Default | Description |
+|---|---|---|
+| `persistence.enabled` | `false` | Enable durable storage |
+| `persistence.existingClaim` | `""` | Name of a pre-created PVC to mount |
+| `persistence.storageClass` | `""` | StorageClass name; cluster default if empty |
+| `persistence.accessModes` | `[ReadWriteOnce]` | PVC access modes |
+| `persistence.size` | `10Gi` | Storage request size |
+| `persistence.mountPath` | `""` (uses `adapt.rootPath`) | Mount path inside the container |
+| `persistence.annotations` | `{}` | Extra annotations on the PVC |
+
+### Admin prerequisites
+
+- Provide a StorageClass with sufficient quota before using dynamic mode.
+- For `ReadWriteOnce` volumes, keep `replicaCount=1` (the chart default).
+  Use an `RWX`-capable StorageClass and increase `replicaCount` only when the
+  storage driver supports concurrent writers.
+- Adapt reads and writes `.adapt/adapt.db` (SQLite). Two pods sharing an `RWO`
+  volume will cause write conflicts; `RWX` block volumes can cause corruption.
+  Network filesystems (NFS, CephFS, Azure Files) with correct locking are the
+  supported multi-replica path.
+

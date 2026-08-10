@@ -35,3 +35,33 @@ tests:
           content:
             secretRef:
               name: RELEASE-NAME-adapt-env
+  - it: uses emptyDir when persistence is disabled
+    set:
+      persistence.enabled: false
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].emptyDir
+          value: {}
+      - isNull:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim
+  - it: references dynamic PVC when persistence enabled without existingClaim
+    set:
+      persistence.enabled: true
+      persistence.existingClaim: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: RELEASE-NAME-adapt
+      - isNull:
+          path: spec.template.spec.volumes[0].emptyDir
+  - it: references existing PVC when existingClaim is set
+    set:
+      persistence.enabled: true
+      persistence.existingClaim: my-existing-pvc
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: my-existing-pvc
+      - isNull:
+          path: spec.template.spec.volumes[0].emptyDir
+

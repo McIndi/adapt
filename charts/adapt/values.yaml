@@ -78,6 +78,16 @@ adapt:
   rootPath: /data
   extraArgs: []
 
+persistence:
+  enabled: false
+  existingClaim: ""
+  storageClass: ""
+  accessModes:
+    - ReadWriteOnce
+  size: 10Gi
+  mountPath: ""
+  annotations: {}
+
 env: []
 
 secretEnv: []
