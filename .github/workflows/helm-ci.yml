@@ -1,0 +1,93 @@
+name: Helm CI
+
+on:
+  pull_request:
+    paths:
+      - charts/adapt/**
+      - Dockerfile
+      - .ct.yaml
+      - .github/workflows/helm-ci.yml
+  workflow_dispatch:
+
+jobs:
+  lint-and-unittest:
+    name: Helm lint and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install helm-unittest plugin
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.6.3
+
+      - name: Helm lint
+        run: helm lint charts/adapt
+
+      - name: Helm unittest
+        run: helm unittest charts/adapt
+
+  kind-install-smoke:
+    name: kind + ct install + helm test
+    runs-on: ubuntu-latest
+    needs: lint-and-unittest
+    strategy:
+      fail-fast: false
+      matrix:
+        kindNode:
+          - kindest/node:v1.31.2
+          - kindest/node:v1.32.0
+          - kindest/node:v1.33.0
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v4
+
+      - name: Setup chart-testing
+        uses: helm/chart-testing-action@v2.7.0
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.12.0
+        with:
+          cluster_name: chart-testing
+          node_image: ${{ matrix.kindNode }}
+
+      - name: Build app image
+        run: docker build -t adapt-ci:${{ github.sha }} .
+
+      - name: Load image into kind
+        run: kind load docker-image adapt-ci:${{ github.sha }} --name chart-testing
+
+      - name: Run ct install
+        run: >-
+          ct install
+          --config .ct.yaml
+          --charts charts/adapt
+          --helm-extra-set-args "--set image.repository=adapt-ci --set image.tag=${{ github.sha }} --set image.pullPolicy=IfNotPresent"
+
+  version-increment:
+    name: Chart version increment check
+    runs-on: ubuntu-latest
+    needs: lint-and-unittest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup chart-testing
+        uses: helm/chart-testing-action@v2.7.0
+
+      - name: Check chart version increment
+        run: >-
+          ct lint
+          --config .ct.yaml
+          --charts charts/adapt
+          --check-version-increment
+          --target-branch ${{ github.base_ref }}

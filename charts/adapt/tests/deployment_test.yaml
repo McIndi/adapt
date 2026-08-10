@@ -1,0 +1,37 @@
+suite: deployment
+templates:
+  - templates/deployment.yaml
+tests:
+  - it: renders expected container command and health probes
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command[0]
+          value: adapt
+      - equal:
+          path: spec.template.spec.containers[0].command[1]
+          value: serve
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /health
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /health
+  - it: wires optional config and secret env refs when configured
+    set:
+      env:
+        - name: ADAPT_DEBUG
+          value: "true"
+      secretEnv:
+        - name: ADAPT_ADMIN_PASSWORD
+          value: "example-secret"
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            configMapRef:
+              name: RELEASE-NAME-adapt-env
+      - contains:
+          path: spec.template.spec.containers[0].envFrom
+          content:
+            secretRef:
+              name: RELEASE-NAME-adapt-env

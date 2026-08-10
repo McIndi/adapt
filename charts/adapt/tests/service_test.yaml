@@ -1,0 +1,12 @@
+suite: service
+templates:
+  - templates/service.yaml
+tests:
+  - it: exposes the configured service port
+    asserts:
+      - equal:
+          path: spec.ports[0].port
+          value: 80
+      - equal:
+          path: spec.ports[0].targetPort
+          value: http
