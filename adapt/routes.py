@@ -55,6 +55,7 @@ def build_resource_registry(
             resource_type=resource.resource_type,
             schema_path=resource.schema_path,
             ui_path=resource.ui_path,
+            options_path=resource.options_path,
             metadata=resource.metadata,
         )
         entry = ResourceRegistryEntry(

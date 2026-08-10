@@ -27,6 +27,15 @@ class TestAdaptConfig:
             "readonly": False,
             "debug": False,
             "mcp_enabled": True,
+            "upload": {
+                "enabled": False,
+                "max_size_bytes": 10 * 1024 * 1024,
+                "allowed_extensions": [],
+                "denied_extensions": [],
+                "strict_mime_sniffing": False,
+                "allowed_mime_types": [],
+                "collision_policy": "overwrite",
+            },
             "logging": config.logging.copy(),
         }
         assert data == expected
@@ -43,6 +52,14 @@ class TestAdaptConfig:
             "tls_key": "/path/to/key.pem",
             "secure_cookies": True,
             "debug": True,
+            "upload": {
+                "enabled": True,
+                "max_size_bytes": 12345,
+                "allowed_extensions": [".txt"],
+                "strict_mime_sniffing": True,
+                "allowed_mime_types": ["text/plain"],
+                "collision_policy": "reject",
+            },
             "logging": {"root": {"level": "DEBUG"}},
         }
         with conf_path.open('w') as f:
@@ -58,6 +75,12 @@ class TestAdaptConfig:
         assert config.tls_key == Path("/path/to/key.pem")
         assert config.secure_cookies is True
         assert config.debug is True
+        assert config.upload["enabled"] is True
+        assert config.upload["max_size_bytes"] == 12345
+        assert config.upload["allowed_extensions"] == [".txt"]
+        assert config.upload["strict_mime_sniffing"] is True
+        assert config.upload["allowed_mime_types"] == ["text/plain"]
+        assert config.upload["collision_policy"] == "reject"
         assert config.logging["root"]["level"] == "DEBUG"
 
     def test_load_from_file_invalid_json(self, tmp_path, caplog):
@@ -177,6 +200,13 @@ class TestAdaptConfig:
         monkeypatch.setenv("ADAPT_PORT", "8123")
         monkeypatch.setenv("ADAPT_READONLY", "true")
         monkeypatch.setenv("ADAPT_DEBUG", "1")
+        monkeypatch.setenv("ADAPT_UPLOAD_ENABLED", "true")
+        monkeypatch.setenv("ADAPT_UPLOAD_MAX_SIZE_BYTES", "2048")
+        monkeypatch.setenv("ADAPT_UPLOAD_ALLOWED_EXTENSIONS", ".txt,.md")
+        monkeypatch.setenv("ADAPT_UPLOAD_DENIED_EXTENSIONS", ".exe,.dll")
+        monkeypatch.setenv("ADAPT_UPLOAD_STRICT_MIME_SNIFFING", "true")
+        monkeypatch.setenv("ADAPT_UPLOAD_ALLOWED_MIME_TYPES", "text/plain,application/json")
+        monkeypatch.setenv("ADAPT_UPLOAD_COLLISION_POLICY", "reject")
 
         config = AdaptConfig(root=tmp_path)
         config.load_from_file()
@@ -185,4 +215,11 @@ class TestAdaptConfig:
         assert config.port == 8123
         assert config.readonly is True
         assert config.debug is True
+        assert config.upload["enabled"] is True
+        assert config.upload["max_size_bytes"] == 2048
+        assert config.upload["allowed_extensions"] == [".txt", ".md"]
+        assert config.upload["denied_extensions"] == [".exe", ".dll"]
+        assert config.upload["strict_mime_sniffing"] is True
+        assert config.upload["allowed_mime_types"] == ["text/plain", "application/json"]
+        assert config.upload["collision_policy"] == "reject"
         assert config.logging["root"]["level"] == "DEBUG"

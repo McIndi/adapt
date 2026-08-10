@@ -24,6 +24,7 @@ Current accepted keys are:
 - `readonly`
 - `debug`
 - `mcp_enabled`
+- `upload`
 - `logging`
 
 Unknown keys are treated as configuration errors.
@@ -44,16 +45,42 @@ Environment variables currently supported:
 - `ADAPT_READONLY`
 - `ADAPT_DEBUG`
 - `ADAPT_MCP_ENABLED`
+- `ADAPT_UPLOAD_ENABLED`
+- `ADAPT_UPLOAD_MAX_SIZE_BYTES`
+- `ADAPT_UPLOAD_ALLOWED_EXTENSIONS`
+- `ADAPT_UPLOAD_DENIED_EXTENSIONS`
+- `ADAPT_UPLOAD_STRICT_MIME_SNIFFING`
+- `ADAPT_UPLOAD_ALLOWED_MIME_TYPES`
+- `ADAPT_UPLOAD_COLLISION_POLICY`
 
 `ADAPT_HOST` accepts a host string. `ADAPT_PORT` accepts an integer from 1
-through 65535. The Boolean variables are `ADAPT_READONLY`, `ADAPT_DEBUG`, and
-`ADAPT_MCP_ENABLED`. They accept these case-insensitive values:
+through 65535. The Boolean variables are `ADAPT_READONLY`, `ADAPT_DEBUG`,
+`ADAPT_MCP_ENABLED`, `ADAPT_UPLOAD_ENABLED`, and
+`ADAPT_UPLOAD_STRICT_MIME_SNIFFING`. They accept these case-insensitive values:
 
 - True: `1`, `true`, `yes`, `on`
 - False: `0`, `false`, `no`, `off`
 
 Adapt removes surrounding spaces before it reads a Boolean value. An invalid
 Boolean value or port stops configuration loading.
+
+Upload-specific environment values:
+
+- `ADAPT_UPLOAD_MAX_SIZE_BYTES` must be a positive integer.
+- `ADAPT_UPLOAD_ALLOWED_EXTENSIONS` accepts a comma-separated list such as `.txt,.md`.
+- `ADAPT_UPLOAD_DENIED_EXTENSIONS` accepts a comma-separated list such as `.exe,.dll`.
+- `ADAPT_UPLOAD_STRICT_MIME_SNIFFING` enables content sniff checks against
+  filename extension and optional MIME allowlist.
+- `ADAPT_UPLOAD_ALLOWED_MIME_TYPES` accepts a comma-separated list such as
+  `text/plain,application/json`.
+- `ADAPT_UPLOAD_COLLISION_POLICY` accepts `overwrite` or `reject`.
+
+Upload behavior defaults:
+
+- `upload.enabled` defaults to `false`, so the upload endpoint and landing-page
+  upload card stay disabled until you turn the feature on explicitly.
+- `upload.max_size_bytes` defaults to `10485760` (10 MiB).
+- `upload.collision_policy` defaults to `overwrite`.
 
 ## Example `conf.json`
 
@@ -64,6 +91,15 @@ Boolean value or port stops configuration loading.
   "readonly": false,
   "debug": false,
   "mcp_enabled": true,
+  "upload": {
+    "enabled": false,
+    "max_size_bytes": 10485760,
+    "allowed_extensions": [],
+    "denied_extensions": [],
+    "strict_mime_sniffing": false,
+    "allowed_mime_types": [],
+    "collision_policy": "overwrite"
+  },
   "tls_cert": null,
   "tls_key": null,
   "secure_cookies": false,

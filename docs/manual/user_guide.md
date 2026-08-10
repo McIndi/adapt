@@ -7,11 +7,18 @@ This guide explains day-to-day use of Adapt through its web UI and APIs.
 Visit `/` to see the landing page.
 
 For authenticated users, the page shows accessible UI links based on permissions.
+If upload support is enabled and the user has `write` permission on the
+document-root boundary, the page also shows an upload card that posts to
+`/api/uploads`.
 
 For unauthenticated users:
 
 - You can reach login at `/auth/login`.
 - Access to generated resource routes depends on authentication and permissions.
+
+Uploads require both authentication and explicit root-boundary write access.
+If the feature is disabled in config, the upload card is hidden and the API
+returns `403` for upload requests.
 
 ## Profile
 

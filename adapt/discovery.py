@@ -150,8 +150,66 @@ def discover_resources(root: Path, config: AdaptConfig) -> list[DatasetResource]
     return resources
 
 
+def discover_resource(path: Path, config: AdaptConfig) -> list[DatasetResource]:
+    """Discover a single file resource using the same pipeline as full discovery.
+
+    Upload handling uses this to refresh companion files, routes, and search
+    index entries for one newly written resource without rescanning the whole
+    document root.
+    """
+    root = config.root
+    if path.is_dir() or should_ignore(path):
+        return []
+
+    ext = path.suffix.lower()
+    if ext not in config.plugin_registry:
+        return []
+
+    plugin_cls = config.get_plugin_factory(ext)
+    plugin: Plugin = plugin_cls()
+
+    if not plugin.detect(path):
+        return []
+
+    loaded = plugin.load(path)
+    descriptors = [loaded] if isinstance(loaded, ResourceDescriptor) else loaded
+    resources: list[DatasetResource] = []
+    adapt_dir = root / ".adapt"
+
+    for descriptor in descriptors:
+        sub_namespace = descriptor.metadata.get("sub_namespace", "")
+        suffix = f".{sub_namespace}" if sub_namespace else ""
+        base_path = adapt_dir / path.relative_to(root)
+        schema_path = base_path.with_suffix(f"{suffix}.schema.json")
+        ui_path = base_path.with_suffix(f"{suffix}.index.html")
+        options_path = base_path.with_suffix(f"{suffix}.options.json")
+
+        descriptor.schema_path = schema_path
+        descriptor.ui_path = ui_path
+        descriptor.options_path = options_path
+        descriptor.metadata["options"] = read_resource_options(options_path)
+        plugin.apply_options(descriptor)
+        plugin.generate_companion_files(descriptor)
+
+        resources.append(
+            DatasetResource(
+                path=path,
+                relative_path=path.relative_to(root),
+                resource_type=descriptor.resource_type,
+                schema_path=schema_path,
+                ui_path=ui_path,
+                options_path=options_path,
+                plugin_name=plugin_cls.__name__,
+                metadata=descriptor.metadata,
+            )
+        )
+
+    return resources
+
+
 __all__ = [
     "DatasetResource",
     "discover_resources",
+    "discover_resource",
     "read_resource_options",
 ]

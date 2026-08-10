@@ -343,12 +343,15 @@ def test_dataset_mutations_create_audit_entries(
 
 def test_root_landing_page_html(superuser_client):
     """Test that root route returns HTML landing page for browsers."""
+    superuser_client.app.state.config.upload["enabled"] = True
     response = superuser_client.get("/", headers={"Accept": "text/html"})
     assert response.status_code == 200
     assert "Welcome to Adapt" in response.text
     assert "Your Accessible Resources" in response.text
     assert 'data-sortable-table' in response.text
     assert "Logout" in response.text
+    assert "Upload Files" in response.text
+    assert 'id="landing-upload-form"' in response.text
     assert "Sign in to access this Adapt workspace" not in response.text
 
 
@@ -360,6 +363,43 @@ def test_root_landing_page_html_anonymous(client):
     assert "contact your Adapt administrator" in response.text
     assert "Logout" not in response.text
     assert "Your Accessible Resources" not in response.text
+
+
+def test_root_landing_page_html_shows_upload_form_for_root_writer(app):
+    """Test that authenticated non-admin users with root write can see the upload surface."""
+    app.state.config.upload["enabled"] = True
+
+    with Session(app.state.db_engine) as db:
+        user = User(username="uploader", password_hash=hash_password("pass"), is_superuser=False)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        permission = Permission(resource="", action="write")
+        db.add(permission)
+        db.commit()
+        db.refresh(permission)
+
+        group = Group(name="uploaders")
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+
+        db.add(UserGroup(user_id=user.id, group_id=group.id))
+        db.add(GroupPermission(group_id=group.id, permission_id=permission.id))
+        db.commit()
+
+        token = create_session(db, user.id)
+
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, token)
+    client.cookies.set(CSRF_COOKIE_NAME, generate_csrf_token())
+
+    response = client.get("/", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "Upload Files" in response.text
+    assert 'id="landing-upload-form"' in response.text
+    assert "Document root" in response.text or "document root" in response.text
 
 
 def test_root_api_json(superuser_client):

@@ -69,6 +69,14 @@
             </svg>
             Cache
         </button>
+        <button class="nav-item" data-tab="uploads">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Uploads
+        </button>
 
     </nav>
     <div class="user-profile">
@@ -254,6 +262,45 @@
         </div>
     </div>
 
+    <div id="uploads-view" class="view">
+        <header class="view-header">
+            <h2>File Uploads</h2>
+            <button class="btn secondary" id="refresh-upload-audit-btn">Refresh Events</button>
+        </header>
+        <div class="card" style="padding: 1rem; margin-bottom: 1rem;">
+            <form id="upload-form">
+                <div class="form-group">
+                    <label for="upload-filename">Filename (saved at document root)</label>
+                    <input id="upload-filename" name="filename" type="text" required placeholder="example.txt">
+                </div>
+                <div class="form-group">
+                    <label for="upload-file">File</label>
+                    <input id="upload-file" name="file" type="file" required>
+                </div>
+                <footer>
+                    <button type="submit" class="btn primary">Upload File</button>
+                </footer>
+            </form>
+            <p id="upload-status" style="margin: 0.75rem 0 0; color: var(--text-secondary); font-size: 0.9rem;">Ready.</p>
+        </div>
+        <div class="card">
+            <table id="uploads-table" data-sortable-table>
+                <thead>
+                    <tr>
+                        <th data-sort-type="date">Time</th>
+                        <th data-sort-type="number">User ID</th>
+                        <th>Action</th>
+                        <th>Resource</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Populated by JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 </main>
 
 <!-- Modal for Add User -->
@@ -373,7 +420,10 @@
         <form id="add-permission-form">
             <div class="form-group">
                 <label>Resource</label>
-                <input type="text" name="resource" placeholder="e.g. 'documents'" required>
+                <input type="text" name="resource" placeholder="e.g. 'documents' or leave blank for document root">
+                <small style="color: var(--text-secondary); display: block; margin-top: 0.4rem;">
+                    Leave blank (or use <code>__root__</code>) to grant document-root permissions for uploads.
+                </small>
             </div>
             <div class="form-group">
                 <label>Action</label>

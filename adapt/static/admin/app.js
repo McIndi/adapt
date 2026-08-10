@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
         permissions: [],
         'api-keys': [],
         'audit-logs': [],
+        uploads: [],
         cache: [],
         currentUser: null
     };
@@ -19,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
         permissions: document.getElementById('permissions-view'),
         'api-keys': document.getElementById('api-keys-view'),
         'audit-logs': document.getElementById('audit-logs-view'),
+        uploads: document.getElementById('uploads-view'),
         cache: document.getElementById('cache-view')
     };
     const tables = {
@@ -28,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         permissions: document.querySelector('#permissions-table tbody'),
         'api-keys': document.querySelector('#api-keys-table tbody'),
         'audit-logs': document.querySelector('#audit-logs-table tbody'),
+        uploads: document.querySelector('#uploads-table tbody'),
         cache: document.querySelector('#cache-table tbody')
     };
     const modals = {
@@ -59,6 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentGroupId = null;
 
     const usernameDisplay = document.getElementById('current-username');
+    const uploadForm = document.getElementById('upload-form');
+    const uploadStatus = document.getElementById('upload-status');
 
     function refreshSortableTable(name) {
         if (!window.AdaptSortableTables) {
@@ -76,6 +81,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return headers;
         }
         return { ...headers, 'X-CSRF-Token': token };
+    }
+
+    function displayPermissionResource(resource) {
+        const normalized = typeof resource === 'string' ? resource.trim() : '';
+        return normalized ? normalized : '(document root)';
     }
 
     // Init
@@ -197,6 +207,11 @@ document.addEventListener('DOMContentLoaded', () => {
         // Actions
         document.getElementById('clean-locks-btn').addEventListener('click', cleanLocks);
         document.getElementById('logout-btn').addEventListener('click', logout);
+        document.getElementById('refresh-upload-audit-btn').addEventListener('click', loadUploadEvents);
+        uploadForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await submitUpload();
+        });
     }
 
     function switchTab(tab) {
@@ -216,7 +231,64 @@ document.addEventListener('DOMContentLoaded', () => {
         if (tab === 'permissions') loadPermissions();
         if (tab === 'api-keys') loadApiKeys();
         if (tab === 'audit-logs') loadAuditLogs();
+        if (tab === 'uploads') loadUploadEvents();
         if (tab === 'cache') loadCache();
+    }
+
+    async function submitUpload() {
+        uploadStatus.textContent = 'Uploading...';
+        uploadStatus.style.color = 'var(--text-secondary)';
+        const formData = new FormData(uploadForm);
+
+        const res = await fetch('/api/uploads', {
+            method: 'POST',
+            headers: csrfHeaders(),
+            body: formData
+        });
+
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            uploadStatus.textContent = payload.detail || 'Upload failed';
+            uploadStatus.style.color = 'var(--danger)';
+            await loadUploadEvents();
+            return;
+        }
+
+        uploadStatus.textContent = `Uploaded ${payload.path} (${payload.operation}, ${payload.size} bytes)`;
+        uploadStatus.style.color = 'var(--primary)';
+        uploadForm.reset();
+        await loadUploadEvents();
+    }
+
+    async function loadUploadEvents() {
+        const res = await fetch('/admin/audit-logs?limit=100');
+        if (!res.ok) {
+            uploadStatus.textContent = 'Unable to load upload events';
+            uploadStatus.style.color = 'var(--danger)';
+            return;
+        }
+        const logs = await res.json();
+        state.uploads = logs.filter((entry) => typeof entry.action === 'string' && entry.action.startsWith('upload_'));
+        renderUploadEvents();
+    }
+
+    function renderUploadEvents() {
+        if (!state.uploads || state.uploads.length === 0) {
+            tables.uploads.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-secondary)">No upload events yet</td></tr>';
+            refreshSortableTable('uploads');
+            return;
+        }
+
+        tables.uploads.innerHTML = state.uploads.map((entry) => `
+            <tr>
+                <td data-sort-value="${entry.timestamp}">${new Date(entry.timestamp).toLocaleString()}</td>
+                <td data-sort-value="${entry.user_id || ''}">${entry.user_id || '-'}</td>
+                <td>${entry.action}</td>
+                <td>${entry.resource || '-'}</td>
+                <td>${entry.details || '-'}</td>
+            </tr>
+        `).join('');
+        refreshSortableTable('uploads');
     }
 
     // API Calls
@@ -518,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tables.permissions.innerHTML = state.permissions.map(perm => `
             <tr>
                 <td>${perm.id}</td>
-                <td>${perm.resource}</td>
+                <td>${displayPermissionResource(perm.resource)}</td>
                 <td>${perm.action}</td>
                 <td>${perm.description || '-'}</td>
                 <td>
@@ -557,7 +629,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         groupPermissionsList.innerHTML = currentPerms.map(perm => `
             <li style="padding: 0.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;">
-                <span>${perm.action} on ${perm.resource}</span>
+                <span>${perm.action} on ${displayPermissionResource(perm.resource)}</span>
                 <button class="btn danger small" onclick="window.removeGroupPermission(${currentGroupId}, ${perm.id})">&times;</button>
             </li>
         `).join('');
@@ -568,7 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const availablePerms = state.permissions.filter(p => !currentIds.has(p.id));
 
         addGroupPermissionSelect.innerHTML = '<option value="">Select Permission...</option>' +
-            availablePerms.map(perm => `<option value="${perm.id}">${perm.action} on ${perm.resource}</option>`).join('');
+            availablePerms.map(perm => `<option value="${perm.id}">${perm.action} on ${displayPermissionResource(perm.resource)}</option>`).join('');
     }
 
     // Expose actions to window for inline onclicks
@@ -756,6 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
         originalSwitchTab(tab);
         if (tab === 'api-keys') loadApiKeys();
         if (tab === 'audit-logs') loadAuditLogs();
+        if (tab === 'uploads') loadUploadEvents();
         if (tab === 'cache') loadCache();
     };
 });

@@ -59,6 +59,8 @@ def test_admin_ui_renders_for_superuser(client):
     assert "<h1>Adapt</h1>" in response.text
     assert 'data-sortable-table' in response.text
     assert "Reset Password" in response.text
+    assert "File Uploads" in response.text
+    assert 'id="upload-form"' in response.text
 
 
 def test_profile_page_includes_sortable_table_support(client):
@@ -304,6 +306,34 @@ def test_permission_flow(client):
     # Delete Permission
     response = client.delete(f"/admin/permissions/{perm_id}")
     assert response.status_code == 200
+
+
+def test_permission_root_boundary_normalization(client):
+    client.post("/auth/login", data={"username": "admin", "password": "admin"})
+
+    root_write = client.post(
+        "/admin/permissions",
+        json={"resource": "__root__", "action": "write", "description": "Root write"},
+    )
+    assert root_write.status_code == 200
+    root_write_payload = root_write.json()
+    assert root_write_payload["resource"] == ""
+    assert root_write_payload["action"] == "write"
+
+    root_read = client.post(
+        "/admin/permissions",
+        json={"resource": "", "action": "read", "description": "Root read"},
+    )
+    assert root_read.status_code == 200
+    root_read_payload = root_read.json()
+    assert root_read_payload["resource"] == ""
+    assert root_read_payload["action"] == "read"
+
+    perms = client.get("/admin/permissions")
+    assert perms.status_code == 200
+    rows = perms.json()
+    assert any(p["id"] == root_write_payload["id"] and p["resource"] == "" for p in rows)
+    assert any(p["id"] == root_read_payload["id"] and p["resource"] == "" for p in rows)
 
 
 def test_admin_api_key_validation_and_soft_revoke(client, db_session):

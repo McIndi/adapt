@@ -21,6 +21,7 @@ from .auth import router as auth_router
 from .auth.dependencies import get_current_user
 from .auth.session import get_session
 from .admin import router as admin_router
+from .admin.uploads import router as uploads_router
 from .config import AdaptConfig
 from .discovery import discover_resources
 from .permissions import PermissionChecker
@@ -103,6 +104,23 @@ def _visible_resource_namespaces(request: Request, user: User | None) -> set[str
                 if checker.has_permission(user, namespace, "read"):
                     visible.add(namespace)
     return visible
+
+
+def _can_upload_root(request: Request, user: User | None) -> bool:
+    """Return whether the current user can upload to the document root."""
+    if not user:
+        return False
+
+    if getattr(user, "is_superuser", False):
+        return True
+
+    config = request.app.state.config
+    if config.readonly or not config.upload.get("enabled", False):
+        return False
+
+    with Session(request.app.state.db_engine) as db:
+        checker = PermissionChecker(db)
+        return checker.has_permission(user, "", "write")
 
 
 def _extract_resource_namespace(path: str, all_namespaces: set[str]) -> str | None:
@@ -373,6 +391,9 @@ def create_app(config: AdaptConfig) -> FastAPI:
     # Mount admin routes
     app.include_router(admin_router)
 
+    # Mount upload routes
+    app.include_router(uploads_router)
+
     # Mount search routes
     app.include_router(search_router)
 
@@ -513,6 +534,7 @@ def create_app(config: AdaptConfig) -> FastAPI:
             # Render landing page
             user = get_current_user(request)
             accessible_resources = build_accessible_ui_links(request, user)
+            can_upload_root = _can_upload_root(request, user)
             
             # Add media gallery link only if the user can access at least one media file
             if any(link["type"] == "media" for link in accessible_resources):
@@ -521,7 +543,8 @@ def create_app(config: AdaptConfig) -> FastAPI:
             context = {
                 "user": user,
                 "ui_links": accessible_resources,
-                "is_superuser": user and getattr(user, "is_superuser", False)
+                "is_superuser": user and getattr(user, "is_superuser", False),
+                "can_upload_root": can_upload_root,
             }
             logger.debug("Rendering HTML landing page for user %s", user.username if user else None)
             return request.app.state.templates.TemplateResponse(request, "landing.html", context)

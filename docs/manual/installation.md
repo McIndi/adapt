@@ -131,6 +131,7 @@ Supported top-level keys:
 - `readonly`
 - `debug`
 - `mcp_enabled`
+- `upload`
 - `logging`
 
 Environment overrides:
@@ -140,11 +141,29 @@ Environment overrides:
 - `ADAPT_READONLY`
 - `ADAPT_DEBUG`
 - `ADAPT_MCP_ENABLED`
+- `ADAPT_UPLOAD_ENABLED`
+- `ADAPT_UPLOAD_MAX_SIZE_BYTES`
+- `ADAPT_UPLOAD_ALLOWED_EXTENSIONS`
+- `ADAPT_UPLOAD_DENIED_EXTENSIONS`
+- `ADAPT_UPLOAD_STRICT_MIME_SNIFFING`
+- `ADAPT_UPLOAD_ALLOWED_MIME_TYPES`
+- `ADAPT_UPLOAD_COLLISION_POLICY`
 
 `ADAPT_PORT` accepts an integer from 1 through 65535. The three Boolean
 variables accept `1`, `true`, `yes`, or `on` for true. They accept `0`,
 `false`, `no`, or `off` for false. Boolean values are case-insensitive and can
 have surrounding spaces.
+
+Upload-specific variables:
+
+- `ADAPT_UPLOAD_ENABLED` uses the same Boolean parsing as other `ADAPT_*` flags.
+- `ADAPT_UPLOAD_MAX_SIZE_BYTES` must be a positive integer.
+- `ADAPT_UPLOAD_ALLOWED_EXTENSIONS` and `ADAPT_UPLOAD_DENIED_EXTENSIONS` use
+  comma-separated extension values such as `.txt,.md`.
+- `ADAPT_UPLOAD_STRICT_MIME_SNIFFING` enables MIME-sniff validation.
+- `ADAPT_UPLOAD_ALLOWED_MIME_TYPES` uses comma-separated MIME values such as
+  `text/plain,application/json`.
+- `ADAPT_UPLOAD_COLLISION_POLICY` accepts `overwrite` (default) or `reject`.
 
 Effective precedence for serve behavior:
 
@@ -152,6 +171,42 @@ Effective precedence for serve behavior:
 2. `conf.json`
 3. Environment variables
 4. `adapt serve` CLI arguments
+
+## Recommended Upload Constraints
+
+For production systems, keep uploads disabled unless you need browser or API
+based file ingestion. When enabled, set explicit limits and extension policy.
+
+Example `DOCROOT/.adapt/conf.json` snippet:
+
+```json
+{
+  "upload": {
+    "enabled": true,
+    "max_size_bytes": 10485760,
+    "allowed_extensions": [".csv", ".xlsx", ".md", ".txt"],
+    "denied_extensions": [".exe", ".dll", ".bat", ".ps1"],
+    "strict_mime_sniffing": true,
+    "allowed_mime_types": ["text/plain", "text/markdown", "application/json"],
+    "collision_policy": "overwrite"
+  }
+}
+```
+
+Operational guidance:
+
+- Prefer a restrictive `allowed_extensions` list over a broad denylist.
+- Set `max_size_bytes` based on expected file sizes and storage budget.
+- Keep `readonly=true` for maintenance windows to hard-block uploads.
+- Monitor upload audit actions (`upload_success`, `upload_denied`,
+  `upload_failed`) from `/admin/audit-logs`.
+
+Granting upload access to non-superusers:
+
+- In the admin UI permission form, leave the `Resource` field blank (or enter
+  `__root__`) and set `Action` to `write`.
+- Through admin API, create a permission with `resource` set to `""`,
+  `"__root__"`, or `"<root>"` and assign it to a group.
 
 ## TLS Setup
 
@@ -235,6 +290,29 @@ No `PersistentVolumeClaim` object is created by the chart in this mode.
 | `persistence.size` | `10Gi` | Storage request size |
 | `persistence.mountPath` | `""` (uses `adapt.rootPath`) | Mount path inside the container |
 | `persistence.annotations` | `{}` | Extra annotations on the PVC |
+
+### Upload settings
+
+Uploads are off by default. Enable them with chart environment values when you
+want browser or API file ingestion.
+
+Example `values.yaml` fragment:
+
+```yaml
+env:
+  - name: ADAPT_UPLOAD_ENABLED
+    value: "true"
+  - name: ADAPT_UPLOAD_MAX_SIZE_BYTES
+    value: "10485760"
+  - name: ADAPT_UPLOAD_ALLOWED_EXTENSIONS
+    value: ".csv,.md,.txt"
+  - name: ADAPT_UPLOAD_STRICT_MIME_SNIFFING
+    value: "true"
+```
+
+When enabled, authenticated users with `write` permission on the document-root
+boundary see the upload card on `/` and can upload directly from the landing
+page. The same users can also call `POST /api/uploads` with API credentials.
 
 ### Admin prerequisites
 

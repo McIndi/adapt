@@ -98,9 +98,17 @@ This reflects the current implementation in the codebase.
 - Dataset CRUD with schema exposure
 - Caching with invalidation on mutations
 - Built-in admin UI for users/groups/permissions/locks/cache/api keys/audit logs
+- Root-level file upload endpoint (`POST /api/uploads`) with permission checks and audit logging
+- Optional landing-page upload card for authenticated users with root write permission
 - Plugin architecture with companion overrides in `.adapt/`
 - Permission-filtered full-text search across every resource type
 - MCP server for agentic tool access, mounted alongside the REST API
+
+Upload permission note:
+
+- Non-superusers need `write` permission on the document-root boundary.
+- In admin permission creation, use an empty resource (or `__root__`) with
+  action `write`, then assign that permission through a group.
 
 ## Full-Text Search
 
@@ -202,6 +210,10 @@ root and restarts Adapt after a change.
 
 A Helm chart is included at `charts/adapt/`.
 
+Uploads are disabled by default. Enable them by passing the upload environment
+variables through Helm values so the container receives the same config as a
+local install.
+
 **Ephemeral (default — data lost on pod restart):**
 
 ```bash
@@ -239,6 +251,24 @@ Key persistence values:
 | `persistence.size` | `10Gi` | Storage request size |
 | `persistence.mountPath` | `""` (uses `adapt.rootPath`) | Mount path inside the container |
 | `persistence.annotations` | `{}` | Annotations added to the PVC |
+
+Example upload settings in `values.yaml`:
+
+```yaml
+env:
+  - name: ADAPT_UPLOAD_ENABLED
+    value: "true"
+  - name: ADAPT_UPLOAD_MAX_SIZE_BYTES
+    value: "10485760"
+  - name: ADAPT_UPLOAD_ALLOWED_EXTENSIONS
+    value: ".csv,.md,.txt"
+  - name: ADAPT_UPLOAD_STRICT_MIME_SNIFFING
+    value: "true"
+```
+
+When uploads are enabled, authenticated users with `write` permission on the
+document-root boundary see the upload card on `/` and can upload directly from
+the landing page.
 
 > **Admin responsibility:** the cluster admin must supply a matching StorageClass
 > and sufficient quota before enabling dynamic provisioning. For `ReadWriteOnce`

@@ -38,6 +38,15 @@ class AdaptConfig:
     secure_cookies: bool = False  # Whether to set secure flag on cookies
     search_on_startup: bool = True  # Whether to refresh the search index on startup
     mcp_enabled: bool = True  # Whether to mount the MCP server at /mcp
+    upload: dict[str, Any] = field(default_factory=lambda: {
+        "enabled": False,
+        "max_size_bytes": 10 * 1024 * 1024,
+        "allowed_extensions": [],
+        "denied_extensions": [],
+        "strict_mime_sniffing": False,
+        "allowed_mime_types": [],
+        "collision_policy": "overwrite",
+    })
     plugin_registry: dict[str, str] = field(default_factory=lambda: {
         ".csv": "adapt.plugins.csv_plugin.CsvPlugin",
         ".xlsx": "adapt.plugins.excel_plugin.ExcelPlugin",
@@ -154,6 +163,7 @@ class AdaptConfig:
             "readonly": self.readonly,
             "debug": self.debug,
             "mcp_enabled": self.mcp_enabled,
+            "upload": self.upload.copy(),
             "logging": self.logging.copy(),
         }
         with conf_path.open("w") as f:
@@ -173,7 +183,7 @@ class AdaptConfig:
         allowed_keys = {
             "plugin_registry", "host", "port", "tls_cert", "tls_key",
             "secure_cookies", "search_on_startup", "readonly", "debug", "logging",
-            "mcp_enabled",
+            "mcp_enabled", "upload",
         }
         for key in data:
             if key not in allowed_keys:
@@ -213,6 +223,37 @@ class AdaptConfig:
         if "logging" in data and not isinstance(data["logging"], dict):
             logger.error("logging must be a dict")
             sys.exit(1)
+        if "upload" in data:
+            if not isinstance(data["upload"], dict):
+                logger.error("upload must be a dict")
+                sys.exit(1)
+            upload = data["upload"]
+            if "enabled" in upload and not isinstance(upload["enabled"], bool):
+                logger.error("upload.enabled must be bool")
+                sys.exit(1)
+            if "max_size_bytes" in upload:
+                if not isinstance(upload["max_size_bytes"], int):
+                    logger.error("upload.max_size_bytes must be int")
+                    sys.exit(1)
+                if upload["max_size_bytes"] < 1:
+                    logger.error("upload.max_size_bytes must be positive")
+                    sys.exit(1)
+            if "strict_mime_sniffing" in upload and not isinstance(upload["strict_mime_sniffing"], bool):
+                logger.error("upload.strict_mime_sniffing must be bool")
+                sys.exit(1)
+            for list_key in ("allowed_extensions", "denied_extensions"):
+                if list_key in upload:
+                    if not isinstance(upload[list_key], list) or not all(isinstance(item, str) for item in upload[list_key]):
+                        logger.error("upload.%s must be a list of strings", list_key)
+                        sys.exit(1)
+            if "allowed_mime_types" in upload:
+                if not isinstance(upload["allowed_mime_types"], list) or not all(isinstance(item, str) for item in upload["allowed_mime_types"]):
+                    logger.error("upload.allowed_mime_types must be a list of strings")
+                    sys.exit(1)
+            if "collision_policy" in upload:
+                if upload["collision_policy"] not in {"overwrite", "reject"}:
+                    logger.error("upload.collision_policy must be 'overwrite' or 'reject'")
+                    sys.exit(1)
 
     def _apply_file_config(self, data: dict) -> None:
         """Merge validated file config dict into this instance."""
@@ -236,8 +277,14 @@ class AdaptConfig:
             self.debug = data["debug"]
         if "mcp_enabled" in data:
             self.mcp_enabled = data["mcp_enabled"]
+        if "upload" in data:
+            self.upload.update(data["upload"])
         if "logging" in data:
             self.logging.update(data["logging"])
+
+    @staticmethod
+    def _parse_env_list(value: str) -> list[str]:
+        return [item.strip() for item in value.split(",") if item.strip()]
 
     def _apply_env_overrides(self) -> None:
         """Apply ADAPT_* environment variable overrides to this instance."""
@@ -259,3 +306,32 @@ class AdaptConfig:
             self.debug = self._parse_env_bool(os.environ["ADAPT_DEBUG"], "ADAPT_DEBUG")
         if "ADAPT_MCP_ENABLED" in os.environ:
             self.mcp_enabled = self._parse_env_bool(os.environ["ADAPT_MCP_ENABLED"], "ADAPT_MCP_ENABLED")
+        if "ADAPT_UPLOAD_ENABLED" in os.environ:
+            self.upload["enabled"] = self._parse_env_bool(os.environ["ADAPT_UPLOAD_ENABLED"], "ADAPT_UPLOAD_ENABLED")
+        if "ADAPT_UPLOAD_MAX_SIZE_BYTES" in os.environ:
+            try:
+                max_size = int(os.environ["ADAPT_UPLOAD_MAX_SIZE_BYTES"])
+            except ValueError:
+                logger.error("ADAPT_UPLOAD_MAX_SIZE_BYTES must be an integer")
+                sys.exit(1)
+            if max_size < 1:
+                logger.error("ADAPT_UPLOAD_MAX_SIZE_BYTES must be positive")
+                sys.exit(1)
+            self.upload["max_size_bytes"] = max_size
+        if "ADAPT_UPLOAD_ALLOWED_EXTENSIONS" in os.environ:
+            self.upload["allowed_extensions"] = self._parse_env_list(os.environ["ADAPT_UPLOAD_ALLOWED_EXTENSIONS"])
+        if "ADAPT_UPLOAD_DENIED_EXTENSIONS" in os.environ:
+            self.upload["denied_extensions"] = self._parse_env_list(os.environ["ADAPT_UPLOAD_DENIED_EXTENSIONS"])
+        if "ADAPT_UPLOAD_STRICT_MIME_SNIFFING" in os.environ:
+            self.upload["strict_mime_sniffing"] = self._parse_env_bool(
+                os.environ["ADAPT_UPLOAD_STRICT_MIME_SNIFFING"],
+                "ADAPT_UPLOAD_STRICT_MIME_SNIFFING",
+            )
+        if "ADAPT_UPLOAD_ALLOWED_MIME_TYPES" in os.environ:
+            self.upload["allowed_mime_types"] = self._parse_env_list(os.environ["ADAPT_UPLOAD_ALLOWED_MIME_TYPES"])
+        if "ADAPT_UPLOAD_COLLISION_POLICY" in os.environ:
+            policy = os.environ["ADAPT_UPLOAD_COLLISION_POLICY"].strip().lower()
+            if policy not in {"overwrite", "reject"}:
+                logger.error("ADAPT_UPLOAD_COLLISION_POLICY must be 'overwrite' or 'reject'")
+                sys.exit(1)
+            self.upload["collision_policy"] = policy

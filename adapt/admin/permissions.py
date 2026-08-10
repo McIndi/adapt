@@ -11,6 +11,13 @@ from .models import PermissionCreate
 
 logger = logging.getLogger(__name__)
 
+
+def _normalize_permission_resource(raw: str) -> str:
+    normalized = (raw or "").strip()
+    if normalized in {"", "__root__", "<root>"}:
+        return ""
+    return normalized
+
 @router.get("/permissions", response_model=List[Permission])
 def list_permissions(
     db: Session = Depends(get_db_session),
@@ -66,8 +73,10 @@ def create_permission(perm_data: PermissionCreate, request: Request, db: Session
     if request.app.state.config.readonly:
         raise HTTPException(status_code=405, detail="Server is in read-only mode")
     
+    resource = _normalize_permission_resource(perm_data.resource)
+
     existing = db.exec(select(Permission).where(
-        Permission.resource == perm_data.resource,
+        Permission.resource == resource,
         Permission.action == perm_data.action
     )).first()
     if existing:
@@ -75,7 +84,7 @@ def create_permission(perm_data: PermissionCreate, request: Request, db: Session
         raise HTTPException(status_code=400, detail="Permission already exists")
     
     perm = Permission(
-        resource=perm_data.resource,
+        resource=resource,
         action=perm_data.action,
         description=perm_data.description
     )

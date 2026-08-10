@@ -90,4 +90,15 @@ persistence:
 
 env: []
 
+# Example upload settings:
+# env:
+#   - name: ADAPT_UPLOAD_ENABLED
+#     value: "true"
+#   - name: ADAPT_UPLOAD_MAX_SIZE_BYTES
+#     value: "10485760"
+#   - name: ADAPT_UPLOAD_ALLOWED_EXTENSIONS
+#     value: ".csv,.md,.txt"
+#   - name: ADAPT_UPLOAD_STRICT_MIME_SNIFFING
+#     value: "true"
+
 secretEnv: []

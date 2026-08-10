@@ -56,6 +56,27 @@
                 </div>
             </div>
         </div>
+        {% if can_upload_root %}
+        <div class="card mt-3 shadow-sm">
+            <div class="card-header">Upload Files</div>
+            <div class="card-body">
+                <p class="card-text small text-body-secondary">Upload directly into the document root. You need write access on the root boundary.</p>
+                <form id="landing-upload-form" class="vstack gap-3">
+                    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token if request and request.state else '' }}">
+                    <div>
+                        <label for="landing-upload-filename" class="form-label">Filename</label>
+                        <input id="landing-upload-filename" name="filename" type="text" class="form-control" required placeholder="example.txt">
+                    </div>
+                    <div>
+                        <label for="landing-upload-file" class="form-label">File</label>
+                        <input id="landing-upload-file" name="file" type="file" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload File</button>
+                </form>
+                <p id="landing-upload-status" class="mt-3 mb-0 small text-body-secondary">Ready.</p>
+            </div>
+        </div>
+        {% endif %}
         {% if is_superuser %}
         <div class="card mt-3 shadow-sm">
             <div class="card-header">Admin Panel</div>
@@ -100,4 +121,43 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ super() }}
+{% if can_upload_root %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('landing-upload-form');
+    const status = document.getElementById('landing-upload-status');
+    if (!form || !status) {
+        return;
+    }
+
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        status.textContent = 'Uploading...';
+
+        try {
+            const response = await fetch('/api/uploads', {
+                method: 'POST',
+                body: new FormData(form),
+                headers: window.getAdaptCsrfToken ? { 'X-CSRF-Token': window.getAdaptCsrfToken() } : {},
+                credentials: 'same-origin'
+            });
+            const payload = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(payload.detail || 'Upload failed');
+            }
+
+            form.reset();
+            status.textContent = `Uploaded ${payload.path} (${payload.operation})`;
+        } catch (error) {
+            status.textContent = error.message || 'Upload failed';
+        }
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

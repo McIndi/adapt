@@ -247,6 +247,70 @@ default `true`) and can be rebuilt on demand:
 adapt reindex /path/to/docroot [--force]
 ```
 
+## Upload Endpoint
+
+**POST** `/api/uploads`
+
+Uploads a single file to the document root. The endpoint accepts multipart form
+data with these fields:
+
+- `filename` (required): basename only, no path separators
+- `file` (required): binary file payload
+
+Example:
+
+```bash
+curl -X POST \
+  -H "X-API-Key: key" \
+  -F "filename=notes.txt" \
+  -F "file=@./notes.txt" \
+  http://localhost:8000/api/uploads
+```
+
+Response example:
+
+```json
+{
+  "path": "notes.txt",
+  "size": 42,
+  "mime_type": "text/plain",
+  "checksum": "<sha256>",
+  "operation": "created"
+}
+```
+
+Behavior notes:
+
+- Requires authenticated user with `write` permission on the document-root boundary.
+- Returns `405` when global read-only mode is enabled.
+- Returns `403` when upload feature is disabled (`upload.enabled=false`) or permission check fails.
+- Rejects path traversal and path-separator input in `filename`.
+- Uses atomic write semantics and returns `operation` as `created` or `overwritten`.
+- Invalidates cache for the written resource and emits upload audit events.
+- Optional strict MIME sniffing is controlled by `upload.strict_mime_sniffing`.
+  When enabled, Adapt validates sniffed content against filename extension and
+  optional `upload.allowed_mime_types`.
+- Collision handling is controlled by `upload.collision_policy`:
+  `overwrite` (default) or `reject` (returns `409` when the target exists).
+- The landing page (`/`) shows the same upload form for authenticated users
+  with root-boundary `write` permission when `upload.enabled=true`.
+
+To grant upload permission to a non-superuser through admin APIs, create a
+`write` permission on the document-root boundary resource (`""`). The admin API
+accepts `""` directly and also normalizes `"__root__"` / `"<root>"` to the same
+boundary value.
+
+Example:
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: <csrf>" \
+  -b "adapt_session=<session-cookie>" \
+  -d '{"resource":"__root__","action":"write","description":"Root upload write"}' \
+  http://localhost:8000/admin/permissions
+```
+
 ## MCP Interface
 
 Adapt mounts a [Model Context Protocol](https://modelcontextprotocol.io)
@@ -338,6 +402,7 @@ Audit entries are currently created for:
 - Permission creation, deletion, and group assignment changes
 - Manual lock release and stale-lock cleanup
 - Cache entry deletion and cache clearing
+- Upload success, deny, and failure attempts
 - Successful dataset creation, update, and deletion operations
 
 Dataset mutations use these audit actions:
@@ -347,6 +412,14 @@ Dataset mutations use these audit actions:
 | `POST` create | `create_dataset_rows` |
 | `PATCH` update | `update_dataset_row` |
 | `DELETE` delete | `delete_dataset_row` |
+
+Upload events use these actions:
+
+| Result | Audit action |
+|---|---|
+| Success (create/overwrite) | `upload_success` |
+| Permission/config deny | `upload_denied` |
+| Validation/write failure | `upload_failed` |
 
 The audit resource is the dataset path relative to the document root. The path
 includes the file extension and an Excel sheet namespace when applicable.
