@@ -1,8 +1,8 @@
 name: Publish documentation
 
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -13,7 +13,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Same hard gate as publish-image.yml and publish-pypi.yml: a release
+  # can't publish docs that skipped CI.
+  test:
+    uses: ./.github/workflows/test.yml
+
   build:
+    needs: test
     runs-on: ubuntu-latest
 
     steps:
