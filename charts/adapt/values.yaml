@@ -34,6 +34,9 @@ service:
   type: ClusterIP
   port: 80
   targetPort: 8000
+  # Only used when type is NodePort or LoadBalancer. Leave blank to let
+  # Kubernetes auto-assign a port from its NodePort range (30000-32767).
+  nodePort: ""
 
 ingress:
   enabled: false
@@ -87,6 +90,20 @@ persistence:
   size: 10Gi
   mountPath: ""
   annotations: {}
+
+# Bootstraps a superuser via a post-install/post-upgrade Helm hook Job that
+# runs `adapt addsuperuser`. Requires persistence.enabled=true: the hook Job
+# runs in its own pod, so it only shares data with the main deployment when
+# they're both backed by the same PVC. Safe to leave enabled across upgrades
+# — addsuperuser is a no-op if the username already exists.
+bootstrapAdmin:
+  enabled: false
+  username: admin
+  # Name of a pre-existing Secret with `username`/`password` keys (or the
+  # keys named below). Takes precedence over the generated Secret.
+  existingSecret: ""
+  existingSecretUsernameKey: username
+  existingSecretPasswordKey: password
 
 env: []
 

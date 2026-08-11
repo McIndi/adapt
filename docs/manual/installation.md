@@ -325,3 +325,77 @@ page. The same users can also call `POST /api/uploads` with API credentials.
   Network filesystems (NFS, CephFS, Azure Files) with correct locking are the
   supported multi-replica path.
 
+### Bootstrapping a superuser
+
+By default, a fresh install has no users at all — you'd otherwise need
+`kubectl exec ... -- adapt addsuperuser /data --username admin` by hand.
+Setting `bootstrapAdmin.enabled=true` runs that same command automatically via
+a `post-install,post-upgrade` Helm hook Job, sourcing credentials from a
+Kubernetes Secret instead of a manual step:
+
+```bash
+helm install adapt ./charts/adapt \
+  --set persistence.enabled=true \
+  --set bootstrapAdmin.enabled=true \
+  --set bootstrapAdmin.username=admin
+```
+
+**Requires `persistence.enabled=true`.** The bootstrap Job runs in its own
+pod, so it can only share the account database with the main deployment via a
+PVC — with `emptyDir` (the default), the two pods would get independent,
+disconnected volumes and the created user would be invisible to the running
+server. The chart refuses to render (`helm install`/`template` fails outright)
+if you set `bootstrapAdmin.enabled=true` without persistence, rather than
+silently no-op'ing.
+
+If `bootstrapAdmin.existingSecret` is left unset, the chart generates a
+Secret named `<release>-bootstrap-admin` with a random password on first
+install, and **reuses that same Secret's value on every later `helm
+upgrade`** rather than regenerating it — so it never drifts out of sync with
+the password already baked into the created account. Retrieve it with:
+
+```bash
+kubectl get secret <release>-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
+```
+
+To supply your own credentials instead (e.g. from a secrets manager), create
+a Secret with `username`/`password` keys yourself and point
+`bootstrapAdmin.existingSecret` at it (`existingSecretUsernameKey` /
+`existingSecretPasswordKey` let you use different key names).
+
+Caveat: if you `helm uninstall` and reinstall against the same retained PVC,
+the admin account from the first install still exists with its original
+password — `addsuperuser` is a no-op for a username that already exists, so a
+freshly generated Secret value won't apply. Use `bootstrapAdmin.existingSecret`
+with a known password if you need that guarantee across reinstalls, or reset
+it with `adapt admin change-password`.
+
+### Exposing the service
+
+`service.type` defaults to `ClusterIP` (reach it via `kubectl port-forward`
+or your own Ingress). For a directly-reachable address without an Ingress
+controller — e.g. bare-metal or single-node clusters like k3s — set it to
+`NodePort` and optionally pin the port so it's stable across reinstalls:
+
+```bash
+helm install adapt ./charts/adapt \
+  --set service.type=NodePort \
+  --set service.nodePort=30080
+```
+
+`service.nodePort` is only applied when `service.type` is `NodePort` or
+`LoadBalancer`; leave it blank to let Kubernetes assign one from its
+30000-32767 range.
+
+### Local development overlay
+
+`charts/adapt/values-dev.yaml` bundles persistence, `bootstrapAdmin`, and a
+pinned `NodePort` (`30080`) together, for standing up a durable,
+directly-browsable instance during local VM/k3s development instead of
+juggling the individual flags above:
+
+```bash
+helm upgrade --install adapt ./charts/adapt -f charts/adapt/values-dev.yaml \
+  --set image.repository=<your-local-image> --set image.tag=<tag>
+```
+

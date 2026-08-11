@@ -274,6 +274,28 @@ the landing page.
 > and sufficient quota before enabling dynamic provisioning. For `ReadWriteOnce`
 > volumes, keep `replicaCount=1` (the default).
 
+**Bootstrap a superuser automatically** (requires `persistence.enabled=true`
+— see [docs/manual/installation.md](docs/manual/installation.md#bootstrapping-a-superuser)
+for why):
+
+```bash
+helm install adapt ./charts/adapt \
+  --set persistence.enabled=true \
+  --set bootstrapAdmin.enabled=true
+
+kubectl get secret adapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
+```
+
+**Expose it without an Ingress controller** (e.g. bare-metal/k3s):
+
+```bash
+helm install adapt ./charts/adapt --set service.type=NodePort --set service.nodePort=30080
+```
+
+`charts/adapt/values-dev.yaml` bundles persistence + bootstrap + a pinned
+NodePort together for local VM/k3s development — see
+[docs/manual/installation.md](docs/manual/installation.md#local-development-overlay).
+
 ## Documentation
 
 Read the full documentation at **https://www.mcindi.com/adapt/**.

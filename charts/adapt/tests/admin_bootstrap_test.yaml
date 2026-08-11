@@ -1,0 +1,125 @@
+suite: admin bootstrap
+templates:
+  - templates/admin-bootstrap-job.yaml
+  - templates/admin-bootstrap-secret.yaml
+tests:
+  - it: renders nothing when bootstrapAdmin is disabled
+    set:
+      bootstrapAdmin.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: fails to render when enabled without persistence
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: false
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - failedTemplate:
+          errorMessage: "bootstrapAdmin.enabled requires persistence.enabled=true: the bootstrap Job runs in its own pod and can only share the admin database with the main deployment via a PVC, not an emptyDir."
+
+  - it: renders exactly one Job when enabled with persistence
+    set:
+      bootstrapAdmin.enabled: true
+      bootstrapAdmin.username: admin
+      persistence.enabled: true
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Job
+
+  - it: generated Secret carries the configured username and a generated password
+    set:
+      bootstrapAdmin.enabled: true
+      bootstrapAdmin.username: admin
+      persistence.enabled: true
+    template: templates/admin-bootstrap-secret.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-adapt-bootstrap-admin
+      - equal:
+          path: data.username
+          value: YWRtaW4=
+      - isNotEmpty:
+          path: data.password
+
+  - it: Job references the generated Secret's keys by default
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name
+          value: RELEASE-NAME-adapt-bootstrap-admin
+      - equal:
+          path: spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.key
+          value: username
+      - equal:
+          path: spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.name
+          value: RELEASE-NAME-adapt-bootstrap-admin
+      - equal:
+          path: spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.key
+          value: password
+
+  - it: skips the generated Secret when existingSecret is set
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+      bootstrapAdmin.existingSecret: my-admin-secret
+    template: templates/admin-bootstrap-secret.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Job references existingSecret with custom keys
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+      bootstrapAdmin.existingSecret: my-admin-secret
+      bootstrapAdmin.existingSecretUsernameKey: user
+      bootstrapAdmin.existingSecretPasswordKey: pass
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name
+          value: my-admin-secret
+      - equal:
+          path: spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.key
+          value: user
+      - equal:
+          path: spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.name
+          value: my-admin-secret
+      - equal:
+          path: spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.key
+          value: pass
+
+  - it: Job mounts the same PVC claim the deployment uses
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: RELEASE-NAME-adapt
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].mountPath
+          value: /data
+
+  - it: Job mounts an existingClaim PVC when configured
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+      persistence.existingClaim: manual-pvc
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.volumes[0].persistentVolumeClaim.claimName
+          value: manual-pvc

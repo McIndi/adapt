@@ -1,0 +1,37 @@
+# Local VM/dev overlay: persistent storage, an auto-seeded superuser, and a
+# stable NodePort, so a `helm install`/`upgrade` here always leaves behind a
+# durable, directly-browsable instance instead of the chart's ephemeral,
+# no-login, ClusterIP-only default.
+#
+# Usage:
+#   helm upgrade --install adapt /vagrant/adapt/charts/adapt \
+#     -f /vagrant/adapt/charts/adapt/values-dev.yaml \
+#     --set image.repository=localhost/adapt-local --set image.tag=test --set image.pullPolicy=IfNotPresent
+#
+# Then browse to http://192.168.56.10:30080 (or whatever K3S_IP is set to in
+# the Vagrantfile) — no port-forward needed.
+#
+# Retrieve the generated admin password afterward with:
+#   kubectl get secret adapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
+
+persistence:
+  enabled: true
+  storageClass: local-path
+  size: 5Gi
+
+bootstrapAdmin:
+  enabled: true
+  username: admin
+
+service:
+  type: NodePort
+  nodePort: 30080
+
+# ADAPT_* env vars are applied after conf.json is read, so this always wins
+# over whatever's on the PVC's .adapt/conf.json — no need to edit that file
+# by hand. Adjust the size limit / extension list to taste.
+env:
+  - name: ADAPT_UPLOAD_ENABLED
+    value: "true"
+  - name: ADAPT_UPLOAD_MAX_SIZE_BYTES
+    value: "10485760"

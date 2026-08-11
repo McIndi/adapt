@@ -10,3 +10,44 @@ tests:
       - equal:
           path: spec.ports[0].targetPort
           value: http
+
+  - it: omits nodePort by default (ClusterIP)
+    asserts:
+      - isNull:
+          path: spec.ports[0].nodePort
+
+  - it: omits nodePort when type is NodePort but no port is pinned
+    set:
+      service.type: NodePort
+    asserts:
+      - isNull:
+          path: spec.ports[0].nodePort
+
+  - it: sets a pinned nodePort when type is NodePort
+    set:
+      service.type: NodePort
+      service.nodePort: 30080
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+      - equal:
+          path: spec.ports[0].nodePort
+          value: 30080
+
+  - it: sets a pinned nodePort when type is LoadBalancer
+    set:
+      service.type: LoadBalancer
+      service.nodePort: 30080
+    asserts:
+      - equal:
+          path: spec.ports[0].nodePort
+          value: 30080
+
+  - it: ignores a pinned nodePort when type is ClusterIP
+    set:
+      service.type: ClusterIP
+      service.nodePort: 30080
+    asserts:
+      - isNull:
+          path: spec.ports[0].nodePort

@@ -1,0 +1,35 @@
+Adapt has been deployed as {{ include "adapt.fullname" . }}.
+
+{{- if .Values.bootstrapAdmin.enabled }}
+
+A superuser is being bootstrapped via a post-install/post-upgrade hook Job
+({{ include "adapt.fullname" . }}-bootstrap-admin). Check its status with:
+
+  kubectl get job {{ include "adapt.fullname" . }}-bootstrap-admin
+
+{{- if not .Values.bootstrapAdmin.existingSecret }}
+
+Username: {{ .Values.bootstrapAdmin.username }}
+Retrieve the generated password with:
+
+  kubectl get secret {{ include "adapt.fullname" . }}-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
+{{- else }}
+
+Credentials were sourced from the existing secret
+{{ .Values.bootstrapAdmin.existingSecret }} you provided.
+{{- end }}
+
+Note: if you uninstall and reinstall against the same persisted data (an
+existing PVC), the admin user created by the first install keeps its
+original password — the newly generated secret value won't apply, since
+addsuperuser is a no-op for a username that already exists. Use
+bootstrapAdmin.existingSecret with a known password if you need that
+guarantee, or reset the password via `adapt admin change-password`.
+{{- else }}
+
+Superuser bootstrapping is disabled (bootstrapAdmin.enabled=false). Create
+one manually with:
+
+  kubectl exec deploy/{{ include "adapt.fullname" . }} -- \
+    adapt addsuperuser {{ .Values.persistence.mountPath | default .Values.adapt.rootPath }} --username admin
+{{- end }}

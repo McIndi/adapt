@@ -1,0 +1,70 @@
+{{- if .Values.bootstrapAdmin.enabled }}
+{{- if not .Values.persistence.enabled }}
+{{- fail "bootstrapAdmin.enabled requires persistence.enabled=true: the bootstrap Job runs in its own pod and can only share the admin database with the main deployment via a PVC, not an emptyDir." }}
+{{- end }}
+{{- $secretName := .Values.bootstrapAdmin.existingSecret | default (printf "%s-bootstrap-admin" (include "adapt.fullname" .)) }}
+{{- $usernameKey := "username" }}
+{{- $passwordKey := "password" }}
+{{- if .Values.bootstrapAdmin.existingSecret }}
+{{- $usernameKey = .Values.bootstrapAdmin.existingSecretUsernameKey }}
+{{- $passwordKey = .Values.bootstrapAdmin.existingSecretPasswordKey }}
+{{- end }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "adapt.fullname" . }}-bootstrap-admin
+  labels:
+    {{- include "adapt.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        {{- include "adapt.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "adapt.serviceAccountName" . }}
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+      - name: bootstrap-admin
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        command:
+        - adapt
+        - addsuperuser
+        - {{ .Values.persistence.mountPath | default .Values.adapt.rootPath | quote }}
+        - --username
+        - $(ADMIN_USERNAME)
+        - --password
+        - $(ADMIN_PASSWORD)
+        - --password-confirm
+        - $(ADMIN_PASSWORD)
+        - --allow-weak-password
+        env:
+        - name: ADMIN_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ $secretName }}
+              key: {{ $usernameKey }}
+        - name: ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ $secretName }}
+              key: {{ $passwordKey }}
+        volumeMounts:
+        - name: adapt-data
+          mountPath: {{ .Values.persistence.mountPath | default .Values.adapt.rootPath }}
+      volumes:
+      - name: adapt-data
+        persistentVolumeClaim:
+          claimName: {{ .Values.persistence.existingClaim | default (include "adapt.fullname" .) }}
+{{- end }}
