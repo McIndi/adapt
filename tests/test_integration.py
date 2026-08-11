@@ -731,6 +731,73 @@ def test_root_nav_includes_media_gallery_with_permission(tmp_path):
     assert "Media Gallery" in response.text
 
 
+def _grant_read_permission(app, username, namespace):
+    """Create a regular user and grant them read permission to one namespace only."""
+    with Session(app.state.db_engine) as db:
+        user = User(username=username, password_hash=hash_password("pass"), is_superuser=False)
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        perm = Permission(resource=namespace, action="read")
+        db.add(perm)
+        db.commit()
+        db.refresh(perm)
+
+        group = Group(name=f"{username}_group")
+        db.add(group)
+        db.commit()
+        db.refresh(group)
+
+        db.add(UserGroup(user_id=user.id, group_id=group.id))
+        db.add(GroupPermission(group_id=group.id, permission_id=perm.id))
+        db.commit()
+
+        token = create_session(db, user.id)
+    return token
+
+
+def test_dataset_ui_nav_omits_resources_without_permission(tmp_path):
+    """A dataset UI page's nav dropdown must not leak the names of other
+    datasets the viewing user has no read permission on."""
+    (tmp_path / "public.csv").write_text("name,age\nAlice,30")
+    (tmp_path / "secret.csv").write_text("name,age\nBob,25")
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+    app = create_app(config)
+    if not hasattr(app.state, "lock_manager"):
+        app.state.lock_manager = LockManager(engine)
+
+    token = _grant_read_permission(app, "reader3", "public")
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, token)
+
+    response = client.get("/ui/public/")
+    assert response.status_code == 200
+    assert "secret" not in response.text
+    assert "public" in response.text
+
+
+def test_markdown_page_nav_omits_resources_without_permission(tmp_path):
+    """A markdown page's nav dropdown must not leak the names of other
+    resources the viewing user has no read permission on."""
+    (tmp_path / "notes.md").write_text("# Notes\n")
+    (tmp_path / "secret.csv").write_text("name,age\nBob,25")
+    config = AdaptConfig(root=tmp_path)
+    engine = init_database(config.db_path)
+    app = create_app(config)
+    if not hasattr(app.state, "lock_manager"):
+        app.state.lock_manager = LockManager(engine)
+
+    token = _grant_read_permission(app, "reader4", "notes")
+    client = TestClient(app)
+    client.cookies.set(SESSION_COOKIE, token)
+
+    response = client.get("/notes", headers={"Accept": "text/html"})
+    assert response.status_code == 200
+    assert "secret" not in response.text
+
+
 def test_openapi_hides_media_gallery_without_media_permission(tmp_path):
     """OpenAPI schema omits /ui/media for users with no accessible media resources."""
     app, _ = _make_app_with_media(tmp_path)

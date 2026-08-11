@@ -15,7 +15,7 @@ from adapt.cache import get_cache, set_cache, invalidate_cache
 from ..audit import log_action
 from ..locks import LockConflictError, LockTimeoutError
 from ..models import QueryParams
-from ..utils import build_ui_links
+from ..utils import build_accessible_ui_links
 from ..utils.query import apply_filter, apply_sort, apply_pagination
 from ..auth.dependencies import check_permission
 from .base import Plugin, ResourceDescriptor, PluginContext, SearchDocument, ensure_file
@@ -704,7 +704,9 @@ class DatasetPlugin(Plugin):
             
             # Add common navbar context
             is_superuser = user and getattr(user, 'is_superuser', False)
-            ui_links = build_ui_links(request)
+            ui_links = build_accessible_ui_links(request, user)
+            if any(link["type"] == "media" for link in ui_links):
+                ui_links.append({"name": "Media Gallery", "url": "/ui/media", "type": "media"})
             context.update({
                 "user": user,
                 "is_superuser": is_superuser,

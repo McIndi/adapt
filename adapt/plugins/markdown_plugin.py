@@ -13,7 +13,7 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from fastapi.routing import APIRouter
 
-from ..utils import build_ui_links
+from ..utils import build_accessible_ui_links
 from .base import Plugin, ResourceDescriptor, PluginContext, SearchDocument
 
 
@@ -51,7 +51,9 @@ class MarkdownPlugin(Plugin):
             html_content = self.read(descriptor, request)
             user = getattr(request.state, 'user', None)
             is_superuser = user and getattr(user, 'is_superuser', False)
-            ui_links = build_ui_links(request)
+            ui_links = build_accessible_ui_links(request, user)
+            if any(link["type"] == "media" for link in ui_links):
+                ui_links.append({"name": "Media Gallery", "url": "/ui/media", "type": "media"})
             context = {
                 "content": html_content,
                 "title": descriptor.path.stem,
