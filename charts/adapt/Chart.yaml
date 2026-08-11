@@ -3,4 +3,4 @@ name: adapt
 description: Helm chart for the Adapt FastAPI service.
 type: application
 version: 0.3.2
-appVersion: "0.4.0"
+appVersion: "0.4.1"
