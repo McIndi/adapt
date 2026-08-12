@@ -285,8 +285,14 @@ helm install adapt ./charts/adapt \
   --set persistence.enabled=true \
   --set bootstrapAdmin.enabled=true
 
+# This example uses the release name "adapt".
 kubectl get secret adapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
 ```
+
+For other release names, the Secret is usually
+`<release>-adapt-bootstrap-admin`. If the release name contains `adapt`, the
+name becomes `<release>-bootstrap-admin`. Run `helm get notes <release>` to
+get the correct command.
 
 **Expose it without an Ingress controller** (for example, bare-metal or k3s):
 

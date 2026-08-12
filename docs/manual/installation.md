@@ -18,7 +18,7 @@ pip install adapt-server[dev]
 ## Install from Source
 
 ```bash
-git clone https://github.com/McInci/adapt.git
+git clone https://github.com/McIndi/adapt.git
 cd adapt
 pip install -e .
 ```
@@ -267,7 +267,8 @@ helm install adapt ./charts/adapt \
   --set persistence.storageClass=standard
 ```
 
-The chart creates a `PersistentVolumeClaim` named after the Helm release.
+The chart creates a `PersistentVolumeClaim` named `<release>-adapt`. If the
+release name contains `adapt`, the claim name is `<release>`.
 If `storageClass` is empty, the cluster uses its default StorageClass.
 
 **Existing PVC — cluster admin creates the volume beforehand:**
@@ -329,8 +330,18 @@ directly from the landing page. The same users can also call
 
 ### Bootstrapping a superuser
 
-By default, a fresh install has no users. Otherwise you need to run
-`kubectl exec ... -- adapt addsuperuser /data --username admin` by hand.
+By default, a fresh install has no users. Create a superuser manually with:
+
+```bash
+kubectl exec -it deploy/<release>-adapt -- \
+  adapt addsuperuser /data --username admin
+```
+
+If the release name contains `adapt`, use `deploy/<release>` instead.
+The `-it` flag is required because `addsuperuser` prompts for the password.
+For scripts, use `--password`, `--password-confirm`, and
+`--allow-weak-password` as applicable.
+
 Set `bootstrapAdmin.enabled=true` to run that same command automatically.
 A `post-install,post-upgrade` Helm hook Job runs the command and gets
 credentials from a Kubernetes Secret. This replaces the manual step:
@@ -351,13 +362,15 @@ server. The chart does not silently skip this configuration: if you set
 `helm template` fail.
 
 If you leave `bootstrapAdmin.existingSecret` unset, the chart generates a
-Secret named `<release>-bootstrap-admin` with a random password on the first
-install. On every later `helm upgrade`, the chart reuses that same Secret
-value. It does not generate a new password, so the Secret always matches the
-password in the created account. Retrieve it with:
+Secret named `<release>-adapt-bootstrap-admin` with a random password on the
+first install. If the release name contains `adapt`, the name becomes
+`<release>-bootstrap-admin`. Run `helm get notes <release>` to get the correct
+command. On every later `helm upgrade`, the chart reuses the same Secret value.
+It does not generate a new password, so the Secret always matches the password
+in the created account. Retrieve it with:
 
 ```bash
-kubectl get secret <release>-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
+kubectl get secret <release>-adapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
 ```
 
 To supply your own credentials, for example from a secrets manager, create a
@@ -402,4 +415,9 @@ setting the individual flags above:
 helm upgrade --install adapt ./charts/adapt -f charts/adapt/values-dev.yaml \
   --set image.repository=<your-local-image> --set image.tag=<tag>
 ```
+
+The overlay uses the `local-path` StorageClass from k3s. For kind or minikube,
+add `--set persistence.storageClass=standard`. For Docker Desktop, use
+`--set persistence.storageClass=hostpath`. For other clusters, set the value
+to an available StorageClass.
 

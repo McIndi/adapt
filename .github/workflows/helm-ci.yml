@@ -1,6 +1,13 @@
 name: Helm CI
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - charts/adapt/**
+      - Dockerfile
+      - .ct.yaml
+      - .github/workflows/helm-ci.yml
   pull_request:
     paths:
       - charts/adapt/**

@@ -1,21 +1,20 @@
-# Local VM/dev overlay: persistent storage, an auto-seeded superuser, and a
-# stable NodePort, so a `helm install`/`upgrade` here always leaves behind a
-# durable, directly-browsable instance instead of the chart's ephemeral,
-# no-login, ClusterIP-only default.
+# Local development overlay with persistent storage, an automatic superuser,
+# and a stable NodePort.
 #
 # Usage:
-#   helm upgrade --install adapt /vagrant/adapt/charts/adapt \
-#     -f /vagrant/adapt/charts/adapt/values-dev.yaml \
-#     --set image.repository=localhost/adapt-local --set image.tag=test --set image.pullPolicy=IfNotPresent
+#   helm upgrade --install adapt charts/adapt \
+#     -f charts/adapt/values-dev.yaml \
+#     --set image.repository=<your-local-image> --set image.tag=<tag> --set image.pullPolicy=IfNotPresent
 #
-# Then browse to http://192.168.56.10:30080 (or whatever K3S_IP is set to in
-# the Vagrantfile) — no port-forward needed.
+# Open http://<node-ip>:30080. A port-forward is not required.
 #
 # Retrieve the generated admin password afterward with:
 #   kubectl get secret adapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
 
 persistence:
   enabled: true
+  # k3s uses local-path. For kind or minikube, use standard. For Docker
+  # Desktop, use hostpath. Override this value for other clusters.
   storageClass: local-path
   size: 5Gi
 

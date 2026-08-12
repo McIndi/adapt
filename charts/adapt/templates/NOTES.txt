@@ -30,6 +30,10 @@ guarantee, or reset the password via `adapt admin change-password`.
 Superuser bootstrapping is disabled (bootstrapAdmin.enabled=false). Create
 one manually with:
 
-  kubectl exec deploy/{{ include "adapt.fullname" . }} -- \
+  kubectl exec -it deploy/{{ include "adapt.fullname" . }} -- \
     adapt addsuperuser {{ .Values.persistence.mountPath | default .Values.adapt.rootPath }} --username admin
+
+The -it flag is required because addsuperuser prompts for the password.
+For scripts, use --password, --password-confirm, and --allow-weak-password
+as applicable.
 {{- end }}
