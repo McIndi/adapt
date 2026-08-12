@@ -35,9 +35,9 @@ Deactivation revokes browser sessions for the user. API keys remain stored but
 cannot authenticate until an administrator activates the user.
 
 The MCP interface (`/mcp/`, see the [MCP Guide](mcp_guide.md)) uses the same
-authentication resolver as HTTP routes, so tool calls accept either a
+authentication resolver as HTTP routes. Tool calls accept either a
 session cookie or an API key. API keys are the supported and recommended MCP
-client mechanism. Authentication is enforced when a tool executes, not
+client mechanism. Adapt enforces authentication when a tool executes, not
 during initialization or tool discovery. Cookie-authenticated MCP requests
 are still subject to CSRF validation because the transport uses HTTP POST.
 
@@ -111,15 +111,15 @@ Adapt sets security headers on responses:
 
 ## Host Header Protection
 
-Adapt uses `TrustedHostMiddleware` with allowed hosts derived from configured host.
+Adapt uses `TrustedHostMiddleware`. The allowed hosts come from the configured host.
 
 ## TLS and Cookies
 
-When TLS cert and key are configured together:
+When the configuration sets a TLS certificate and key together:
 
-- HTTPS is enabled
-- HSTS is enabled
-- Secure-cookie behavior is enabled by server configuration
+- HTTPS is active
+- HSTS is active
+- The server configuration turns on secure-cookie behavior
 
 ## Locking and Safe Writes
 
@@ -140,10 +140,10 @@ lock acquisition exhausts all retries.
 
 ## Row-Level Filtering
 
-`Plugin.filter_for_user()` is an extension point used by dataset reads. The
-built-in plugins do not apply per-user row filters. More importantly, dataset
-writes read and rewrite row collections in a way that does not safely enforce
-write-level row security. Plugins must not treat this hook as authorization
+`Plugin.filter_for_user()` is an extension point that dataset reads use. The
+built-in plugins do not apply per-user row filters. Dataset writes read and
+rewrite row collections. This process does not safely enforce write-level
+row security. Plugins must not treat this hook as authorization
 for row-level mutations.
 See [Known Limitations](known_limitations.md#write-level-row-security).
 
@@ -194,7 +194,8 @@ curl http://localhost:8000/health
 ## Recommendations
 
 - Always use TLS in non-local environments.
-- Rotate API keys and deactivate unused keys.
+- Rotate API keys.
+- Deactivate unused API keys.
 - Keep superuser accounts limited and monitored.
 - Review audit logs regularly.
 

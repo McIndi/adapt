@@ -17,7 +17,7 @@ Adapt plugin interfaces live in `adapt/plugins/base.py`.
 
 ### `ResourceDescriptor`
 
-A discovered resource is represented by:
+A discovered resource has these attributes:
 
 - `path`
 - `resource_type`
@@ -52,7 +52,7 @@ extension selects a candidate plugin.
 
 Important behavior:
 
-- An extension without a registry entry is ignored.
+- Discovery ignores an extension without a registry entry.
 - Discovery creates the candidate plugin and calls `detect(path)`.
 - If `detect(path)` returns `False`, discovery ignores the file.
 - If `detect(path)` returns `True`, discovery calls `load(path)`.
@@ -91,7 +91,7 @@ the forms are `/api/reports/Summary/` and `/api/reports.xlsx/Summary/`.
 
 ## Implementing a Dataset-Style Plugin
 
-Dataset-style plugins can inherit from `DatasetPlugin` to reuse schema/UI/mutation patterns.
+Dataset-style plugins can inherit from `DatasetPlugin` to reuse schema, UI, and mutation patterns.
 
 Set `descriptor.metadata["readonly"]` to `True` for a resource that cannot use
 the shared mutation path. You can add a user-facing message in
@@ -113,17 +113,17 @@ Mutations must:
 The schema returned by `schema()` supplies serialization hints, UI column
 metadata, and validation rules for the shared dataset mutation path. Create and
 update fields use the common `string`, `integer`, `number`, and `boolean` types
-(plus corresponding pandas type names). Numeric and boolean strings are
-normalized; blank strings and `null` are permitted. Unknown columns or
-incompatible values return `422` before the resource is locked or written.
+(plus corresponding pandas type names). Adapt normalizes numeric and boolean
+strings. Adapt permits blank strings and `null` values. Unknown columns or
+incompatible values return `422` before Adapt locks or writes the resource.
 Custom schema types without defined validation semantics remain metadata only.
 
-`filter_for_user()` is applied on dataset reads and is available as a
+Adapt applies `filter_for_user()` on dataset reads. It is also available as a
 row-filtering extension point. The shared mutation implementation does not
-provide safe write-level row-security enforcement: it reads and rewrites the
+provide safe write-level row-security enforcement. It reads and rewrites the
 row collection, and row identifiers can diverge after filtering. A plugin
 that needs row-level write authorization must implement and test its own
-write path rather than relying on this hook.
+write path instead of using this hook.
 See [Known Limitations](known_limitations.md#write-level-row-security).
 
 ## Example Skeleton
@@ -196,7 +196,7 @@ the resource permission dependency to the router.
 
 The built-in Python handler plugin (`.py`) loads modules and mounts an `APIRouter` named `router` under `/api/<filename>`.
 
-If import fails, the handler is skipped.
+If import fails, Adapt skips the handler.
 
 ## Companion Files
 
@@ -213,14 +213,14 @@ The media plugin uses `ui_path` differently. It writes JSON metadata to that
 path, not an HTML template.
 
 A generated `*.schema.json` carries `"generated_by": "adapt"`. Adapt refreshes such a
-file when the resource's shape changes, and leaves any schema without that key alone,
-so hand-written schemas are never overwritten. The key is stripped before the schema is
-served from `/schema/<resource>`.
+file when the resource's shape changes. Adapt leaves any schema without that key alone.
+As a result, Adapt never overwrites hand-written schemas. Adapt strips the key before
+it serves the schema from `/schema/<resource>`.
 
 ### Resource Options
 
-You can also hand-write `*.options.json` alongside the generated files to override how a
-resource is parsed. The naming matches the other companion files — for the sheet
+You can also hand-write `*.options.json` alongside the generated files to override how
+Adapt parses a resource. The naming matches the other companion files. For the sheet
 `Dashboard` in `report.xlsx`, that is `.adapt/report.Dashboard.options.json`.
 
 Supported keys:
@@ -229,24 +229,25 @@ Supported keys:
 | --- | --- | --- |
 | `header_row` | `.xlsx`, `.xls` | 1-based row holding the column names. Defaults to `1`. |
 
-Use `header_row` when a sheet opens with a title banner instead of column names.
+When a sheet opens with a title banner instead of column names, use `header_row`.
 Without this option, Adapt parses the banner as the header:
 
 ```json
 { "header_row": 3 }
 ```
 
-Rows above the header row are ignored on both read and write. An unreadable options file
-or an invalid value is logged and ignored rather than raised, so a typo cannot take the
-server down.
+Adapt ignores rows above the header row on both read and write operations. Adapt logs
+an unreadable options file or an invalid value and ignores it. Adapt does not raise an
+error. As a result, a typo cannot crash the server.
 
-Plugins consume options by overriding `apply_options(descriptor)`, which discovery calls
-after `load()` (which sees only a path, and so cannot locate the companion directory) and
-before `generate_companion_files()` (so a derived schema reflects the options).
+To consume options, a plugin overrides `apply_options(descriptor)`. Discovery calls this
+method after `load()` and before `generate_companion_files()`. `load()` sees only a path,
+so it cannot locate the companion directory. Discovery calls `apply_options()` before
+`generate_companion_files()`, so a derived schema reflects the options.
 
 ## Testing Recommendations
 
-When creating plugins, test:
+When you create plugins, test the following:
 
 - Discovery and load behavior
 - Schema generation
@@ -259,6 +260,6 @@ When creating plugins, test:
 
 - Keep plugin class paths stable for `plugin_registry` users.
 - Prefer additive schema changes when possible.
-- Document any plugin-specific configuration keys clearly.
+- Document any plugin-specific configuration keys.
 
 Manual navigation: [Previous: Configuration](configuration.md) | [Index](index.md) | [Next: Architecture](architecture.md)

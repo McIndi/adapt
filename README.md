@@ -5,7 +5,7 @@ Adapt is a FastAPI server that turns files in a directory into APIs and UIs.
 - Datasets (`.csv`, `.xlsx`, `.xls`, `.parquet`) become API endpoints and DataTables UIs
 - Legacy `.xls` workbooks are read-only. Modern `.xlsx` workbooks support CRUD operations.
 - Markdown/HTML become browsable pages
-- Media files become streaming endpoints and player/gallery UIs
+- Media files become streaming endpoints, plus player and gallery UIs
 - Python files can register custom routers
 - Everything is searchable in one place via full-text `/search`
 - Everything is reachable by agentic tools via an MCP server at `/mcp`
@@ -79,7 +79,7 @@ This reflects the current implementation in the codebase.
 - **Password security:** PBKDF2 hashing with per-user salts
 - **Password changes:** self-service and administrator resets revoke all browser sessions for the user
 - **Session security:** expiration enforcement, sliding renewal, cleanup task
-- **CSRF protection:** enforced for cookie-authenticated unsafe methods (`POST/PUT/PATCH/DELETE`), including mixed session + API-key requests
+- **CSRF protection:** enforced for cookie-authenticated unsafe methods (`POST/PUT/PATCH/DELETE`), and covers mixed session and API-key requests
 - **Redirect hardening:** login `next` paths are validated as local relative paths
 - **Response hardening:** CSP, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS (when TLS is enabled)
 - **Host header hardening:** Trusted Host middleware
@@ -89,8 +89,8 @@ This reflects the current implementation in the codebase.
 
 ### Important Deployment Notes
 
-- Use TLS in non-local environments (`--tls-cert` + `--tls-key`) so secure cookies and HSTS protections are effective.
-- API-key-only clients are exempt from CSRF checks by design; cookie-auth browser flows require CSRF tokens.
+- Use TLS in non-local environments (`--tls-cert` and `--tls-key`). TLS makes secure cookies and HSTS protections effective.
+- API-key-only clients are exempt from CSRF checks by design. Browser flows that use cookie authentication need CSRF tokens.
 
 ## Core Features
 
@@ -108,32 +108,33 @@ Upload permission note:
 
 - Non-superusers need `write` permission on the document-root boundary.
 - In admin permission creation, use an empty resource (or `__root__`) with
-  action `write`, then assign that permission through a group.
+  action `write`. Then assign that permission through a group.
 
 ## Full-Text Search
 
 `GET /search?q=<query>` searches datasets, Markdown, HTML, and media metadata
-in one ranked list, filtered to what the caller may read — a query term that
-matches a resource you can't see never shows up, and never leaks via the
-result count either.
+in one ranked list. The search filters results to what the caller can read.
+A query term that matches a resource you cannot see does not appear in the
+results. It also does not appear in the result count.
 
 ```bash
 curl -H "X-API-Key: <key>" "http://localhost:8000/search?q=parental+leave"
 ```
 
-The index refreshes incrementally on startup (`search_on_startup`, default
-`true`) and can be rebuilt on demand with `adapt reindex <root>`. See the
-[API Reference](docs/manual/api_reference.md#search-endpoint) for query
-parameters and result shape.
+The index refreshes step by step on startup (`search_on_startup`, default
+`true`). You can also rebuild it on demand with `adapt reindex <root>`. See
+the [API Reference](docs/manual/api_reference.md#search-endpoint) for query
+parameters and the result shape.
 
 ## MCP Interface
 
 Adapt mounts a [Model Context Protocol](https://modelcontextprotocol.io)
-server at `/mcp`, on the same host/port as everything else, exposing five
-tools that wrap the same permission checks and plugin methods as the REST
-API — `list_resources`, `get_schema`, `read_resource`, `write_resource`, and
-`search`. There's no separate process, no separate API surface, and no
-extra permission model to maintain.
+server at `/mcp`. This server runs on the same host and port as the rest of
+Adapt. It exposes five tools: `list_resources`, `get_schema`,
+`read_resource`, `write_resource`, and `search`. Each tool uses the same
+permission checks and plugin methods as the REST API. There is no separate
+process, no separate API surface, and no extra permission model to
+maintain.
 
 Minimal walkthrough — create an account for the agent, grant it read access,
 mint an API key, and connect a client:
@@ -147,9 +148,9 @@ adapt admin create-user /path/to/docroot --username agent --password <strong-pas
 adapt admin add-to-group /path/to/docroot --username agent --group <resource>_readonly
 ```
 
-Log in as `agent` and self-issue an API key from `/profile` (any
-authenticated user can create their own key — no superuser needed), then
-point a client at `/mcp` with that key:
+Log in as `agent`. From `/profile`, issue an API key for yourself. Any
+authenticated user can create an API key for themself. A superuser is not
+necessary for this step. Then point a client at `/mcp` with that key:
 
 ```bash
 # Claude Code CLI
@@ -169,7 +170,7 @@ claude mcp add --transport http adapt http://localhost:8000/mcp \
 }
 ```
 
-MCP checks authentication when a tool runs. Tool calls use the shared
+MCP does an authentication check when a tool runs. Tool calls use the shared
 authentication resolver, which accepts a session cookie or an API key. API
 keys are the supported and recommended mechanism for MCP clients. Set
 `mcp_enabled: false` in `.adapt/conf.json` (or `ADAPT_MCP_ENABLED=false`) to
@@ -189,7 +190,8 @@ For dataset endpoints, write operations use this payload structure:
 }
 ```
 
-Use object data for `update`/`delete` as needed (for example, with `_row_id`).
+For `update` and `delete`, include the fields the operation needs, for
+example `_row_id`.
 
 ## CLI (Common Commands)
 
@@ -210,9 +212,9 @@ root and restarts Adapt after a change.
 
 A Helm chart is included at `charts/adapt/`.
 
-Uploads are disabled by default. Enable them by passing the upload environment
-variables through Helm values so the container receives the same config as a
-local install.
+Uploads are disabled by default. To enable them, pass the upload environment
+variables through Helm values. The container then uses the same
+configuration as a local install.
 
 **Ephemeral (default — data lost on pod restart):**
 
@@ -246,7 +248,7 @@ Key persistence values:
 |---|---|---|
 | `persistence.enabled` | `false` | Enable durable storage at `/data` |
 | `persistence.existingClaim` | `""` | Name of a pre-created PVC to mount |
-| `persistence.storageClass` | `""` | StorageClass name; cluster default if empty |
+| `persistence.storageClass` | `""` | StorageClass name (cluster default if empty) |
 | `persistence.accessModes` | `[ReadWriteOnce]` | PVC access modes |
 | `persistence.size` | `10Gi` | Storage request size |
 | `persistence.mountPath` | `""` (uses `adapt.rootPath`) | Mount path inside the container |
@@ -267,8 +269,8 @@ env:
 ```
 
 When uploads are enabled, authenticated users with `write` permission on the
-document-root boundary see the upload card on `/` and can upload directly from
-the landing page.
+document-root boundary see the upload card on `/`. These users can upload
+directly from the landing page.
 
 > **Admin responsibility:** the cluster admin must supply a matching StorageClass
 > and sufficient quota before enabling dynamic provisioning. For `ReadWriteOnce`
@@ -286,21 +288,22 @@ helm install adapt ./charts/adapt \
 kubectl get secret adapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
 ```
 
-**Expose it without an Ingress controller** (e.g. bare-metal/k3s):
+**Expose it without an Ingress controller** (for example, bare-metal or k3s):
 
 ```bash
 helm install adapt ./charts/adapt --set service.type=NodePort --set service.nodePort=30080
 ```
 
-`charts/adapt/values-dev.yaml` bundles persistence + bootstrap + a pinned
-NodePort together for local VM/k3s development — see
-[docs/manual/installation.md](docs/manual/installation.md#local-development-overlay).
+`charts/adapt/values-dev.yaml` bundles persistence, bootstrap, and a pinned
+NodePort for local development on a VM or with k3s. See
+[docs/manual/installation.md](docs/manual/installation.md#local-development-overlay)
+for detail.
 
 ## Documentation
 
 Read the full documentation at **https://www.mcindi.com/adapt/**.
 
-Detailed docs live under `docs/manual/`.
+More documentation is under `docs/manual/`.
 
 - Manual index: [docs/manual/index.md](docs/manual/index.md)
 - Security: [docs/manual/security.md](docs/manual/security.md)
@@ -311,14 +314,14 @@ Detailed docs live under `docs/manual/`.
 - Plugin development: [docs/manual/plugin_development.md](docs/manual/plugin_development.md)
 - Known limitations: [docs/manual/known_limitations.md](docs/manual/known_limitations.md)
 
-Generated reference docs live under `docs/reference/` and are published via
-MkDocs and GitHub Pages.
+Generated reference documentation is under `docs/reference/`. MkDocs builds
+this documentation, and GitHub Pages publishes it.
 
 - REST API reference: generated from app routes with an empty docroot
 - OpenAPI schema artifact: generated from that same common-surface schema
 - Python API reference: generated from docstrings and signatures
 
-Build docs locally:
+Build the documentation locally:
 
 ```bash
 python -m pip install -e ".[dev]"

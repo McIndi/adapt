@@ -27,7 +27,7 @@ Current accepted keys are:
 - `upload`
 - `logging`
 
-Unknown keys are treated as configuration errors.
+Adapt treats unknown keys as configuration errors.
 
 ## Source Precedence
 
@@ -77,8 +77,8 @@ Upload-specific environment values:
 
 Upload behavior defaults:
 
-- `upload.enabled` defaults to `false`, so the upload endpoint and landing-page
-  upload card stay disabled until you turn the feature on explicitly.
+- `upload.enabled` defaults to `false`. The upload endpoint and the
+  landing-page upload card stay disabled until you turn on the feature.
 - `upload.max_size_bytes` defaults to `10485760` (10 MiB).
 - `upload.collision_policy` defaults to `overwrite`.
 
@@ -168,25 +168,25 @@ Upload behavior defaults:
 
 TLS note:
 
-- `--tls-cert` and `--tls-key` must be provided together.
+- You must provide `--tls-cert` and `--tls-key` together.
 - `--reload` starts Uvicorn file watching for Python files in the document root.
   Uvicorn restarts Adapt after a change.
-- `adapt serve` sets `secure_cookies` to `true` only when it uses both TLS
-  files. It sets the value to `false` without direct TLS. This serve-time value
+- When `adapt serve` uses both TLS files, it sets `secure_cookies` to `true`.
+  Without direct TLS, it sets the value to `false`. This serve-time value
   overrides `conf.json`.
 
 ## MCP Interface
 
-`mcp_enabled` (default `true`) controls whether the MCP server is mounted at
-`/mcp`. Set it to `false` in `conf.json` or via `ADAPT_MCP_ENABLED=false` to
-remove the route entirely — useful for deployments that only want the REST
+`mcp_enabled` (default `true`) controls whether Adapt mounts the MCP server
+at `/mcp`. Set it to `false` in `conf.json`, or set `ADAPT_MCP_ENABLED=false`,
+to remove the route. This is useful for deployments that want only the REST
 API surface. See the [MCP Guide](mcp_guide.md) for setup.
 
 ## Plugin Registry Notes
 
 The default registry shown above matches `AdaptConfig.plugin_registry`. The
 Excel plugin reads `.xlsx` and `.xls` files. Legacy `.xls` resources are
-read-only. Unregistered extensions are not discovered or served.
+read-only. Adapt does not discover or serve unregistered extensions.
 See [Known Limitations](known_limitations.md#legacy-excel-files).
 
 For a registered extension, the registry selects a candidate plugin. Discovery
@@ -209,7 +209,8 @@ The generic `FilePlugin` serves these registered types directly:
 
 ## Validation and Diagnostics
 
-Use `adapt check` to validate config and discovery:
+Use `adapt check` to make sure that the configuration and discovery setup
+are correct:
 
 ```bash
 adapt check /path/to/docroot

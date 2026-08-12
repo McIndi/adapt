@@ -1,7 +1,7 @@
 # Adapt Specification: API and UI
 
-> **Status:** This document describes the current implementation. The running
-> code on `main` wins if it differs. See the
+> **Status:** This document describes the current implementation. If it
+> differs, the running code on `main` wins. See the
 > [documentation contract](../documentation-contract.md) and [user manual](../manual/index.md).
 
 ## 1. Generated routes
@@ -19,8 +19,8 @@ Dataset resources provide trailing-slash routes under `/api/`, `/schema/`, and
 files use direct content routes. Media resources use `/media/` and `/ui/`.
 
 Python files can export an `APIRouter` named `router`. The Python plugin mounts
-its routes under `/api/<namespace>`. Import errors cause the handler to be
-skipped with a warning.
+its routes under `/api/<namespace>`. An import error causes the plugin to skip
+the handler and show a warning.
 
 ## 2. Landing page and discovery
 
@@ -96,10 +96,10 @@ errors and FastAPI request errors use a `detail` member.
 ```
 
 FastAPI validation errors return `422` with structured items in `detail`.
-Dataset schema validation errors also return `422`; their `detail` string names
+Dataset schema validation errors also return `422`. Their `detail` string names
 the column, expected type, and received type. The generated dataset UI displays
 this detail for failed create and update operations. Validation runs before the
-resource lock is acquired or the backing file is changed.
+system acquires the resource lock or changes the backing file.
 
 Immediate lock conflicts return `409`. Exhausted lock acquisition retries also
 return `409`.
@@ -120,7 +120,7 @@ The server provides these tools:
 | `write_resource` | Create, update, or delete dataset rows |
 | `search` | Search indexed content that the caller can read |
 
-Authentication is enforced when a tool executes. MCP initialization and tool
+Adapt enforces authentication when a tool executes. MCP initialization and tool
 discovery do not authenticate the caller. The shared resolver accepts the
 `adapt_session` cookie or `X-API-Key` header. API keys are the supported and
 recommended mechanism for MCP clients.

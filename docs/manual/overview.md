@@ -2,7 +2,7 @@
 
 ## What is Adapt?
 
-Adapt is a lightweight, FastAPI-powered adaptive server that automatically turns files and Python modules into fully functional REST APIs and interactive HTML user interfaces. It treats your filesystem as a backend database, providing instant APIs for CSV files, Excel spreadsheets, Parquet datasets, media files, and custom Python handlers.
+Adapt is a lightweight, FastAPI-powered adaptive server. It automatically turns files and Python modules into REST APIs and interactive HTML user interfaces. It treats your filesystem as a backend database. This gives instant APIs for CSV files, Excel spreadsheets, Parquet datasets, media files, and custom Python handlers.
 
 ## Key Features
 
@@ -14,9 +14,9 @@ Adapt is a lightweight, FastAPI-powered adaptive server that automatically turns
 - **Admin Interface**: Web-based administration for users, groups, permissions, and system monitoring
 - **Caching System**: SQLite-backed caching for performance optimization
 - **Plugin Architecture**: Extensible system for supporting new file types and handlers
-- **Safer Writes**: Per-resource locking plus atomic target replacement where supported
+- **Safer Writes**: Per-resource locking and atomic target replacement where supported
 - **Full-Text Search**: Permission-filtered search (`/search`) across datasets, documents, and media metadata in one ranked list
-- **MCP Interface**: An agent-facing [Model Context Protocol](https://modelcontextprotocol.io) server at `/mcp`, exposing the same permission-filtered read/write/search as tools
+- **MCP Interface**: An agent-facing [Model Context Protocol](https://modelcontextprotocol.io) server at `/mcp`. It exposes the same permission-filtered read, write, and search as tools
 
 ## How It Works
 
@@ -77,14 +77,14 @@ graph TB
 | `.py` | Custom FastAPI router mounting |
 
 The Excel plugin reads legacy `.xls` workbooks. These resources are read-only.
-Convert a legacy workbook to `.xlsx` before you modify it through Adapt. Adapt
-does not discover an unregistered extension unless you add a plugin mapping.
-See [Known Limitations](known_limitations.md#legacy-excel-files).
+Before you modify a legacy workbook through Adapt, convert it to `.xlsx`. If
+you do not add a plugin mapping, Adapt does not discover an unregistered
+extension. See [Known Limitations](known_limitations.md#legacy-excel-files).
 
 ## Core Principles
 
 - **Local-First**: All data stays in your filesystem
-- **Zero Configuration**: Works out of the box with sensible defaults
+- **Zero Configuration**: Works by default with sensible defaults
 - **Security-First**: Built-in authentication and authorization
 - **Extensible**: Plugin system for custom file types and logic
 - **Safer Operations**: Atomic replacement and locking reduce write-conflict and partial-write risks
@@ -92,7 +92,7 @@ See [Known Limitations](known_limitations.md#legacy-excel-files).
 
 ## Use Cases
 
-- **Data Dashboards**: Quick UIs for CSV/Excel data exploration
+- **Data Dashboards**: Quick UIs for CSV and Excel data exploration
 - **Media Libraries**: Personal streaming servers for audio/video content
 - **API Prototyping**: Rapid REST API development from files
 - **Content Management**: Serve HTML/Markdown documentation

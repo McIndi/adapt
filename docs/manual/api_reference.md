@@ -36,7 +36,7 @@ User API key endpoints (for the currently authenticated user):
 
 - `POST /api/apikeys`
 - `GET /api/apikeys`
-- `DELETE /api/apikeys/{key_id}` — deactivates the key (`is_active = false`), returns `204`. The key record is retained in the database but will no longer authenticate.
+- `DELETE /api/apikeys/{key_id}` — deactivates the key (`is_active = false`) and returns `204`. Adapt keeps the key record in the database, but the key will no longer authenticate.
 
 ## Base URL
 
@@ -46,16 +46,16 @@ Default local URL: `http://localhost:8000`
 
 Adapt publishes two intentionally different OpenAPI views:
 
-- **Hosted documentation schema** (this docs site): generated from an app built
+- **Hosted documentation schema** (this documentation site): generated from an app built
   with an empty docroot, so it documents only the API surface shared by all
   Adapt deployments.
 - **Runtime schema** (`GET /openapi.json` on a live server): generated per
   request and filtered by authentication, permissions, and discovered resources
   in that instance's docroot.
 
-Because runtime routes depend on discovered files and caller permissions, it is
-normal for a live instance to expose additional paths (or fewer visible paths)
-compared with the hosted docs.
+Runtime routes depend on discovered files and caller permissions. As a result,
+a live instance can expose more paths, or fewer visible paths, than the
+hosted documentation shows.
 
 ## Generated Dataset APIs
 
@@ -138,11 +138,11 @@ Adapt uses action-based mutation payloads at the collection endpoint.
 Notes:
 
 - Dataset mutations are row-oriented and use `_row_id`.
-- Create and update values are validated against the inferred or companion
-  schema before Adapt locks or changes the backing file. Unknown columns and
+- Adapt validates create and update values against the inferred or companion
+  schema before it locks or changes the backing file. Unknown columns and
   incompatible values return `422`.
-- Numeric and boolean strings from the generated HTML form are accepted and
-  normalized. Blank strings and `null` remain valid because Adapt schemas do
+- Adapt accepts and normalizes numeric and boolean strings from the generated
+  HTML form. Blank strings and `null` remain valid because Adapt schemas do
   not describe nullability or required columns.
 - In read-only mode, mutation endpoints return `405`.
 - Legacy `.xls` resources are always read-only and return `405` for mutations.
@@ -155,9 +155,10 @@ Returns the inferred or companion schema.
 
 For CSV and Excel resources, inference assigns only `string`, `integer`,
 `number`, or `boolean`. These types control response serialization and the
-default dataset UI columns. They also validate values supplied by create and
-update mutations. Adapt validates the common Parquet type names that correspond
-to these four types. An unrecognized custom type remains metadata only.
+default dataset UI columns. Adapt also uses these types to make sure that
+values in create and update mutations are correct. For Parquet resources,
+Adapt makes sure that the common Parquet type names correspond to these four
+types. An unrecognized custom type remains metadata only.
 
 The schema format does not currently express required columns or nullability.
 Adapt validates fields that the caller supplies and permits blank or `null`
@@ -182,7 +183,7 @@ For HTML and Markdown resources, Adapt mounts content routes using file path nam
 - HTML content route: `/{resource}`
 - Markdown content route: `/{resource}`
 
-Depending on mount namespace, resources may also be available with extension-qualified paths.
+Some resources are also available with extension-qualified paths. This depends on the mount namespace.
 
 Examples:
 
@@ -217,17 +218,17 @@ Example:
 
 **GET** `/search`
 
-Full-text search across every resource the caller is permitted to read —
-datasets, Markdown, HTML, and media metadata all rank in one result list.
-Results are filtered by permission *after* the index is queried, so `count`
-never reveals the existence of a resource the caller cannot see.
+Full-text search covers every resource that the caller can read. Datasets,
+Markdown, HTML, and media metadata all rank in one result list. Adapt filters
+results by permission after it queries the index. As a result, `count` never
+reveals the existence of a resource that the caller cannot see.
 
 Query parameters:
 
-- `q` (optional; empty returns no results)
+- `q` (optional, an empty value returns no results)
 - `limit` (optional, default `20`, max `100`)
 - `offset` (optional, default `0`)
-- `type` (optional, comma-separated resource types, e.g. `csv,markdown`)
+- `type` (optional, comma-separated resource types, for example `csv,markdown`)
 
 Example:
 
@@ -237,11 +238,11 @@ curl -H "X-API-Key: key" "http://localhost:8000/search?q=parental+leave&type=csv
 
 Returns JSON by default, or an HTML results page when the client sends
 `Accept: text/html`. Each result includes `resource`, `type`, `title`,
-`snippet`, `score`, and `ui_url`; dataset row hits also include `api_url` and
+`snippet`, `score`, and `ui_url`. Dataset row hits also include `api_url` and
 `row_id`.
 
-The index is rebuilt incrementally on server startup (`search_on_startup`,
-default `true`) and can be rebuilt on demand:
+Adapt rebuilds the index incrementally on server startup (`search_on_startup`,
+default `true`). You can also rebuild the index on demand:
 
 ```bash
 adapt reindex /path/to/docroot [--force]
@@ -287,18 +288,20 @@ Behavior notes:
 - Rejects path traversal and path-separator input in `filename`.
 - Uses atomic write semantics and returns `operation` as `created` or `overwritten`.
 - Invalidates cache for the written resource and emits upload audit events.
-- Optional strict MIME sniffing is controlled by `upload.strict_mime_sniffing`.
-  When enabled, Adapt validates sniffed content against filename extension and
-  optional `upload.allowed_mime_types`.
-- Collision handling is controlled by `upload.collision_policy`:
-  `overwrite` (default) or `reject` (returns `409` when the target exists).
+- The configuration key `upload.strict_mime_sniffing` controls optional
+  strict MIME sniffing. When enabled, Adapt validates sniffed content
+  against the filename extension and the optional `upload.allowed_mime_types`
+  list.
+- The configuration key `upload.collision_policy` controls collision
+  handling: `overwrite` (default) or `reject` (returns `409` when the target
+  exists).
 - The landing page (`/`) shows the same upload form for authenticated users
   with root-boundary `write` permission when `upload.enabled=true`.
 
 To grant upload permission to a non-superuser through admin APIs, create a
 `write` permission on the document-root boundary resource (`""`). The admin API
-accepts `""` directly and also normalizes `"__root__"` / `"<root>"` to the same
-boundary value.
+accepts `""` directly. It also normalizes `"__root__"` or `"<root>"` to the
+same boundary value.
 
 Example:
 
@@ -314,9 +317,10 @@ curl -X POST \
 ## MCP Interface
 
 Adapt mounts a [Model Context Protocol](https://modelcontextprotocol.io)
-server at `/mcp/`, exposing the same permission-filtered read/write/search
-functionality as tools for agentic clients. See the [MCP Guide](mcp_guide.md)
-for a full walkthrough from account creation to connecting a client.
+server at `/mcp/`. The server exposes the same permission-filtered
+read, write, and search features as tools for agentic clients. See the
+[MCP Guide](mcp_guide.md) for a full walkthrough from account creation to
+connecting a client.
 
 | Tool | Equivalent to |
 |---|---|
@@ -326,7 +330,7 @@ for a full walkthrough from account creation to connecting a client.
 | `write_resource` | `POST`/`PATCH`/`DELETE /api/{resource}/` |
 | `search` | `GET /search` |
 
-Authentication is enforced when a tool executes, not while the client
+Adapt enforces authentication when a tool executes, not while the client
 initializes or discovers tools. MCP uses Adapt's shared authentication
 resolver, which accepts either a session cookie or an API key. API keys are
 the supported and recommended mechanism for MCP clients. Set
@@ -392,7 +396,7 @@ Audit logs:
 
 - `GET /admin/audit-logs`
 
-Audit entries are currently created for:
+Adapt currently creates audit entries for:
 
 - Successful login and logout
 - Password changes and administrator resets
@@ -478,7 +482,7 @@ curl -H "X-API-Key: key" "http://localhost:8000/api/products/?filter={\"price\":
 - `401` - Not authenticated
 - `403` - Permission denied
 - `404` - Resource not found
-- `405` - Method not allowed (including read-only mode mutations)
+- `405` - Method not allowed (for example, read-only mode mutations)
 - `409` - Lock acquisition conflicts
 - `422` - FastAPI request or parameter validation failure
 

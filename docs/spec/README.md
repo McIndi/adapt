@@ -5,9 +5,9 @@ implementation. They are design references, not a roadmap and not the
 authoritative user documentation.
 
 For supported user-facing behavior, use the [Adapt User Manual](../manual/index.md).
-The running implementation on `main` remains the source of truth if a document
-disagrees with it. Unimplemented designs must be labeled **Future work**, and
-known implementation defects must be documented as limitations.
+If a document disagrees with the running implementation on `main`, the
+implementation remains the source of truth. Label unimplemented designs as
+**Future work**. Document known implementation defects as limitations.
 
 1. [Overview](01_overview.md)
 2. [Authentication and security](02_auth_security.md)

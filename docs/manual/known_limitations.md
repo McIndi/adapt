@@ -11,8 +11,9 @@ Adapt can discover and read each sheet in a legacy `.xls` workbook. The API,
 schema, search index, and DataTables UI support these sheets.
 
 Legacy `.xls` sheets are read-only. A `POST`, `PATCH`, or `DELETE` request
-returns `405`. Convert the workbook to `.xlsx` before you modify it through
-Adapt. This restriction prevents formula and workbook-feature loss.
+returns `405`. Before you modify a legacy sheet through Adapt, convert the
+workbook to `.xlsx`. This restriction prevents formula and
+workbook-feature loss.
 
 ## Dataset Writes
 

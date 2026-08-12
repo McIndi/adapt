@@ -17,7 +17,7 @@ adapt serve . --port 8001
 adapt check .
 ```
 
-Check `.adapt/conf.json` for invalid keys or JSON syntax errors.
+Look at `.adapt/conf.json` for invalid keys or JSON syntax errors.
 
 ### TLS Startup Error
 
@@ -62,9 +62,9 @@ curl -H "X-API-Key: your-key" http://localhost:8000/auth/me
 
 ## Authorization Problems (`403`)
 
-- Verify group membership
-- Verify resource permission names
-- Confirm required action (`read` vs `write`)
+- Make sure that the group membership is correct
+- Make sure that the resource permission names are correct
+- Make sure that you use the correct action, `read` or `write`
 
 Useful checks:
 
@@ -75,15 +75,15 @@ adapt admin list-resources .
 
 Generated API, schema, and UI routes require authentication plus the
 corresponding resource permission. `create-permissions` creates individual
-groups named `<resource>_readonly` and `<resource>_readwrite`; combined group
+groups named `<resource>_readonly` and `<resource>_readwrite`. Combined group
 names include a suffix made from all selected resources.
 
 ### Cookie-Authenticated Mutation Returns `403`
 
-Unsafe requests made with an `adapt_session` cookie must also send the
-`adapt_csrf` cookie value in the `X-CSRF-Token` header. This remains true if
-the request also includes an API key. For command-line mutations, use an API
-key without a session cookie to avoid CSRF handling.
+When an unsafe request uses the `adapt_session` cookie, it must also send the
+`adapt_csrf` cookie value in the `X-CSRF-Token` header. This rule remains
+true if the request also includes an API key. For command-line mutations,
+use an API key without a session cookie to avoid CSRF handling.
 
 ## Resource Discovery Problems
 
@@ -133,8 +133,8 @@ adapt serve . --readonly
 
 ### `409 Conflict`
 
-Adapt returns `409` when another operation holds the resource lock. This
-response also applies when Adapt exhausts all lock acquisition retries.
+When another operation holds the resource lock, Adapt returns `409`. Adapt
+also returns this response when it exhausts all lock acquisition retries.
 
 Inspect `/admin/locks` and the server log. Then retry the write after the
 competing operation finishes.
@@ -165,7 +165,7 @@ Use implemented admin routes under `/admin`, for example:
 
 ### Custom Plugin Not Loading
 
-Verify class path format in `plugin_registry`:
+Make sure that the class path format in `plugin_registry` is correct:
 
 ```json
 {
@@ -178,11 +178,11 @@ Verify class path format in `plugin_registry`:
 Current loader expects dotted class paths, not `module:path` syntax.
 
 Make sure that the custom plugin `detect(path)` method returns `True` for the
-file. Adapt does not call `load(path)` when detection rejects the file.
+file. When detection rejects the file, Adapt does not call `load(path)`.
 
 ### Import Errors
 
-Test import manually:
+Do a manual test of the import:
 
 ```bash
 python -c "from module.path import ClassName"
@@ -202,7 +202,7 @@ also reports TLS file problems and top-level route collisions. It does not
 migrate resource schemas or list each resource.
 
 `adapt list-endpoints` builds the configured plugin routers and prints their
-mounted resource paths. It includes sub-resources such as Excel sheets and
+mounted resource paths. It includes sub-resources such as Excel sheets. It
 does not invent API, schema, or UI paths for files that mount no routes.
 
 `adapt reindex` rebuilds the full-text search index. Add `--force` to index
@@ -210,11 +210,11 @@ resources whose file metadata is unchanged.
 
 ## When to Collect Logs
 
-Capture logs when reporting issues:
+When you report an issue, capture these logs:
 
 - startup failure output
 - traceback for 500 errors
 - request path and response code
-- relevant config from `.adapt/conf.json`
+- relevant configuration from `.adapt/conf.json`
 
 Manual navigation: [Previous: Architecture](architecture.md) | [Index](index.md) | [Next: Known Limitations](known_limitations.md)

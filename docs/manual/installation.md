@@ -24,8 +24,8 @@ pip install -e .
 ```
 
 The source checkout can contain changes that are newer than the published
-`adapt-server` release on PyPI. Identify which source or package version you use
-when you compare behavior with this documentation.
+`adapt-server` release on PyPI. If you compare behavior with this documentation,
+identify which source or package version you use.
 See [Known Limitations](known_limitations.md#package-versions).
 
 ## First Run
@@ -83,12 +83,12 @@ Options:
 
 Notes:
 
-- `--tls-cert` and `--tls-key` must be provided together.
+- You must provide `--tls-cert` and `--tls-key` together.
 - `--readonly` blocks write operations.
 - `--reload` watches Python files in the document root. Uvicorn restarts Adapt
   after a change.
 - `adapt serve` sets `secure_cookies` from its direct TLS configuration. It
-  sets the value to `true` only when both TLS files are configured. This
+  sets the value to `true` only when you configure both TLS files. This
   overrides the value in `conf.json`.
 
 ## Other Core Command Options
@@ -111,13 +111,13 @@ adapt reindex <directory> [--force]
 The `--force` flag indexes resources even if their file metadata is unchanged.
 
 `adapt list-endpoints <directory>` builds the configured plugin routers and
-prints the resource paths they actually mount. The output includes
+prints the resource paths they mount. The output includes
 sub-resources such as Excel sheets and both extensionless and with-extension
-resource namespaces. Files that do not mount routes are not listed.
+resource namespaces. The command does not list files that do not mount routes.
 
 ## Configuration File
 
-Adapt uses `DOCROOT/.adapt/conf.json`. It is created automatically on first run.
+Adapt uses `DOCROOT/.adapt/conf.json`. Adapt creates it automatically on first run.
 
 Supported top-level keys:
 
@@ -149,7 +149,7 @@ Environment overrides:
 - `ADAPT_UPLOAD_ALLOWED_MIME_TYPES`
 - `ADAPT_UPLOAD_COLLISION_POLICY`
 
-`ADAPT_PORT` accepts an integer from 1 through 65535. The three Boolean
+`ADAPT_PORT` accepts an integer from 1 through 65535. The Boolean
 variables accept `1`, `true`, `yes`, or `on` for true. They accept `0`,
 `false`, `no`, or `off` for false. Boolean values are case-insensitive and can
 have surrounding spaces.
@@ -174,8 +174,9 @@ Effective precedence for serve behavior:
 
 ## Recommended Upload Constraints
 
-For production systems, keep uploads disabled unless you need browser or API
-based file ingestion. When enabled, set explicit limits and extension policy.
+For production systems, keep uploads disabled, unless you need file ingestion
+from a browser or an API. When you enable uploads, set explicit limits and an
+extension policy.
 
 Example `DOCROOT/.adapt/conf.json` snippet:
 
@@ -197,7 +198,7 @@ Operational guidance:
 
 - Prefer a restrictive `allowed_extensions` list over a broad denylist.
 - Set `max_size_bytes` based on expected file sizes and storage budget.
-- Keep `readonly=true` for maintenance windows to hard-block uploads.
+- Keep `readonly=true` for maintenance windows to block all uploads.
 - Monitor upload audit actions (`upload_success`, `upload_denied`,
   `upload_failed`) from `/admin/audit-logs`.
 
@@ -205,7 +206,7 @@ Granting upload access to non-superusers:
 
 - In the admin UI permission form, leave the `Resource` field blank (or enter
   `__root__`) and set `Action` to `write`.
-- Through admin API, create a permission with `resource` set to `""`,
+- Through the admin API, create a permission with `resource` set to `""`,
   `"__root__"`, or `"<root>"` and assign it to a group.
 
 ## TLS Setup
@@ -216,7 +217,7 @@ adapt serve . --tls-cert /path/to/cert.pem --tls-key /path/to/key.pem
 
 ## Created Directory Structure
 
-Adapt creates a `.adapt/` directory in docroot:
+Adapt creates a `.adapt/` directory in the docroot:
 
 ```text
 your-data-directory/
@@ -247,7 +248,7 @@ The Adapt Helm chart is at `charts/adapt/` in the repository.
 
 ### Persistence modes
 
-By default, `/data` uses `emptyDir` and data is lost when the pod restarts.
+By default, `/data` uses `emptyDir`. The pod loses its data when it restarts.
 Enable persistence to keep document content and `.adapt/` state across restarts
 and rescheduling.
 
@@ -267,7 +268,7 @@ helm install adapt ./charts/adapt \
 ```
 
 The chart creates a `PersistentVolumeClaim` named after the Helm release.
-If `storageClass` is empty, the cluster's default StorageClass is used.
+If `storageClass` is empty, the cluster uses its default StorageClass.
 
 **Existing PVC — cluster admin creates the volume beforehand:**
 
@@ -277,7 +278,7 @@ helm install adapt ./charts/adapt \
   --set persistence.existingClaim=my-adapt-pvc
 ```
 
-No `PersistentVolumeClaim` object is created by the chart in this mode.
+The chart does not create a `PersistentVolumeClaim` object in this mode.
 
 ### Persistence values reference
 
@@ -285,7 +286,7 @@ No `PersistentVolumeClaim` object is created by the chart in this mode.
 |---|---|---|
 | `persistence.enabled` | `false` | Enable durable storage |
 | `persistence.existingClaim` | `""` | Name of a pre-created PVC to mount |
-| `persistence.storageClass` | `""` | StorageClass name; cluster default if empty |
+| `persistence.storageClass` | `""` | StorageClass name. Uses the cluster default if empty |
 | `persistence.accessModes` | `[ReadWriteOnce]` | PVC access modes |
 | `persistence.size` | `10Gi` | Storage request size |
 | `persistence.mountPath` | `""` (uses `adapt.rootPath`) | Mount path inside the container |
@@ -293,8 +294,8 @@ No `PersistentVolumeClaim` object is created by the chart in this mode.
 
 ### Upload settings
 
-Uploads are off by default. Enable them with chart environment values when you
-want browser or API file ingestion.
+Uploads are off by default. When you want file ingestion from a browser or an
+API, enable uploads with environment configuration values in the chart.
 
 Example `values.yaml` fragment:
 
@@ -310,28 +311,29 @@ env:
     value: "true"
 ```
 
-When enabled, authenticated users with `write` permission on the document-root
-boundary see the upload card on `/` and can upload directly from the landing
-page. The same users can also call `POST /api/uploads` with API credentials.
+When you enable uploads, authenticated users with `write` permission on the
+document-root boundary see the upload card on `/`. These users can upload
+directly from the landing page. The same users can also call
+`POST /api/uploads` with API credentials.
 
 ### Admin prerequisites
 
-- Provide a StorageClass with sufficient quota before using dynamic mode.
+- Before you use dynamic mode, provide a StorageClass with enough quota.
 - For `ReadWriteOnce` volumes, keep `replicaCount=1` (the chart default).
-  Use an `RWX`-capable StorageClass and increase `replicaCount` only when the
-  storage driver supports concurrent writers.
-- Adapt reads and writes `.adapt/adapt.db` (SQLite). Two pods sharing an `RWO`
-  volume will cause write conflicts; `RWX` block volumes can cause corruption.
-  Network filesystems (NFS, CephFS, Azure Files) with correct locking are the
-  supported multi-replica path.
+  When the storage driver supports concurrent writers, use an `RWX`-capable
+  StorageClass and increase `replicaCount`.
+- Adapt reads and writes `.adapt/adapt.db` (SQLite). Two pods that share an
+  `RWO` volume cause write conflicts. `RWX` block volumes can cause
+  corruption. Network filesystems (NFS, CephFS, Azure Files) with correct
+  locking are the supported multi-replica path.
 
 ### Bootstrapping a superuser
 
-By default, a fresh install has no users at all — you'd otherwise need
+By default, a fresh install has no users. Otherwise you need to run
 `kubectl exec ... -- adapt addsuperuser /data --username admin` by hand.
-Setting `bootstrapAdmin.enabled=true` runs that same command automatically via
-a `post-install,post-upgrade` Helm hook Job, sourcing credentials from a
-Kubernetes Secret instead of a manual step:
+Set `bootstrapAdmin.enabled=true` to run that same command automatically.
+A `post-install,post-upgrade` Helm hook Job runs the command and gets
+credentials from a Kubernetes Secret. This replaces the manual step:
 
 ```bash
 helm install adapt ./charts/adapt \
@@ -341,41 +343,43 @@ helm install adapt ./charts/adapt \
 ```
 
 **Requires `persistence.enabled=true`.** The bootstrap Job runs in its own
-pod, so it can only share the account database with the main deployment via a
-PVC — with `emptyDir` (the default), the two pods would get independent,
-disconnected volumes and the created user would be invisible to the running
-server. The chart refuses to render (`helm install`/`template` fails outright)
-if you set `bootstrapAdmin.enabled=true` without persistence, rather than
-silently no-op'ing.
+pod. It can share the account database with the main deployment only through
+a PVC. If you use `emptyDir` (the default), the two pods get independent,
+disconnected volumes, and the created user is invisible to the running
+server. The chart does not silently skip this configuration: if you set
+`bootstrapAdmin.enabled=true` without persistence, `helm install` and
+`helm template` fail.
 
-If `bootstrapAdmin.existingSecret` is left unset, the chart generates a
-Secret named `<release>-bootstrap-admin` with a random password on first
-install, and **reuses that same Secret's value on every later `helm
-upgrade`** rather than regenerating it — so it never drifts out of sync with
-the password already baked into the created account. Retrieve it with:
+If you leave `bootstrapAdmin.existingSecret` unset, the chart generates a
+Secret named `<release>-bootstrap-admin` with a random password on the first
+install. On every later `helm upgrade`, the chart reuses that same Secret
+value. It does not generate a new password, so the Secret always matches the
+password in the created account. Retrieve it with:
 
 ```bash
 kubectl get secret <release>-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
 ```
 
-To supply your own credentials instead (e.g. from a secrets manager), create
-a Secret with `username`/`password` keys yourself and point
-`bootstrapAdmin.existingSecret` at it (`existingSecretUsernameKey` /
-`existingSecretPasswordKey` let you use different key names).
+To supply your own credentials, for example from a secrets manager, create a
+Secret with `username` and `password` keys. Point
+`bootstrapAdmin.existingSecret` at it. Use `existingSecretUsernameKey` and
+`existingSecretPasswordKey` to use different key names.
 
-Caveat: if you `helm uninstall` and reinstall against the same retained PVC,
-the admin account from the first install still exists with its original
-password — `addsuperuser` is a no-op for a username that already exists, so a
-freshly generated Secret value won't apply. Use `bootstrapAdmin.existingSecret`
-with a known password if you need that guarantee across reinstalls, or reset
-it with `adapt admin change-password`.
+Caveat: If you run `helm uninstall` and reinstall against the same retained
+PVC, the admin account from the first install still exists with its original
+password. The command `addsuperuser` does nothing for a username that
+already exists, so a newly generated Secret value does not apply. If you need
+that guarantee across reinstalls, use `bootstrapAdmin.existingSecret` with a
+known password. You can also reset the password with
+`adapt admin change-password`.
 
 ### Exposing the service
 
-`service.type` defaults to `ClusterIP` (reach it via `kubectl port-forward`
-or your own Ingress). For a directly-reachable address without an Ingress
-controller — e.g. bare-metal or single-node clusters like k3s — set it to
-`NodePort` and optionally pin the port so it's stable across reinstalls:
+`service.type` defaults to `ClusterIP`. Reach it with `kubectl port-forward`
+or your own Ingress. For a directly-reachable address without an Ingress
+controller, for example on bare-metal or single-node clusters like k3s, set
+it to `NodePort`. You can also pin the port so it stays stable across
+reinstalls:
 
 ```bash
 helm install adapt ./charts/adapt \
@@ -383,16 +387,16 @@ helm install adapt ./charts/adapt \
   --set service.nodePort=30080
 ```
 
-`service.nodePort` is only applied when `service.type` is `NodePort` or
-`LoadBalancer`; leave it blank to let Kubernetes assign one from its
+Kubernetes applies `service.nodePort` only when `service.type` is `NodePort`
+or `LoadBalancer`. Leave it blank to let Kubernetes assign one from its
 30000-32767 range.
 
 ### Local development overlay
 
 `charts/adapt/values-dev.yaml` bundles persistence, `bootstrapAdmin`, and a
-pinned `NodePort` (`30080`) together, for standing up a durable,
-directly-browsable instance during local VM/k3s development instead of
-juggling the individual flags above:
+pinned `NodePort` (`30080`) together. Use it to start a durable,
+directly-browsable instance for local VM or k3s development, instead of
+setting the individual flags above:
 
 ```bash
 helm upgrade --install adapt ./charts/adapt -f charts/adapt/values-dev.yaml \

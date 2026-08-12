@@ -28,12 +28,12 @@ adapt admin create-permissions /path/to/docroot __all__ \
 - `--all-group`: prefix for the combined group that receives all read and write permissions (default: `all_resources`)
 - `--read-group`: prefix for the combined group that receives read-only permissions (default: `read_resources`)
 
-The selected resource names are sorted, joined with underscores, and added
-as a suffix. For example, selecting `products inventory` creates combined
-groups named `all_resources_inventory_products` and
-`read_resources_inventory_products`. The command also creates the individual
-groups `products_readonly`, `products_readwrite`, `inventory_readonly`, and
-`inventory_readwrite`.
+The command sorts the selected resource names, joins them with underscores,
+and adds the result as a suffix. For example, if you select
+`products inventory`, the command creates the combined groups
+`all_resources_inventory_products` and `read_resources_inventory_products`.
+The command also creates the individual groups `products_readonly`,
+`products_readwrite`, `inventory_readonly`, and `inventory_readwrite`.
 
 Or target specific resources:
 
@@ -175,7 +175,7 @@ curl -H "X-API-Key: <superuser-key>" http://localhost:8000/admin/locks
 ## Best Practices
 
 - Use group-based permission assignment rather than one-off manual grants.
-- Use `create-permissions __all__` after adding new resources.
+- Use `create-permissions __all__` after you add new resources.
 - Rotate and revoke API keys routinely.
 - Use TLS and secure cookies for non-local deployments.
 

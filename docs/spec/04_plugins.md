@@ -74,9 +74,9 @@ does not safely enforce write-level row security.
 
 Dataset plugins use `ui_path` for `*.index.html` templates. The media plugin
 uses `ui_path` for JSON metadata. Schema files affect serialization and UI
-metadata. The shared dataset mutation path also validates supplied create and
-update fields against supported schema types before it acquires the resource
-lock.
+metadata. The shared dataset mutation path also makes sure that supplied
+create and update fields match supported schema types before it acquires
+the resource lock.
 
 CSV, XLSX, and Parquet mutations use the shared dataset write method and a
 resource lock. Each writable plugin uses the shared atomic-write helper.

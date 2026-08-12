@@ -13,12 +13,12 @@ routers through HTTP routes.
 Place files into a directory, and Adapt generates:
 
 * REST APIs and DataTables UIs for CSV, XLSX, XLS, and Parquet datasets
-* CRUD operations for CSV, XLSX, and Parquet datasets; legacy XLS files are read-only
+* CRUD operations for CSV, XLSX, and Parquet datasets. Legacy XLS files are read-only
 * Direct routes for registered content, generic files, and media
 * Inline editing through `PATCH`
-* Inferred schemas that control serialization and UI columns and validate
-  supplied create and update values
-* Serialized writes using one lock record per resource, retry with exponential
+* Inferred schemas that control serialization and UI columns, and make sure
+  that supplied create and update values are valid
+* Serialized writes with one lock record per resource, retry with exponential
   backoff, and atomic target replacement where supported
 * Generated schema and UI companion files for datasets
 * FastAPI routers loaded from registered Python files
@@ -55,7 +55,7 @@ Adapt includes the following major subsystems:
 
 * **[Core Engine](./03_core_engine.md)**: File Discovery, Dataset Engine, Schema Engine, Safe Writes, Cache.
 * **[Auth & Security](./02_auth_security.md)**: RBAC, Authentication, API Keys, Audit Logging.
-* **[Plugins](./04_plugins.md)**: Extensible system for handling different file types.
+* **[Plugins](./04_plugins.md)**: Extensible system that handles different file types.
 * **[API & UI](./05_api_and_ui.md)**: Dynamic Route Generator, HTML UI Renderer, Python Handlers, Admin UI.
 * **[CLI & Config](./06_cli_config.md)**: Command line interface and configuration.
 

@@ -10,8 +10,9 @@ lane reads `OK` for it in `PROJECT_STATUS.md`.
 
 Goal: connect all eight lanes end to end. In practice this project has
 run business logic, interface, tests, and docs far past a walking
-skeleton already (v0.3.0, 319 tests, a real docs manual). M0's security
-floor is now closed too (see M1 below and `PROJECT_STATUS.md`).
+skeleton already (v0.3.0, 319 tests, a real docs manual, at the time this
+milestone closed — see `PROJECT_STATUS.md` for current numbers). M0's
+security floor is now closed too (see M1 below and `PROJECT_STATUS.md`).
 
 Definition of Done for M0:
 
@@ -73,25 +74,71 @@ dependencies) do directly without the conflicting pin. `pillow` is now
 pinned to `>=12.3,<13`, and `pip-audit` runs with zero ignored findings.
 All eight lanes read `OK`.
 
+## Deployment tracer: Kubernetes/Helm packaging (done)
+
+Not part of the numbered M0-M4 ladder — this is a deliberately-fired,
+self-contained tracer round through a *new* surface (Kubernetes
+deployment) rather than the next slice of hardening the existing PyPI
+path. Named here explicitly, per the skill's own guidance, rather than
+letting it hide as an unmarked gap against M2-M4.
+
+Goal: make Adapt deployable on Kubernetes with a real Helm chart, durable
+storage, and a way to reach it and log in without hand-editing manifests
+or shelling into a pod.
+Why this slice: local/VM installs already worked; Kubernetes was
+unaddressed entirely. Firing it as one slice (not spread across several
+milestones) kept persistence, bootstrapping, and connectivity coherent
+with each other instead of landing as three uncoordinated changes.
+
+| Lane | Result |
+|------|--------|
+| Business logic | N/A — no application-level change |
+| Interface | `service.type: NodePort` (with a pinnable `nodePort`) added for clusters without an Ingress controller, alongside the existing `ClusterIP`/Ingress path |
+| Data | `persistence.enabled` + PVC support added to the chart (dynamic provisioning or a pre-created `existingClaim`), replacing the previous always-ephemeral `emptyDir` mount |
+| Packaging | `charts/adapt/` added (Helm chart, versioned independently of the app via `Chart.yaml`); `appVersion` now kept in sync with `pyproject.toml` after a drift was caught (see M2) |
+| Automation | `helm-ci.yml` added: `helm lint`, `helm unittest` (25 cases), and a real `kind`-cluster install smoke test across 3 Kubernetes versions on every chart-affecting PR |
+| Tests | 25 `helm-unittest` cases covering persistence branching, admin-bootstrap Job/Secret rendering (including a hard `fail()` when bootstrap is enabled without persistence, rather than a silent no-op), and NodePort wiring |
+| Docs | README and `docs/manual/installation.md` gained a full Helm section: all three persistence modes, admin bootstrapping, NodePort, and a `values-dev.yaml` overlay for local cluster development |
+| Security | Admin-bootstrap credentials are generated into a Kubernetes Secret (24-char random password, generated once and preserved across upgrades) rather than requiring a hand-typed password or shipping a default one |
+
+Result: done. Also surfaced two bugs, both fixed in the same slice rather
+than deferred: `charts/adapt/Chart.yaml`'s `appVersion` had silently
+drifted one release behind `pyproject.toml` (now guarded by the version-
+match check described in M2 below), and two web UI routes leaked dataset
+*names* (not data) to authenticated users without read permission on them
+via an unfiltered navigation-link builder — fixed with regression tests
+that were confirmed to fail against the pre-fix code.
+
 ## M2 — Supply-chain hardening at publish time
 
-Goal: every artifact published to PyPI is signed and ships with a
-generated SBOM, and Dependabot keeps dependencies current automatically.
+Goal: every artifact published — to PyPI **and** now to GHCR as a
+container image (see the deployment tracer above, which added that
+publish path) — is signed and ships with a generated SBOM, and Dependabot
+keeps dependencies current automatically.
 Why this slice: the publish pipeline already works (OIDC trusted
-publishing to PyPI) — this round makes what it publishes verifiable and
-keeps the M1 dependency floor from rotting, rather than opening a new
-capability.
+publishing to PyPI, and now GHCR too) — this round makes what it publishes
+verifiable and keeps the M1 dependency floor from rotting, rather than
+opening a new capability.
+
+Head start already in place: both `publish-pypi.yml` and the newer
+`publish-image.yml` now hard-depend on the full test suite passing
+(`test.yml` called as a reusable workflow, not just trusted to have run)
+before either can publish, and both refuse to run if the release tag
+doesn't match `pyproject.toml`'s version. That's supply-chain integrity
+work that landed as part of the deployment tracer above, ahead of this
+milestone — it doesn't close M2 by itself (no SBOM, no signing yet), but
+it's real progress toward it and shouldn't be re-done here.
 
 | Lane | Target state at this milestone |
 |------|--------------------------------|
 | Business logic | Unchanged (N/A for this round) |
 | Interface | Unchanged (N/A for this round) |
 | Data | Unchanged (N/A for this round) |
-| Packaging | SBOM (e.g. CycloneDX via `cyclonedx-py`) generated and attached to each release; build remains reproducible |
-| Automation | `.github/dependabot.yml` added for the `pip` and `github-actions` ecosystems; `publish-pypi.yml` gains a `cosign`/sigstore signing step |
+| Packaging | SBOM (e.g. CycloneDX via `cyclonedx-py`) generated and attached to each release, for **both** the PyPI wheel and the GHCR container image; both builds remain reproducible |
+| Automation | `.github/dependabot.yml` added for the `pip`, `github-actions`, and (new) `docker` ecosystems; `publish-pypi.yml` **and** `publish-image.yml` each gain a `cosign`/sigstore signing step |
 | Tests | Unchanged (N/A for this round) |
-| Docs | README/RELEASING.md updated to describe how a consumer verifies a signed release and reads the SBOM |
-| Security | Signing key/identity setup documented; SBOM and signature verified end-to-end on one real release |
+| Docs | README/RELEASING.md updated to describe how a consumer verifies a signed release (wheel and image) and reads the SBOM; `charts/adapt` values documented for pinning to a signed/digest-verified image if the cluster enforces that |
+| Security | Signing key/identity setup documented; SBOM and signature verified end-to-end on one real release, for both artifact types |
 
 Exit criteria: all eight lanes read `OK` for M2 in `PROJECT_STATUS.md`.
 
@@ -125,9 +172,10 @@ Goal: version bumps and the changelog fall out of Conventional Commits
 automatically, and test coverage is visible in CI rather than implied by
 test count alone.
 Why this slice: the project already has a real (if manual) release
-process; this closes the gap between "319 tests exist" and "we know what
-they cover," and removes the last hand-maintained artifact (the version
-number and a changelog that doesn't exist yet).
+process; this closes the gap between "hundreds of tests exist" (see
+`PROJECT_STATUS.md` for the current count) and "we know what they cover,"
+and removes the last hand-maintained artifact (the version number and a
+changelog that doesn't exist yet).
 
 | Lane | Target state at this milestone |
 |------|--------------------------------|

@@ -1,20 +1,21 @@
 # MCP Interface Guide
 
-This guide walks through everything needed to let an agentic tool (Claude
-Code, Claude Desktop, or any other [MCP](https://modelcontextprotocol.io)
-client) talk to an Adapt server: creating an account, granting it
-permissions, minting an API key, and pointing the client at `/mcp/`.
+This guide explains how to let an agentic tool (Claude Code, Claude Desktop,
+or another [MCP](https://modelcontextprotocol.io) client) talk to an Adapt
+server. It covers account creation, permission grants, API key creation, and
+how to point the client at `/mcp/`.
 
 ## What Is the MCP Interface?
 
 Adapt mounts a [Model Context Protocol](https://modelcontextprotocol.io)
-server at `/mcp/` on the same FastAPI app `adapt serve` already runs. It
-exposes five tools — `list_resources`, `get_schema`, `read_resource`,
-`write_resource`, and `search` — that wrap the exact same permission checks
-and plugin methods the REST API and browser UI use. There is no separate API
-surface and no separate process to run: if a user can read or write a
-resource over `/api/*`, the same user can do it through MCP, and nothing
-more.
+server at `/mcp/` on the same FastAPI app that `adapt serve` runs. It exposes
+five tools: `list_resources`, `get_schema`, `read_resource`, `write_resource`,
+and `search`. These tools wrap the same permission checks and plugin methods
+that the REST API and browser UI use.
+
+There is no separate API surface and no separate process to run. If a user
+can read or write a resource over `/api/*`, the same user can do it through
+MCP.
 
 Authentication is enforced when a tool executes, not during MCP
 initialization or tool discovery. MCP uses Adapt's shared authentication
@@ -28,7 +29,7 @@ HTTP POST requests.
 - Adapt installed (`pip install adapt-server`) and a docroot with at least
   one resource (see the [Quick Start](quick_start.md)).
 - An MCP-capable client. This guide shows examples for the Claude Code CLI
-  and a generic JSON config that works with most desktop MCP clients.
+  and a generic JSON configuration that works with most desktop MCP clients.
 
 ## Step 1: Create a Superuser and Start the Server
 
@@ -48,17 +49,17 @@ adapt admin create-permissions /path/to/docroot __all__
 adapt admin list-groups /path/to/docroot
 ```
 
-Pass specific resource namespaces instead of `__all__` if you only want
-permissions generated for some resources. The command also creates combined
+If you only want permissions generated for some resources, pass specific
+resource namespaces instead of `__all__`. The command also creates combined
 groups named `read_resources_<selected-resource-suffix>` and
 `all_resources_<selected-resource-suffix>`. The suffix contains all selected
 resource names in sorted order, joined with underscores.
 
 ## Step 3: Create a User for the Agent and Grant Access
 
-Give the agent its own account rather than reusing the superuser's — it
-keeps audit logs meaningful and lets you revoke access without touching
-anything else.
+Give the agent its own account. Do not reuse the superuser's account for
+this. A separate account keeps audit logs meaningful and lets you revoke
+access without other effects.
 
 Successful `write_resource` calls create the same dataset audit records as
 REST mutations.
@@ -68,22 +69,22 @@ adapt admin create-user /path/to/docroot --username agent --password <a-strong-p
 adapt admin add-to-group /path/to/docroot --username agent --group <resource>_readonly
 ```
 
-Use the `<resource>_readwrite` group instead (or in addition) if the agent should
-also be able to create/update/delete rows via `write_resource`. Repeat
-`add-to-group` for every resource namespace the agent needs.
+If the agent must also create, update, or delete rows through
+`write_resource`, use the `<resource>_readwrite` group instead, or in
+addition. Repeat `add-to-group` for every resource namespace the agent needs.
 
 ## Step 4: Create an API Key
 
-Sign in as `agent` at `/auth/login`, open `/profile`, and create an API key.
-No superuser involvement is needed for a user to create their own key.
+Sign in as `agent` at `/auth/login`. Open `/profile`. Create an API key
+there. A user does not need superuser involvement to create their own key.
 
-The raw API key is shown only once. Save it somewhere safe; only its hash is
-stored server-side.
+Adapt shows the raw API key only once. Save it somewhere safe. Adapt stores
+only its hash on the server.
 
-A superuser can also mint (or revoke) a key on another user's behalf from
-the admin UI (`/admin/` → **API Keys** → **Create**, choosing the `agent`
-user) — useful for provisioning an agent's key without sharing its password,
-but it's an admin convenience, not a requirement.
+A superuser can also mint or revoke a key for another user from the admin UI
+(`/admin/` → **API Keys** → **Create**, then select the `agent` user). This
+is useful to provision an agent's key without sharing its password. It is an
+admin convenience, not a requirement.
 
 ## Step 5: Verify the MCP Endpoint Is Reachable
 
@@ -95,9 +96,9 @@ curl -i \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
 ```
 
-A `200 OK` with a JSON-RPC response body means the server is up. Initialization
-does not authenticate the user. The configured credentials are checked when
-the client executes a tool.
+A `200 OK` with a JSON-RPC response body means the server is up.
+Initialization does not authenticate the user. Adapt checks the configured
+credentials when the client executes a tool.
 
 ## Step 6: Point an Agentic Tool at It
 
@@ -110,8 +111,9 @@ claude mcp add --transport http adapt http://localhost:8000/mcp/ \
 
 ### Generic MCP Client Config (Claude Desktop and similar)
 
-Most desktop clients that support remote/HTTP MCP servers accept a config
-block similar to this — check your client's docs for the exact key names:
+Most desktop clients that support remote or HTTP MCP servers accept a
+configuration block similar to this. See your client's documentation for the
+exact key names.
 
 ```json
 {
@@ -126,22 +128,22 @@ block similar to this — check your client's docs for the exact key names:
 }
 ```
 
-Use `https://` and a certificate the client trusts once you're off
-`localhost` — see [Security](security.md) for TLS setup.
+When you move off `localhost`, use `https://` and a certificate the client
+trusts. See [Security](security.md) for TLS setup.
 
 ## Step 7: What the Agent Can Do
 
 | Tool | Equivalent REST call | Notes |
 |---|---|---|
-| `list_resources` | `GET /` (JSON) | Every namespace the agent may read, with its type. |
+| `list_resources` | `GET /` (JSON) | Every namespace the agent can read, with its type. |
 | `get_schema` | `GET /schema/{resource}/` | Columns and types for a dataset resource. |
-| `read_resource` | `GET /api/{resource}/` | Accepts `limit`, `offset`, `sort`, `order`, `filter` for datasets. `sort` is the column name; `order` must be `asc` or `desc`. |
-| `write_resource` | `POST`/`PATCH`/`DELETE /api/{resource}/` | `action` is `"create"`, `"update"`, or `"delete"`; see the [mutation section](api_reference.md#mutations-create-update-delete). |
-| `search` | `GET /search` | Full-text search across every resource the agent may read. |
+| `read_resource` | `GET /api/{resource}/` | Accepts `limit`, `offset`, `sort`, `order`, `filter` for datasets. `sort` is the column name. `order` must be `asc` or `desc`. |
+| `write_resource` | `POST`, `PATCH`, or `DELETE /api/{resource}/` | `action` is `"create"`, `"update"`, or `"delete"`. See the [mutation section](api_reference.md#mutations-create-update-delete). |
+| `search` | `GET /search` | Full-text search across every resource the agent can read. |
 
 Once the client is connected, ask the agent something like "what data do you
-have access to?" — it should call `list_resources` on its own — or "search
-for parental leave policy" to exercise `search`.
+have access to?" It calls `list_resources` on its own. You can also ask
+"search for parental leave policy" to exercise `search`.
 
 To read `products` sorted by category ascending, pass MCP tool arguments like:
 
@@ -156,20 +158,20 @@ To read `products` sorted by category ascending, pass MCP tool arguments like:
 ## Troubleshooting
 
 - **"Authentication required" from every tool call** — the `X-API-Key`
-  header is missing, misspelled, or the client isn't forwarding custom
-  headers for HTTP MCP servers. Re-check Step 6.
-- **"Permission denied: read/write on `<namespace>`"** — the agent's user
-  isn't in a group with that permission. Revisit Step 3 and
+  header is missing, misspelled, or the client is not forwarding custom
+  headers for HTTP MCP servers. Look again at Step 6.
+- **"Permission denied: read/write on `<namespace>`"** — the agent's user is
+  not in a group with that permission. Revisit Step 3 and
   `adapt admin list-groups`.
-- **"Unknown resource"** — the namespace doesn't match what `list_resources`
-  reports; namespaces are the file's relative path without its extension
-  (e.g. `products`, not `products.csv`), unless a `sub_namespace` (Excel
-  sheet name) applies.
-- **"Server is in read-only mode"** — the server was started with
-  `--readonly` or `readonly: true` in `conf.json`; `write_resource` is
-  disabled entirely regardless of permissions.
+- **"Unknown resource"** — the namespace does not match what
+  `list_resources` reports. Namespaces are the file's relative path without
+  its extension (for example, `products`, not `products.csv`), unless a
+  `sub_namespace` (Excel sheet name) applies.
+- **"Server is in read-only mode"** — the server started with `--readonly`,
+  or `conf.json` has `readonly: true`. `write_resource` is disabled for
+  everyone, regardless of permissions.
 - **No `/mcp/` route at all** — the server has `mcp_enabled: false` in
-  `.adapt/conf.json` or `ADAPT_MCP_ENABLED=false` set. See
+  `.adapt/conf.json`, or has `ADAPT_MCP_ENABLED=false` set. See
   [Configuration](configuration.md).
 
 Manual navigation: [Previous: Security](security.md) | [Index](index.md) | [Next: Configuration](configuration.md)

@@ -41,15 +41,15 @@ Flow:
 - Discovery assigns schema, UI, and options companion paths
 - Plugin `apply_options()` can modify each descriptor
 - Plugins can generate companion files under `.adapt/`
-- Route configs from plugin are mounted into the app
+- Adapt mounts the route configuration from each plugin into the app
 
 ### Data and Security Layer
 
 Key modules:
 
-- `adapt/storage.py` (SQLModel tables + DB engine)
+- `adapt/storage.py` (SQLModel tables and database engine)
 - `adapt/auth/*` (sessions, password, dependencies)
-- `adapt/security.py` (CSRF + security headers)
+- `adapt/security.py` (CSRF and security headers)
 - `adapt/locks.py` (lock manager)
 - `adapt/cache.py` (SQLite-backed cache)
 
@@ -58,15 +58,15 @@ Key modules:
 Current middleware stack includes:
 
 - Trusted host middleware
-- security middleware (CSRF validation + security headers)
+- security middleware (CSRF validation and security headers)
 - auth middleware (session user hydration)
 
 Request flow for unsafe methods with session authentication:
 
-1. CSRF token validated (`adapt_csrf` cookie + `X-CSRF-Token`)
-2. user resolved from session or API key
-3. endpoint dependency checks permission
-4. route handler executes
+1. Adapt validates the CSRF token, using the `adapt_csrf` cookie and the `X-CSRF-Token` header
+2. Adapt resolves the user from the session or an API key
+3. The endpoint dependency makes sure that the user has permission
+4. The route handler executes
 
 ## Route Generation Model
 
@@ -115,11 +115,12 @@ Current cache implementation is SQLite-backed (`adapt/cache.py`).
 - resource-scoped invalidation
 - used by plugins and admin cache endpoints
 
-Caching is plugin-specific, not a response-wide FastAPI cache. CSV, Excel,
-and Parquet plugins cache parsed rows; dataset schemas are cached separately;
-HTML and Markdown plugins cache rendered/read content; and the media plugin
-caches extracted metadata. Generic file response bodies and streamed media
-bodies are not cached.
+Caching is specific to each plugin. It is not one cache that covers every
+FastAPI response. The CSV, Excel, and Parquet plugins cache parsed rows.
+Adapt caches dataset schemas separately. The HTML and Markdown plugins cache
+content that they render or read. The media plugin caches extracted
+metadata. Adapt does not cache generic file response bodies or streamed
+media bodies.
 
 ## Locking Model
 
@@ -127,11 +128,11 @@ Locking uses DB records with per-resource uniqueness and expiration.
 
 - one lock record can exist per resource
 - lock acquisition retries with exponential backoff
-- stale locks can be cleaned
-- write operations use lock context manager
+- Adapt can clean stale locks
+- write operations use a lock context manager
 - writable built-in dataset plugins replace the target atomically where supported
 
-Adapt returns `409 Conflict` when lock acquisition exhausts all retries.
+When lock acquisition exhausts all retries, Adapt returns `409 Conflict`.
 Locking and atomic replacement reduce risk. Races can still occur. A write can
 still stop before completion.
 
@@ -144,8 +145,8 @@ still stop before completion.
 
 ## Deployment Notes
 
-Current implementation is optimized for single-instance docroot-local operation.
+Adapt optimizes the current implementation for single-instance, docroot-local operation.
 
-Multi-instance, shared DB/cache, and websocket-style real-time update architectures are future design topics, not current built-in behavior.
+Multi-instance operation, shared database and cache, and websocket-style real-time update architectures are future design topics, not current built-in behavior.
 
 Manual navigation: [Previous: Plugin Development](plugin_development.md) | [Index](index.md) | [Next: Troubleshooting](troubleshooting.md)

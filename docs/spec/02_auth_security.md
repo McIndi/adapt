@@ -1,8 +1,9 @@
-# **Adapt Specification: Authentication & Security**
+# **Adapt Specification: Authentication and Security**
 
-> **Status:** This document is maintained as an implementation specification.
-> The running code on `main` wins if they differ. This is not a roadmap or the
-> authoritative user documentation. See the
+> **Status:** The project maintains this document as an implementation
+> specification. If the running code and this document differ, the code on
+> `main` wins. This is not a roadmap or the authoritative user documentation.
+> See the
 > [documentation contract](../documentation-contract.md) and [user manual](../manual/index.md).
 
 ## **1. Authentication and Authorization System**
@@ -17,8 +18,8 @@ The role-based access control system has six main components:
 
 1. **Authentication layer** - Login creates a database session and an
    `adapt_session` cookie.
-2. **User & Group Management** - Organize users into groups for permission inheritance
-3. **Permission System** - Resource-level permissions (read/write) assigned to groups
+2. **User and Group Management** - Groups organize users for permission inheritance.
+3. **Permission System** - Groups have resource-level permissions (read or write).
 4. **Enforcement layer** - Generated resource routes require authentication
    and a matching resource permission.
 5. **API key system** - The `X-API-Key` header supports programmatic access.
@@ -102,9 +103,9 @@ sequenceDiagram
 #### **API Key Management**
 - **Self-issue:** Authenticated users can create their own keys through
   `POST /api/apikeys` or the Profile UI.
-- **Expiration:** Optional expiration up to 1 year maximum
-- **Revocation:** Users can revoke their own keys via `/api/apikeys/{id}` DELETE endpoint or Profile UI
-- **Security:** Keys are generated securely, hashed for storage, and never retrievable after creation
+- **Expiration:** Keys can have an optional expiration of up to one year.
+- **Revocation:** Users can revoke their own keys through the `/api/apikeys/{id}` DELETE endpoint or the Profile UI.
+- **Security:** Adapt generates keys securely, hashes them for storage, and never allows retrieval after creation.
 - **Audit:** Successful key creation and revocation create audit records.
 
 ### **Permission Checking**
@@ -112,7 +113,7 @@ sequenceDiagram
 For each protected route:
 
 1. Resolve the user from the session cookie or API key.
-2. Permit the action if the user is a superuser.
+2. If the user is a superuser, permit the action.
 3. Query permissions through the user group membership:
    ```sql
    SELECT permission.*
@@ -123,7 +124,7 @@ For each protected route:
      AND permission.resource = ?
      AND permission.action = ?
    ```
-4. Return `403` if no matching permission exists.
+4. If no matching permission exists, return `403`.
 
 ### **Automatic Enforcement**
 
@@ -143,10 +144,10 @@ is denied.
 
 ### **Security Features**
 
-- **Password Hashing:** PBKDF2 with 100,000 iterations and per-user salt
-- **Session Expiration:** 7-day TTL with **active enforcement** (checked on every request)
-- **Session Cleanup:** Background task removes expired sessions daily
-- **Sliding Session Renewal:** Active sessions auto-extend by updating last_active
+- **Password Hashing:** PBKDF2 hashing uses 100,000 iterations and a per-user salt.
+- **Session Expiration:** Sessions have a 7-day TTL. Adapt checks this on every request.
+- **Session Cleanup:** A background task removes expired sessions daily.
+- **Sliding Session Renewal:** Active sessions extend automatically. Each request updates `last_active`.
 - **Password Changes:** Users can change their password after current-password
   verification. Superusers can reset passwords. Each change revokes all
   browser sessions for the affected user.
@@ -157,10 +158,10 @@ is denied.
   cookie and header. API-key requests are exempt.
 - **Constant-time comparison:** Password verification uses
   `secrets.compare_digest`.
-- **Secure by Default:** No permission = no access
-- **Superuser Bypass:** Emergency access for administrators
-- **Audit Logging:** Authentication, administrative changes, and successful
-  dataset mutations are recorded.
+- **Secure by Default:** No permission means no access.
+- **Superuser Bypass:** Superusers get emergency access.
+- **Audit Logging:** Adapt records authentication, administrative changes,
+  and successful dataset mutations.
 - **Row-Level Filtering:** Plugins can filter rows during reads. Built-in
   plugins do not do so, and the hook does not safely enforce write-level RLS.
 - **Inactive-user enforcement:** Login, session, and API-key authentication
@@ -172,17 +173,17 @@ is denied.
 - `adapt/auth/dependencies.py` resolves users and checks permissions.
 - `adapt/api_keys.py` creates, resolves, and revokes API keys.
 - `adapt/auth/routes.py` provides login, logout, profile, password-change, and self-service key routes.
-- `adapt/admin/` provides the administrative routes, including user status changes.
+- `adapt/admin/` provides the administrative routes. These routes include user status changes.
 - `adapt/users.py` changes user status and revokes sessions during deactivation.
 - `adapt/audit.py` creates audit records.
 - `adapt/app.py` configures middleware and session cleanup.
 
 ### **Foreign Key ON DELETE behavior**
 
-- Deleting a user cascades to `usergroup`, `dbsession`, and `apikey` rows.
-- Deleting a group cascades to `usergroup` and `grouppermission` rows.
-- Deleting a permission cascades to `grouppermission` rows.
-- Deleting an audit user sets `auditlog.user_id` to null.
+- Deletion of a user cascades to `usergroup`, `dbsession`, and `apikey` rows.
+- Deletion of a group cascades to `usergroup` and `grouppermission` rows.
+- Deletion of a permission cascades to `grouppermission` rows.
+- Deletion of an audit user sets `auditlog.user_id` to null.
 
 
 ### **Row-Level Filtering Extension Point**

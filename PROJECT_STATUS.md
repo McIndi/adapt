@@ -1,4 +1,4 @@
-<!-- MILEMARKER: milestone=M0 lanes_ok=8/8 lag=0 updated=2026-08-04 -->
+<!-- MILEMARKER: milestone=M1 lanes_ok=8/8 lag=0 updated=2026-08-11 -->
 # Project Status — adapt
 
 Tracked with the [milemarker-8](https://github.com) skill: eight lanes,
@@ -12,18 +12,27 @@ every lane below reads `OK` for it.
 **Current milestone:** M0 — Walking Skeleton (closed). M1 (security floor
 closure) is done; M2 is next up in `MILESTONES.md`.
 
+Since the last update (2026-08-06), the project gained an entire new
+deployment surface — a Helm chart (`charts/adapt/`) with its own CI
+(`helm-ci.yml`) — plus a file upload feature, PVC-backed persistence and
+automated superuser bootstrapping for the chart, a NodePort option for
+clusters without an Ingress controller, a container-image publish
+pipeline to GHCR, and a fixed authorization bug in the web UI. All of it
+is reflected in the lane table below; see the per-lane notes for detail
+and for what's still open.
+
 ## Lane status
 
 | # | Lane | Status | Next action |
 |---|------|--------|-------------|
-| 1 | Business logic | OK | Mature feature set (plugins, CLI, MCP server) at v0.3.0, well beyond M0. No action needed. |
-| 2 | Interface | OK | FastAPI app, generated per-resource routes, admin UI, MCP server all present and documented. No action needed. |
-| 3 | Data | WIP | SQLite via SQLModel works, but schema is created via `create_all()` — no migration tool (Alembic or equivalent). Fine for M0/M1; targeted by M3. |
-| 4 | Packaging | OK | PyPI publish via CI with OIDC trusted publishing works and 0.3.0 is live. `pyproject.toml` dependencies are now version-constrained (lower + upper bound) rather than fully open-ended. No SBOM/signing yet — targeted by M2. |
-| 5 | Automation | OK | CI runs the test suite on every push/PR across a FastAPI version matrix, plus a new `dependency-audit` job (`pip-audit`) gating on findings. Release-triggered publish works. No lint job, no Dependabot, no backup/restore path yet — targeted by later milestones. |
-| 6 | Tests | OK | 319 tests, pytest, gated in CI on push and PR — well beyond M0's "one smoke test" bar. No coverage measurement/reporting configured yet — targeted by M4. |
-| 7 | Docs | OK | README plus a genuine Diataxis-ish manual (`docs/manual/*`), a disclaimed spec (`docs/spec/*`), and now `SECURITY.md`. No `CHANGELOG.md` yet — targeted by M4. |
-| 8 | Security | OK | M0 security floor is now closed: no hardcoded secrets, dependencies pinned/constrained, `pip-audit` runs clean in CI with zero ignored findings, TLS/transport assumptions documented, and `SECURITY.md` added with a reporting path and threat-model note. `moviepy` (which pinned `pillow<12`, blocking 18 known pillow CVEs from being fixed) was dropped in favor of `imageio`/`imageio-ffmpeg` for the one thing it was used for (video thumbnail frame extraction) — no accepted vulnerabilities remain. SBOM/signing, secret-scanning, and SAST remain future work — targeted by M2 and beyond. |
+| 1 | Business logic | OK | v0.4.1. Since the last review: file upload (API + UI, permission-gated, path-traversal and MIME-sniffing checks), Helm chart persistence (PVC), automated superuser bootstrapping for the chart, and a NodePort service option. No action needed. |
+| 2 | Interface | OK | FastAPI app, generated per-resource routes, admin UI, MCP server, and now `POST /api/uploads` (with an upload card in the web UI for permitted users). The Helm chart adds a `NodePort` option for reaching the service without an Ingress controller. All present and documented. No action needed. |
+| 3 | Data | WIP | Application data: SQLite via SQLModel still uses `create_all()` — no migration tool yet; unchanged, still targeted by M3. Deployment data: the Helm chart now supports PVC-backed persistence (dynamic or pre-created claim) for that same SQLite store in Kubernetes, replacing the previous emptyDir-only (always-ephemeral) option — this is new and closes a real gap, but it's an orthogonal improvement to the migration-tool gap above, not a substitute for it. |
+| 4 | Packaging | OK | PyPI publish via CI with OIDC trusted publishing, now release-gated behind the full test suite passing (`publish-pypi.yml` calls `test.yml` as a required dependency, not just a hope that `main` was green). New: `publish-image.yml` builds and pushes `ghcr.io/mcindi/adapt-server` on release — previously the Helm chart's default `image.repository` pointed at an image nothing ever published; that gap is now closed. Both publish workflows refuse to run if the release tag doesn't match `pyproject.toml`'s version, a guard added directly in response to catching `charts/adapt/Chart.yaml`'s `appVersion` silently drifting one release behind (found and fixed this cycle). Still no SBOM/signing for either artifact type — targeted by M2, now scoped to cover the container image too. |
+| 5 | Automation | OK | CI runs the test suite on every push/PR across a FastAPI version matrix, plus `dependency-audit` (`pip-audit`). `test.yml` is now a reusable workflow (`workflow_call`) that all three publish workflows (PyPI, GHCR image, docs pages) depend on directly — a release can no longer publish anything if tests, the docs-strict build, or the dependency audit fail. New: `helm-ci.yml` lints and unit-tests the chart (`helm-unittest`, 25 cases) and runs a real install smoke test in a `kind` cluster across three Kubernetes versions on every chart-affecting PR. Still no lint job for the Python code, no Dependabot, no backup/restore path — targeted by later milestones. |
+| 6 | Tests | OK | 333 Python tests (up from 319), pytest, gated in CI on push and PR. New: the Helm chart has its own test surface now too — 25 `helm-unittest` cases covering persistence branching, admin-bootstrap Job/Secret rendering (including the ephemeral-mode guard rail, which fails the chart render on purpose rather than silently no-op'ing), and NodePort wiring. No coverage measurement/reporting configured yet — targeted by M4. |
+| 7 | Docs | OK | README, the Diataxis-ish manual (`docs/manual/*`), the disclaimed spec (`docs/spec/*`), and `SECURITY.md`, now updated for persistence, uploads, admin-bootstrap, and NodePort. Gap found during this review: `docs/manual/security.md` (the dedicated security-posture doc) was never updated for the upload feature's attack surface (path traversal, MIME sniffing, size limits) even though `api_reference.md`/`installation.md` do cover it as usage docs — closing that is part of the docs pass now underway. `CHANGELOG.md` still doesn't exist — targeted by M4. |
+| 8 | Security | OK | M0/M1 floor holds: no hardcoded secrets, dependencies pinned/constrained, `pip-audit` clean in CI, TLS/transport assumptions documented, `SECURITY.md` in place. New this cycle: an authorization bug was found and fixed — two web UI routes (dataset pages, markdown pages) built their navigation dropdown from an unfiltered resource list, so an authenticated regular user could see the *names* of datasets they had no read permission on (the underlying data routes were correctly permission-gated; only the nav listing leaked). Fixed by switching both call sites to the already-existing permission-filtered link builder, with two regression tests added and confirmed to fail against the pre-fix code. Also new: the Helm chart's admin-bootstrap flow generates credentials into a Kubernetes Secret rather than requiring a hand-typed password, and the release-tag/`pyproject.toml` version-match check on both publish workflows closes a supply-chain traceability gap (an artifact's declared version can no longer silently disagree with what was actually tagged). SBOM/signing, secret-scanning, and SAST remain future work — targeted by M2 and beyond. |
 
 Keep this table's shape stable (one row per lane, status in column 3) so
 it stays `grep`-able — see the rollup convention at the bottom.
@@ -35,7 +44,9 @@ Business logic, interface, tests, and docs had already run far ahead of a
 
 - [x] No secret is hardcoded (verified: CSRF tokens and API keys use
       `secrets.token_urlsafe`; API keys stored as SHA-256 hashes; config
-      reads from `ADAPT_*` env vars).
+      reads from `ADAPT_*` env vars; the Helm chart's admin-bootstrap
+      credentials are generated into a Kubernetes Secret, not hardcoded
+      into chart values).
 - [x] Dependencies are pinned/constrained — `pyproject.toml` deps now
       carry lower + upper version bounds (e.g. `fastapi>=0.115,<1.0`,
       `pillow>=12.3,<13`) instead of being fully open-ended.
@@ -48,8 +59,12 @@ Business logic, interface, tests, and docs had already run far ahead of a
 - [x] `SECURITY.md` exists, with a reporting path and a first
       threat-model note.
 
-M0 is now fully `OK` across all eight lanes. M1 in `MILESTONES.md` should
-be marked done and the next tracer round (M2) picked up next.
+M0 is fully `OK` across all eight lanes. M1 is done. Nothing in this
+cycle's work (Helm chart, uploads, admin-bootstrap, NodePort, the nav
+permission-leak fix, or the new publish pipeline) reopened M0 or M1 — the
+gaps it surfaced (the `security.md` upload-coverage gap, and M2's now
+container-inclusive SBOM/signing scope) are recorded above as the next
+concrete actions rather than regressions.
 
 ## Lane guidance
 
@@ -152,7 +167,7 @@ update their status. A milestone is not reached while any lane is `LAG`.
 The first line of this file is a fixed-format, `grep`-able marker:
 
 ```
-<!-- MILEMARKER: milestone=M0 lanes_ok=8/8 lag=0 updated=2026-08-04 -->
+<!-- MILEMARKER: milestone=M1 lanes_ok=8/8 lag=0 updated=2026-08-11 -->
 ```
 
 Keep it current whenever the lane table changes. To see status across many

@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-This guide gets an Adapt server running with realistic examples.
+This guide shows how to start an Adapt server with realistic examples.
 
 ## Step 1: Install Adapt
 
@@ -63,8 +63,8 @@ def summary():
 ## Step 4: Create a Superuser
 
 Generated resource routes require authentication and the corresponding
-resource permission. Create a superuser before starting the server; a
-superuser bypasses the normal resource permission checks.
+resource permission. A superuser bypasses the normal resource permission
+checks. Before you start the server, create a superuser.
 
 ```bash
 adapt addsuperuser . --username admin
@@ -82,9 +82,9 @@ Open `http://localhost:8000`.
 
 ## Step 6: Sign In and Create an API Key
 
-Open `http://localhost:8000/auth/login` and sign in as `admin`. Then open
-`http://localhost:8000/profile` and create an API key. Copy the key when it
-is shown; Adapt does not display the raw value again.
+Open `http://localhost:8000/auth/login`. Sign in as `admin`. Then open
+`http://localhost:8000/profile` and create an API key. When the key is
+shown, copy it. Adapt does not display the raw value again.
 
 The browser UI uses your authenticated session. The command-line examples
 below use the superuser API key and are therefore exempt from CSRF checks.
@@ -102,7 +102,7 @@ Try these endpoints in a browser first:
 - `/readme`
 - `/api/reports/summary` (if you created `reports.py`)
 
-Your browser session must be authenticated to open the generated resource
+You must authenticate your browser session to open the generated resource
 routes. A non-superuser also needs the resource's `read` permission.
 
 ## Step 8: Use the Dataset API
@@ -160,7 +160,7 @@ adapt admin list-users .
 For each resource, the command creates `<resource>_readonly` and
 `<resource>_readwrite` groups. Add non-superusers to the appropriate group.
 The combined groups also include a suffix made from the selected resource
-names; see the [Admin Guide](admin_guide.md).
+names. See the [Admin Guide](admin_guide.md) for details.
 
 ## Step 10: Optional Serve Flags
 

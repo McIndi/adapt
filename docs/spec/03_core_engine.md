@@ -9,8 +9,8 @@
 Adapt recursively scans the document root. It ignores hidden paths, `.adapt`,
 virtual environments, `__pycache__`, and `node_modules`. Discovery selects a
 candidate plugin from `AdaptConfig.plugin_registry` by file extension. It then
-calls `Plugin.detect()`. Discovery loads the file only when this method returns
-`True`.
+calls `Plugin.detect()`. When this method returns `True`, Discovery loads the
+file.
 
 ```mermaid
 flowchart TD
@@ -65,7 +65,7 @@ identifiers are one-based positions named `_row_id`.
 
 Schema inference uses `string`, `integer`, `number`, and `boolean` labels for
 CSV and Excel samples. These labels control response conversion and UI columns.
-They also validate supplied create and update values before a file is changed.
+They also make sure that supplied create and update values are correct before a file changes.
 
 Each Excel sheet has a `sub_namespace`. For example, the `People` sheet in
 `staff.xlsx` has these extensionless routes:
@@ -74,7 +74,7 @@ Each Excel sheet has a `sub_namespace`. For example, the `People` sheet in
 * `/schema/staff/People/`
 * `/ui/staff/People/`
 
-The extension-qualified `staff.xlsx/People` namespace is also mounted. A
+Adapt also mounts the extension-qualified `staff.xlsx/People` namespace. A
 sheet uses these companion paths:
 
 * `.adapt/staff.People.schema.json`
@@ -91,16 +91,18 @@ creates a missing schema file and DataTables UI file. Adapt reads an options
 file but does not create it.
 
 Generated schema files contain a `generated_by` marker. Adapt can refresh a
-marked schema after the derived shape changes. Adapt preserves a hand-maintained
-schema without this marker when its content differs from the derived schema.
+marked schema after the derived shape changes. When its content differs from
+the derived schema, Adapt preserves a hand-maintained schema without this
+marker.
 
-Generated and hand-maintained schemas validate supplied create and update
-fields. Adapt rejects unknown columns and values incompatible with the common
-`string`, `integer`, `number`, and `boolean` types with `422`. It accepts and
-normalizes numeric and boolean strings for compatibility with the generated
-HTML form. Blank strings and `null` are permitted because the schema format
-does not specify required columns or nullability. Unknown custom types remain
-metadata and are not validated.
+Generated and hand-maintained schemas make sure that supplied create and
+update fields are correct. Adapt rejects unknown columns and values
+incompatible with the common `string`, `integer`, `number`, and `boolean`
+types with `422`. It accepts and normalizes numeric and boolean strings for
+compatibility with the generated HTML form. The schema format permits blank
+strings and `null` because it does not specify required columns or
+nullability. Unknown custom types remain as metadata only. Adapt does not
+make sure that their values are correct.
 
 ```json
 {
@@ -159,5 +161,5 @@ Plugins cache selected values. These values include parsed dataset rows,
 schemas, rendered HTML or Markdown, and media metadata. Supported writes
 invalidate resource cache entries.
 
-Generic file bodies and streamed media bodies are not cached. Adapt does not
-apply one automatic cache wrapper to every `GET` response.
+Adapt does not cache generic file bodies or streamed media bodies. Adapt does
+not apply one automatic cache wrapper to every `GET` response.

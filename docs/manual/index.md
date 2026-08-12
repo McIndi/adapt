@@ -1,6 +1,6 @@
 # Adapt User Manual
 
-Welcome to the comprehensive manual for Adapt, the adaptive file-backed web server. This manual provides detailed documentation for users, administrators, and developers working with Adapt.
+This is the manual for Adapt, the adaptive file-backed web server. It documents Adapt for users, administrators, and developers.
 
 ## Table of Contents
 
@@ -26,6 +26,6 @@ The documents in [`../spec/`](../spec/README.md) are implementation
 specifications, not a roadmap or a promise of future behavior.
 
 Unimplemented ideas are labeled **Future work**. Known implementation defects
-are documented as limitations instead of being described as working behavior.
-See the [documentation contract](../documentation-contract.md) for the maintenance rules and
-scope.
+are documented as limitations. They are not described as working behavior.
+See the [documentation contract](../documentation-contract.md) for the
+maintenance rules and scope.
