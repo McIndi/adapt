@@ -16,3 +16,4 @@ spec:
     {{- end }}
   selector:
     {{- include "adapt.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: server

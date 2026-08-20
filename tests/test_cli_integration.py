@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 from fastapi.testclient import TestClient
 
 from adapt.app import create_app
@@ -166,3 +169,32 @@ def test_run_set_user_active_deactivates_and_reactivates_user(tmp_path, capsys):
     with Session(engine) as db:
         user = db.exec(select(User).where(User.username == "cli_user")).one()
         assert user.is_active is True
+
+
+def test_addsuperuser_weak_password_exits_nonzero_without_creating_user(tmp_path):
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "adapt",
+            "addsuperuser",
+            str(tmp_path),
+            "--username",
+            "admin",
+            "--password",
+            "password",
+            "--password-confirm",
+            "password",
+        ],
+        input="",
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    assert "Choose a stronger password" in result.stdout
+
+    engine = init_database(AdaptConfig(root=tmp_path).db_path)
+    with Session(engine) as db:
+        assert db.exec(select(User).where(User.username == "admin")).first() is None

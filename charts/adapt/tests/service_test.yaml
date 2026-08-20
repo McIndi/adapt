@@ -2,6 +2,12 @@ suite: service
 templates:
   - templates/service.yaml
 tests:
+  - it: selects server pods only
+    asserts:
+      - equal:
+          path: spec.selector["app.kubernetes.io/component"]
+          value: server
+
   - it: exposes the configured service port
     asserts:
       - equal:

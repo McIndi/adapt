@@ -1,0 +1,9 @@
+suite: health test pod
+templates:
+  - templates/tests/test-health.yaml
+tests:
+  - it: is labeled as a test pod and cannot match the Service selector
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: test

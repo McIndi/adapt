@@ -16,6 +16,42 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].readinessProbe.httpGet.path
           value: /health
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /health
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.failureThreshold
+          value: 30
+  - it: labels server pods without changing the immutable deployment selector
+    asserts:
+      - isNull:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: server
+  - it: does not allow podLabels to override labels required by selectors
+    set:
+      podLabels:
+        app.kubernetes.io/name: wrong-name
+        app.kubernetes.io/component: bootstrap
+    asserts:
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: adapt
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: server
+  - it: runs with the image UID and writable volume group
+    asserts:
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 1000
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsUser
+          value: 1000
+      - equal:
+          path: spec.template.spec.containers[0].securityContext.runAsGroup
+          value: 1000
   - it: wires optional config and secret env refs when configured
     set:
       env:
@@ -64,4 +100,3 @@ tests:
           value: my-existing-pvc
       - isNull:
           path: spec.template.spec.volumes[0].emptyDir
-

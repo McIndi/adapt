@@ -30,6 +30,12 @@ tests:
           count: 1
       - isKind:
           of: Job
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: bootstrap
+      - equal:
+          path: spec.template.spec.securityContext.fsGroup
+          value: 1000
 
   - it: generated Secret carries the configured username and a generated password
     set:
@@ -99,6 +105,20 @@ tests:
       - equal:
           path: spec.template.spec.containers[0].env[1].valueFrom.secretKeyRef.key
           value: pass
+      - notContains:
+          path: spec.template.spec.containers[0].command
+          content: --allow-weak-password
+
+  - it: permits the chart-generated password without strength validation
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+      bootstrapAdmin.existingSecret: ""
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].command
+          content: --allow-weak-password
 
   - it: Job mounts the same PVC claim the deployment uses
     set:

@@ -18,7 +18,11 @@ serviceAccount:
 podAnnotations: {}
 podLabels: {}
 
-podSecurityContext: {}
+# Keep fsGroup aligned with securityContext.runAsGroup and the UID/GID pinned
+# in the image's Dockerfile. Some storage drivers ignore fsGroup; for those,
+# use persistence.annotations supported by the driver or a pre-chowned claim.
+podSecurityContext:
+  fsGroup: 1000
 
 securityContext:
   allowPrivilegeEscalation: false
@@ -58,6 +62,13 @@ resources:
     memory: 512Mi
 
 probes:
+  # Allows up to five minutes for startup work such as search indexing before
+  # liveness checks can restart the container.
+  startup:
+    path: /health
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 30
   liveness:
     path: /health
     initialDelaySeconds: 10
@@ -100,7 +111,9 @@ bootstrapAdmin:
   enabled: false
   username: admin
   # Name of a pre-existing Secret with `username`/`password` keys (or the
-  # keys named below). Takes precedence over the generated Secret.
+  # keys named below). Takes precedence over the generated Secret. Its
+  # password must not be classified as weak by
+  # adapt/commands/passwords.py:is_weak_password.
   existingSecret: ""
   existingSecretUsernameKey: username
   existingSecretPasswordKey: password

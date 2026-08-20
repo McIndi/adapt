@@ -25,9 +25,14 @@ spec:
     metadata:
       labels:
         {{- include "adapt.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: bootstrap
     spec:
       serviceAccountName: {{ include "adapt.serviceAccountName" . }}
       restartPolicy: Never
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -48,7 +53,9 @@ spec:
         - $(ADMIN_PASSWORD)
         - --password-confirm
         - $(ADMIN_PASSWORD)
+        {{- if not .Values.bootstrapAdmin.existingSecret }}
         - --allow-weak-password
+        {{- end }}
         env:
         - name: ADMIN_USERNAME
           valueFrom:

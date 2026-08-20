@@ -673,13 +673,13 @@ def test_run_add_superuser_accepts_override_for_weak_password_noninteractive(tmp
 
     monkeypatch.setattr(password_helpers.sys, "stdin", FakeStdin())
 
-    run_add_superuser(
+    assert run_add_superuser(
         tmp_path,
         username="root2",
         password="password",
         password_confirm="password",
         allow_weak_password=True,
-    )
+    ) is True
 
     output = capsys.readouterr().out
     assert "Created superuser 'root2'" in output
@@ -690,6 +690,15 @@ def test_run_add_superuser_accepts_override_for_weak_password_noninteractive(tmp
         user = db.exec(select(User).where(User.username == "root2")).first()
         assert user is not None
         assert user.is_superuser is True
+
+    assert run_add_superuser(
+        tmp_path,
+        username="root2",
+        password="password",
+        password_confirm="password",
+        allow_weak_password=True,
+    ) is True
+    assert "User 'root2' already exists" in capsys.readouterr().out
 
 
 def test_cache_admin(client):

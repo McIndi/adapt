@@ -96,8 +96,8 @@ with each other instead of landing as three uncoordinated changes.
 | Interface | `service.type: NodePort` (with a pinnable `nodePort`) added for clusters without an Ingress controller, alongside the existing `ClusterIP`/Ingress path |
 | Data | `persistence.enabled` + PVC support added to the chart (dynamic provisioning or a pre-created `existingClaim`), replacing the previous always-ephemeral `emptyDir` mount |
 | Packaging | `charts/adapt/` added (Helm chart, versioned independently of the app via `Chart.yaml`); `appVersion` now kept in sync with `pyproject.toml` after a drift was caught (see M2) |
-| Automation | `helm-ci.yml` runs for chart-affecting `main` pushes, pull requests, and manual dispatches. It runs lint, 25 unit tests, and `kind` install smoke tests across 3 Kubernetes versions. The first recorded current-chart run passed all jobs. |
-| Tests | 25 `helm-unittest` cases covering persistence branching, admin-bootstrap Job/Secret rendering (including a hard `fail()` when bootstrap is enabled without persistence, rather than a silent no-op), and NodePort wiring |
+| Automation | `helm-ci.yml` runs for chart-affecting `main` pushes, pull requests, and manual dispatches. It runs lint, 31 unit tests, and `kind` install smoke tests across 3 Kubernetes versions. The first recorded Phase 1 run passed all jobs with the 25 tests that existed then. |
+| Tests | 31 `helm-unittest` cases cover persistence, pod selectors, security contexts, health probes, admin-bootstrap Job/Secret rendering, and NodePort wiring. The bootstrap guard still stops rendering when persistence is disabled. |
 | Docs | README and `docs/manual/installation.md` gained a full Helm section: all three persistence modes, admin bootstrapping, NodePort, and a `values-dev.yaml` overlay for local cluster development |
 | Security | Admin-bootstrap credentials are generated into a Kubernetes Secret (24-char random password, generated once and preserved across upgrades) rather than requiring a hand-typed password or shipping a default one |
 

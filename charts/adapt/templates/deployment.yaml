@@ -11,11 +11,13 @@ spec:
       {{- include "adapt.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- $podLabels := omit .Values.podLabels "app.kubernetes.io/name" "app.kubernetes.io/instance" "app.kubernetes.io/component" }}
       labels:
-        {{- include "adapt.labels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
+        {{- with $podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
+        {{- include "adapt.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: server
       {{- with .Values.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
@@ -51,6 +53,13 @@ spec:
         - name: http
           containerPort: {{ .Values.service.targetPort }}
           protocol: TCP
+        startupProbe:
+          httpGet:
+            path: {{ .Values.probes.startup.path }}
+            port: http
+          periodSeconds: {{ .Values.probes.startup.periodSeconds }}
+          timeoutSeconds: {{ .Values.probes.startup.timeoutSeconds }}
+          failureThreshold: {{ .Values.probes.startup.failureThreshold }}
         livenessProbe:
           httpGet:
             path: {{ .Values.probes.liveness.path }}

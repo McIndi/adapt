@@ -13,7 +13,7 @@ from .commands.admin import run_admin
 logger = logging.getLogger(__name__)
 
 
-def main() -> None:
+def main() -> int:
     """Main entry point for the Adapt CLI application."""
     logger.debug("Starting Adapt CLI")
     parser = argparse.ArgumentParser(prog="adapt")
@@ -147,13 +147,15 @@ def main() -> None:
         check.run_check(Path(args.root).resolve())
     elif args.command == "addsuperuser":
         logger.info("Running addsuperuser command for username=%s", args.username)
-        addsuperuser.run_add_superuser(
+        succeeded = addsuperuser.run_add_superuser(
             Path(args.root).resolve(),
             args.username,
             args.password,
             password_confirm=args.password_confirm,
             allow_weak_password=args.allow_weak_password,
         )
+        if not succeeded:
+            return 1
     elif args.command == "list-endpoints":
         logger.info("Running list-endpoints command with root=%s", args.root)
         list_endpoints.run_list_endpoints(Path(args.root).resolve())
@@ -163,6 +165,8 @@ def main() -> None:
     elif args.command == "admin":
         logger.info("Running admin command: %s", args.admin_command)
         run_admin(args)
+
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -8,6 +8,7 @@ examples/.adapt/
 .adapt.db
 .trailhead/
 .codex/
+.vagrant/
 
 # Github provided Python.gitignore template below
 ##############################################################################
