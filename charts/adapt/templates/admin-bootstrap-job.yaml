@@ -18,7 +18,9 @@ metadata:
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     "helm.sh/hook-weight": "1"
-    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    # Deliberately omits hook-succeeded: a successful Job is kept so
+    # `kubectl get job` reports its outcome instead of NotFound.
+    "helm.sh/hook-delete-policy": before-hook-creation
 spec:
   backoffLimit: 3
   template:

@@ -1,0 +1,58 @@
+suite: values schema
+templates:
+  - templates/deployment.yaml
+tests:
+  - it: rejects misspelled root values
+    set:
+      persistance.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "Additional property.*persistance"
+  - it: rejects invalid service types
+    set:
+      service.type: Invalid
+    asserts:
+      - failedTemplate:
+          errorPattern: "service.type.*one of"
+  - it: rejects invalid node ports
+    set:
+      service.nodePort: 29999
+    asserts:
+      - failedTemplate:
+          errorPattern: "service.nodePort"
+  - it: rejects invalid persistence access modes
+    set:
+      persistence.accessModes[0]: Invalid
+    asserts:
+      - failedTemplate:
+          errorPattern: "persistence.accessModes"
+  - it: rejects misspelled bootstrap admin values
+    set:
+      bootstrapAdmin.enabeld: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "bootstrapAdmin.*enabeld"
+  - it: rejects misspelled probe values
+    set:
+      probes.livness.path: /bad
+    asserts:
+      - failedTemplate:
+          errorPattern: "probes.*livness"
+  - it: rejects misspelled adapt values
+    set:
+      adapt.rootPth: /bad
+    asserts:
+      - failedTemplate:
+          errorPattern: "adapt.*rootPth"
+  - it: rejects misspelled ingress values
+    set:
+      ingress.enabeld: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "ingress.*enabeld"
+  - it: rejects misspelled resource values
+    set:
+      resources.limtis.cpu: 1
+    asserts:
+      - failedTemplate:
+          errorPattern: "resources.*limtis"

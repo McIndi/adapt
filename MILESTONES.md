@@ -95,9 +95,9 @@ with each other instead of landing as three uncoordinated changes.
 | Business logic | N/A — no application-level change |
 | Interface | `service.type: NodePort` (with a pinnable `nodePort`) added for clusters without an Ingress controller, alongside the existing `ClusterIP`/Ingress path |
 | Data | `persistence.enabled` + PVC support added to the chart (dynamic provisioning or a pre-created `existingClaim`), replacing the previous always-ephemeral `emptyDir` mount |
-| Packaging | `charts/adapt/` added (Helm chart, versioned independently of the app via `Chart.yaml`); `appVersion` now kept in sync with `pyproject.toml` after a drift was caught (see M2) |
-| Automation | `helm-ci.yml` runs for chart-affecting `main` pushes, pull requests, and manual dispatches. It runs lint, 31 unit tests, and `kind` install smoke tests across 3 Kubernetes versions. The first recorded Phase 1 run passed all jobs with the 25 tests that existed then. |
-| Tests | 31 `helm-unittest` cases cover persistence, pod selectors, security contexts, health probes, admin-bootstrap Job/Secret rendering, and NodePort wiring. The bootstrap guard still stops rendering when persistence is disabled. |
+| Packaging | `charts/adapt/` added (Helm chart, versioned independently of the app via `Chart.yaml`); Phase 4 sets chart version 0.5.0, completes chart metadata, and adds values validation. `appVersion` remains tied to the app release. |
+| Automation | `helm-ci.yml` runs for chart-affecting `main` pushes, pull requests, and manual dispatches, including `tools/test-helm-schema.sh` changes. It runs lint, the chart unit tests, schema checks, and `kind` install smoke tests across 3 Kubernetes versions. The first recorded Phase 1 run passed all jobs with the 25 tests that existed then; Phase 4 adds schema and notes coverage. |
+| Tests | 52 `helm-unittest` cases cover persistence, pod selectors, security contexts, health probes, admin-bootstrap Job/Secret rendering, NodePort wiring, operator notes, ingress URL rendering, external volume mounts, schema rejection, unsafe storage combinations, and namespace-qualified commands. The bootstrap guard still stops rendering when persistence is disabled. |
 | Docs | README and `docs/manual/installation.md` gained a full Helm section: all three persistence modes, admin bootstrapping, NodePort, and a `values-dev.yaml` overlay for local cluster development |
 | Security | Admin-bootstrap credentials are generated into a Kubernetes Secret (24-char random password, generated once and preserved across upgrades) rather than requiring a hand-typed password or shipping a default one |
 
@@ -108,6 +108,14 @@ match check described in M2 below), and two web UI routes leaked dataset
 *names* (not data) to authenticated users without read permission on them
 via an unfiltered navigation-link builder — fixed with regression tests
 that were confirmed to fail against the pre-fix code.
+
+Phase 4 usability work is implemented in the chart: `NOTES.txt` explains
+service access, login, document transfer, and ephemeral state; `extraVolumes`
+and `extraVolumeMounts` support mounted document sources; `values.schema.json`
+rejects unknown root values and misspellings in required sections; and chart
+metadata is complete. Helm lint, schema checks, unit tests, and live kind
+checks have been run for Phase 4, with the caveat that kind leaves
+LoadBalancer external IPs pending.
 
 ## M2 — Supply-chain hardening at publish time
 

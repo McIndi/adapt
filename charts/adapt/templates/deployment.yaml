@@ -1,3 +1,14 @@
+{{- if and .Values.externalDocumentRoot .Values.bootstrapAdmin.enabled }}
+{{- fail "bootstrapAdmin.enabled cannot be used with externalDocumentRoot because the bootstrap Job requires writable shared storage; use persistence or an existing writable claim" }}
+{{- end }}
+{{- if .Values.externalDocumentRoot }}
+{{- if or (not .Values.extraVolumes) (not .Values.extraVolumeMounts) }}
+{{- fail "externalDocumentRoot=true requires non-empty extraVolumes and extraVolumeMounts to supply the document root" }}
+{{- end }}
+{{- if .Values.persistence.enabled }}
+{{- fail "externalDocumentRoot=true is incompatible with persistence.enabled=true: disable one of them to avoid an unused PVC" }}
+{{- end }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -90,9 +101,15 @@ spec:
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
         volumeMounts:
+        {{- if not .Values.externalDocumentRoot }}
         - name: adapt-data
           mountPath: {{ .Values.persistence.mountPath | default .Values.adapt.rootPath }}
+        {{- end }}
+        {{- with .Values.extraVolumeMounts }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       volumes:
+      {{- if not .Values.externalDocumentRoot }}
       - name: adapt-data
         {{- if .Values.persistence.enabled }}
         persistentVolumeClaim:
@@ -100,6 +117,10 @@ spec:
         {{- else }}
         emptyDir: {}
         {{- end }}
+      {{- end }}
+      {{- with .Values.extraVolumes }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

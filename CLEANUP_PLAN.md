@@ -1,6 +1,6 @@
 # Container, OCI, and Helm Chart Cleanup Plan
 
-Status: Phase 3 implemented — Review Gate 3 blocked on arm64 publication
+Status: Phase 4 implemented — Review Gate 4 pending
 Created: 2026-08-12
 Baseline: `main` @ `60ea9b9` (app `0.4.1`, chart `0.3.2`)
 
@@ -585,12 +585,12 @@ Do not restructure the prose docs — Phase 6. Do not implement seeding option
 
 ### Exit criteria
 
-- [ ] `NOTES.txt` answers reach / log in / seed / state, for all four service
-      exposure modes
-- [ ] Seeding mechanism chosen, implemented, and the decision recorded
-- [ ] `values.schema.json` added, with tests
-- [ ] `Chart.yaml` metadata complete; `validate-maintainers` workaround removed
-- [ ] `Chart.yaml` version `0.5.0`
+- [x] `NOTES.txt` answers reach / log in / seed / state, for all four service
+  exposure modes
+- [x] Seeding mechanism chosen, implemented, and the decision recorded
+- [x] `values.schema.json` added, with tests
+- [x] `Chart.yaml` metadata complete; `validate-maintainers` workaround removed
+- [x] `Chart.yaml` version `0.5.0`
 
 ## ⏸ REVIEW GATE 4
 
@@ -1024,14 +1024,55 @@ image instead of the Python 3.14 base, caching split, OCI labels, and
 
 ## ⏸ Review Gate 3 — not passed (2026-08-20)
 
-Blocker: the published `ghcr.io/mcindi/adapt-server:latest` manifest lists
-only `linux/amd64`; `linux/arm64` has not been published. Multi-arch
-publication must be verified end-to-end (a real release or dispatch build,
-inspected with `docker buildx imagetools inspect`) before Gate 3 can pass.
+The published `0.4.2` image manifest was inspected and contains both
+`linux/amd64` and `linux/arm64`; the Phase 3 arm64 blocker is resolved.
 
 ### Phase 4
 
-_Not started._
+Implementation completed on 2026-08-21. Review Gate 4 is pending.
+
+- **Decisions made:** Chose option 4.2(b), `extraVolumes` plus
+  `extraVolumeMounts`, as the supported seeding mechanism. It supports
+  ConfigMaps, NFS, and pre-populated claims without adding an initContainer's
+  copy and idempotency policy. The quick path remains `kubectl cp`, which is
+  emitted in `NOTES.txt`. Rejected option 4.2(a) as the only mechanism because
+  it does not support repeatable or shared sources. Deferred option 4.2(c)
+  because an initContainer needs a separate design for first-start detection,
+  ownership, and persistence semantics.
+- **Verification performed:** The new `values.schema.json` parses as valid
+  JSON. On the Vagrant VM, `helm lint charts/adapt` passed and the schema
+  script accepted `values-dev.yaml` while rejecting nine invalid values:
+  unknown root key, invalid service type, invalid NodePort, invalid access
+  mode, `bootstrapAdmin.enabeld`, `probes.livness`, `adapt.rootPth`,
+  `ingress.enabeld`, and `resources.limtis`. All 52 helm-unittest tests pass,
+  including cases for TLS ingress URLs with multiple paths, schema typo
+  rejection in required sections, external-root guards, namespace-qualified
+  commands, and retained bootstrap Job notes. Live verification ran on the
+  `adapt-phase4-final` kind cluster in namespace `phase4-review`: ClusterIP
+  install succeeded; `kubectl get svc ... -n`, pod lookup, `kubectl cp`,
+  `kubectl exec -n`, and `kubectl port-forward ... -n` all ran successfully;
+  `/health` returned OK through the port-forward; NodePort install succeeded
+  and `/health` returned OK through `http://172.18.0.2:30080`; Ingress install
+  succeeded and rendered separate `https://example.test/one` and
+  `https://example.test/two` notes; bootstrap-admin install succeeded, its
+  retained Job reported `Complete`, and the namespace-qualified Secret lookup
+  returned the generated password data. A follow-up verification after
+  reordering `NOTES.txt` ran the emitted interactive manual-superuser command
+  `kubectl exec -it -n phase4-login deploy/phase4-login-adapt -- adapt addsuperuser /data --username admin`
+  with a disposable test password; the command created `admin` with
+  `is_superuser=1` in the `users` table. The emitted Secret retrieval pipeline
+  `kubectl get secret phase4-secret-adapt-bootstrap-admin -n phase4-secret -o jsonpath='{.data.password}' | base64 -d && echo`
+  returned the generated password text. Helm tests succeeded for the
+  ClusterIP, NodePort, bootstrap-admin, and Ingress releases. The
+  LoadBalancer command `kubectl get svc phase4-lb-adapt -n phase4-review -w`
+  ran and showed the expected kind state with `EXTERNAL-IP <pending>`.
+- **Residual risk:** The emitted `kubectl cp` command requires a Ready server
+  pod and a local `./documents` directory. The values schema intentionally
+  keeps several Kubernetes pass-through objects permissive while enforcing the
+  Phase 4 value constraints. The kind cluster does not provide a real external
+  LoadBalancer address, so the LoadBalancer watch command was executed but no
+  external IP was assigned.
+- **Chart version:** 0.5.0. `appVersion` remains 0.4.2.
 
 ### Phase 5
 

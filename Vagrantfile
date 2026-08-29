@@ -12,7 +12,8 @@ Vagrant.configure("2") do |config|
     set -eu
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
-    apt-get install -y docker.io docker-buildx qemu-user-static
+    apt-get install -y docker.io docker-buildx qemu-user-static curl
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
     systemctl enable --now docker
     usermod -aG docker vagrant
   SHELL

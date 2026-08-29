@@ -1,7 +1,6 @@
 chart-dirs:
   - charts
 chart-repos: []
-validate-maintainers: false
 validate-chart-schema: true
 check-version-increment: true
 kubectl-timeout: 300s

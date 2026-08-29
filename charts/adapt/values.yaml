@@ -132,3 +132,12 @@ env: []
 #     value: "true"
 
 secretEnv: []
+
+# Mount external document sources such as ConfigMaps, NFS shares, or
+# pre-populated volumes into the pod. Mount ConfigMaps below the writable
+# document root; use externalDocumentRoot only for a writable source.
+extraVolumes: []
+extraVolumeMounts: []
+# Set to true when an extra writable volume mount supplies the document root.
+# The built-in adapt-data volume is omitted in that mode.
+externalDocumentRoot: false

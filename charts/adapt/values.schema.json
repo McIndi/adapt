@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "replicaCount": { "type": "integer", "minimum": 1 },
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": { "type": "string", "minLength": 1 },
+        "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] },
+        "tag": { "type": "string" }
+      },
+      "required": ["repository", "pullPolicy", "tag"]
+    },
+    "imagePullSecrets": { "type": "array", "items": { "type": "object" } },
+    "nameOverride": { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "serviceAccount": { "type": "object" },
+    "podAnnotations": { "type": "object" },
+    "podLabels": { "type": "object" },
+    "podSecurityContext": { "type": "object" },
+    "securityContext": { "type": "object" },
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "enum": ["ClusterIP", "NodePort", "LoadBalancer"] },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "targetPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "nodePort": { "oneOf": [{ "type": "integer", "minimum": 30000, "maximum": 32767 }, { "type": "string", "maxLength": 0 }] }
+      },
+      "required": ["type", "port", "targetPort", "nodePort"]
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "className": { "type": "string" },
+        "annotations": { "type": "object", "additionalProperties": { "type": "string" } },
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "host": { "type": "string", "minLength": 1 },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "path": { "type": "string", "minLength": 1 },
+                    "pathType": { "type": "string", "enum": ["Exact", "Prefix", "ImplementationSpecific"] }
+                  },
+                  "required": ["path", "pathType"]
+                },
+                "minItems": 1
+              }
+            },
+            "required": ["host", "paths"]
+          }
+        },
+        "tls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "hosts": { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 },
+              "secretName": { "type": "string" }
+            },
+            "required": ["hosts"]
+          }
+        }
+      },
+      "required": ["enabled", "className", "annotations", "hosts", "tls"]
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requests": { "$ref": "#/definitions/resourceMap" },
+        "limits": { "$ref": "#/definitions/resourceMap" }
+      },
+      "required": ["requests", "limits"]
+    },
+    "probes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "startup": { "$ref": "#/definitions/httpProbe" },
+        "liveness": { "$ref": "#/definitions/httpProbe" },
+        "readiness": { "$ref": "#/definitions/httpProbe" }
+      },
+      "required": ["startup", "liveness", "readiness"]
+    },
+    "nodeSelector": { "type": "object" },
+    "tolerations": { "type": "array" },
+    "affinity": { "type": "object" },
+    "adapt": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rootPath": { "type": "string", "minLength": 1 },
+        "extraArgs": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["rootPath", "extraArgs"]
+    },
+    "persistence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "existingClaim": { "type": "string" },
+        "storageClass": { "type": "string" },
+        "accessModes": { "type": "array", "items": { "type": "string", "enum": ["ReadWriteOnce", "ReadOnlyMany", "ReadWriteMany", "ReadWriteOncePod"] }, "minItems": 1 },
+        "size": { "type": "string", "minLength": 1 },
+        "mountPath": { "type": "string" },
+        "annotations": { "type": "object" }
+      },
+      "required": ["enabled", "existingClaim", "storageClass", "accessModes", "size", "mountPath", "annotations"]
+    },
+    "bootstrapAdmin": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "username": { "type": "string", "minLength": 1 },
+        "existingSecret": { "type": "string" },
+        "existingSecretUsernameKey": { "type": "string", "minLength": 1 },
+        "existingSecretPasswordKey": { "type": "string", "minLength": 1 }
+      },
+      "required": ["enabled", "username", "existingSecret", "existingSecretUsernameKey", "existingSecretPasswordKey"]
+    },
+    "env": { "$ref": "#/definitions/environment" },
+    "secretEnv": { "$ref": "#/definitions/environment" },
+    "extraVolumes": { "type": "array", "items": { "type": "object" } },
+    "extraVolumeMounts": { "type": "array", "items": { "type": "object" } },
+    "externalDocumentRoot": { "type": "boolean" }
+  },
+  "required": ["image", "service", "persistence", "bootstrapAdmin", "probes", "resources", "env", "secretEnv"] ,
+  "definitions": {
+    "httpProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "initialDelaySeconds": { "type": "integer", "minimum": 0 },
+        "periodSeconds": { "type": "integer", "minimum": 1 },
+        "timeoutSeconds": { "type": "integer", "minimum": 1 },
+        "failureThreshold": { "type": "integer", "minimum": 1 }
+      },
+      "required": ["path", "periodSeconds", "timeoutSeconds", "failureThreshold"]
+    },
+    "resourceMap": {
+      "type": "object",
+      "additionalProperties": { "type": ["string", "number"] }
+    },
+    "environment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "name": { "type": "string", "minLength": 1 }, "value": { "type": "string" } },
+        "required": ["name", "value"]
+      }
+    }
+  }
+}

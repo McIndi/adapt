@@ -1,0 +1,100 @@
+suite: notes
+templates:
+  - templates/NOTES.txt
+tests:
+  - it: explains ClusterIP access and ephemeral state
+    release:
+      namespace: phase4-review
+    asserts:
+      - matchRegexRaw:
+          pattern: "kubectl port-forward svc/RELEASE-NAME-adapt -n phase4-review 8000:80"
+      - matchRegexRaw:
+          pattern: "persistence.enabled=false uses an emptyDir"
+      - matchRegexRaw:
+          pattern: "(?s)Reach the service.*Superuser bootstrapping is disabled.*Documents can be copied.*WARNING: persistence.enabled=false"
+  - it: explains NodePort access
+    release:
+      namespace: phase4-review
+    set:
+      service.type: NodePort
+      service.nodePort: 30080
+    asserts:
+      - matchRegexRaw:
+          pattern: "kubectl get svc RELEASE-NAME-adapt -n phase4-review"
+      - matchRegexRaw:
+          pattern: "http://<node-ip>:<node-port>"
+  - it: explains LoadBalancer access
+    release:
+      namespace: phase4-review
+    set:
+      service.type: LoadBalancer
+    asserts:
+      - matchRegexRaw:
+          pattern: "kubectl get svc RELEASE-NAME-adapt -n phase4-review -w"
+  - it: explains ingress hosts
+    set:
+      ingress.enabled: true
+      ingress.hosts:
+        - host: example.test
+          paths:
+            - path: /
+              pathType: Prefix
+    asserts:
+      - matchRegexRaw:
+          pattern: "http://example.test/"
+  - it: lists each TLS ingress path separately with https
+    set:
+      ingress.enabled: true
+      ingress.hosts:
+        - host: example.test
+          paths:
+            - path: /one
+              pathType: Prefix
+            - path: /two
+              pathType: Prefix
+      ingress.tls:
+        - hosts:
+            - example.test
+    asserts:
+      - matchRegexRaw:
+          pattern: "https://example.test/one"
+      - matchRegexRaw:
+          pattern: "https://example.test/two"
+      - notMatchRegexRaw:
+          pattern: "http://example.test/one/two"
+  - it: reports bootstrap Job retention and namespace-qualified status commands
+    release:
+      namespace: phase4-review
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+    asserts:
+      - matchRegexRaw:
+          pattern: "It is retained after"
+      - matchRegexRaw:
+          pattern: "kubectl get job RELEASE-NAME-adapt-bootstrap-admin -n phase4-review"
+      - matchRegexRaw:
+          pattern: "kubectl get secret RELEASE-NAME-adapt-bootstrap-admin -n phase4-review"
+  - it: qualifies manual superuser and document-copy commands with the namespace
+    release:
+      namespace: phase4-review
+    asserts:
+      - matchRegexRaw:
+          pattern: "kubectl exec -it -n phase4-review deploy/RELEASE-NAME-adapt"
+      - matchRegexRaw:
+          pattern: "kubectl cp \\./documents/\\. phase4-review/\\$\\(kubectl get pod -n phase4-review"
+  - it: explains an external document root without the emptyDir warning
+    set:
+      externalDocumentRoot: true
+      extraVolumes:
+        - name: documents
+          persistentVolumeClaim:
+            claimName: pre-populated
+      extraVolumeMounts:
+        - name: documents
+          mountPath: /data
+    asserts:
+      - matchRegexRaw:
+          pattern: "provided by the volume\\(s\\) configured"
+      - notMatchRegexRaw:
+          pattern: "emptyDir document root"

@@ -100,3 +100,56 @@ tests:
           value: my-existing-pvc
       - isNull:
           path: spec.template.spec.volumes[0].emptyDir
+  - it: mounts extra volumes for document seeding or shared storage
+    set:
+      externalDocumentRoot: true
+      extraVolumes:
+        - name: documents
+          configMap:
+            name: seed-documents
+      extraVolumeMounts:
+        - name: documents
+          mountPath: /data
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: documents
+            configMap:
+              name: seed-documents
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: documents
+            mountPath: /data
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: adapt-data
+  - it: rejects admin bootstrap with an external document root
+    set:
+      externalDocumentRoot: true
+      bootstrapAdmin.enabled: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "bootstrapAdmin.enabled cannot be used with externalDocumentRoot"
+  - it: rejects an external document root with no extra volume configured
+    set:
+      externalDocumentRoot: true
+    asserts:
+      - failedTemplate:
+          errorPattern: "externalDocumentRoot=true requires non-empty extraVolumes"
+  - it: rejects an external document root combined with persistence
+    set:
+      externalDocumentRoot: true
+      persistence.enabled: true
+      extraVolumes:
+        - name: documents
+          configMap:
+            name: seed-documents
+      extraVolumeMounts:
+        - name: documents
+          mountPath: /data
+    asserts:
+      - failedTemplate:
+          errorPattern: "externalDocumentRoot=true is incompatible with persistence.enabled=true"

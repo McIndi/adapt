@@ -1,18 +1,51 @@
 Adapt has been deployed as {{ include "adapt.fullname" . }}.
 
+{{- if .Values.ingress.enabled }}
+Reach the service through the configured Ingress host(s):
+{{- range .Values.ingress.hosts }}
+{{- $host := .host }}
+{{- $scheme := "http" }}
+{{- range $.Values.ingress.tls }}
+{{- if has $host .hosts }}
+{{- $scheme = "https" }}
+{{- end }}
+{{- end }}
+{{- range .paths }}
+  {{ $scheme }}://{{ $host }}{{ .path }}
+{{- end }}
+{{- end }}
+{{- else if eq .Values.service.type "ClusterIP" }}
+Reach the service with port-forwarding:
+
+  kubectl port-forward svc/{{ include "adapt.fullname" . }} -n {{ .Release.Namespace }} 8000:{{ .Values.service.port }}
+
+Then open http://localhost:8000.
+{{- else if eq .Values.service.type "NodePort" }}
+Find a node IP and reach the service at the NodePort:
+
+  kubectl get nodes -o wide
+  kubectl get svc {{ include "adapt.fullname" . }} -n {{ .Release.Namespace }} -o jsonpath='{.spec.ports[0].nodePort}'
+  http://<node-ip>:<node-port>
+{{- else if eq .Values.service.type "LoadBalancer" }}
+Wait for an external address, then open it:
+
+  kubectl get svc {{ include "adapt.fullname" . }} -n {{ .Release.Namespace }} -w
+{{- end }}
+
 {{- if .Values.bootstrapAdmin.enabled }}
 
 A superuser is being bootstrapped via a post-install/post-upgrade hook Job
-({{ include "adapt.fullname" . }}-bootstrap-admin). Check its status with:
+({{ include "adapt.fullname" . }}-bootstrap-admin). It is retained after
+completion; check its outcome with:
 
-  kubectl get job {{ include "adapt.fullname" . }}-bootstrap-admin
+  kubectl get job {{ include "adapt.fullname" . }}-bootstrap-admin -n {{ .Release.Namespace }}
 
 {{- if not .Values.bootstrapAdmin.existingSecret }}
 
 Username: {{ .Values.bootstrapAdmin.username }}
 Retrieve the generated password with:
 
-  kubectl get secret {{ include "adapt.fullname" . }}-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
+  kubectl get secret {{ include "adapt.fullname" . }}-bootstrap-admin -n {{ .Release.Namespace }} -o jsonpath='{.data.password}' | base64 -d && echo
 {{- else }}
 
 Credentials were sourced from the existing secret
@@ -30,10 +63,29 @@ guarantee, or reset the password via `adapt admin change-password`.
 Superuser bootstrapping is disabled (bootstrapAdmin.enabled=false). Create
 one manually with:
 
-  kubectl exec -it deploy/{{ include "adapt.fullname" . }} -- \
+  kubectl exec -it -n {{ .Release.Namespace }} deploy/{{ include "adapt.fullname" . }} -- \
     adapt addsuperuser {{ .Values.persistence.mountPath | default .Values.adapt.rootPath }} --username admin
 
 The -it flag is required because addsuperuser prompts for the password.
 For scripts, use --password, --password-confirm, and --allow-weak-password
 as applicable.
+{{- end }}
+
+Documents can be copied into the document root with:
+
+  kubectl cp ./documents/. {{ .Release.Namespace }}/$(kubectl get pod -n {{ .Release.Namespace }} -l app.kubernetes.io/instance={{ .Release.Name }},app.kubernetes.io/component=server -o jsonpath='{.items[0].metadata.name}'):/{{ trimPrefix "/" (.Values.persistence.mountPath | default .Values.adapt.rootPath) }}
+
+For repeatable or shared content, configure `extraVolumes` and
+`extraVolumeMounts` to mount a ConfigMap below the writable document root,
+such as `/data/documents`, or mount a writable NFS/share volume at `/data`
+with `externalDocumentRoot=true`. Do not mount a ConfigMap at `/data`.
+
+{{- if .Values.externalDocumentRoot }}
+The document root is provided by the volume(s) configured in extraVolumes /
+extraVolumeMounts. This chart does not manage that volume's durability or
+writability — verify it independently.
+{{- else if not .Values.persistence.enabled }}
+WARNING: persistence.enabled=false uses an emptyDir document root. All
+documents and accounts are lost when the pod restarts. Enable persistence for
+anything you need to keep.
 {{- end }}

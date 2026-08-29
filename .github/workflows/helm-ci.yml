@@ -8,12 +8,14 @@ on:
       - Dockerfile
       - .ct.yaml
       - .github/workflows/helm-ci.yml
+      - tools/test-helm-schema.sh
   pull_request:
     paths:
       - charts/adapt/**
       - Dockerfile
       - .ct.yaml
       - .github/workflows/helm-ci.yml
+      - tools/test-helm-schema.sh
   workflow_dispatch:
 
 jobs:
@@ -28,10 +30,13 @@ jobs:
         uses: azure/setup-helm@v4
 
       - name: Install helm-unittest plugin
-        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.6.3 --verify=false
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.6.3
 
       - name: Helm lint
         run: helm lint charts/adapt
+
+      - name: Values schema checks
+        run: bash tools/test-helm-schema.sh
 
       - name: Helm unittest
         run: helm unittest charts/adapt
