@@ -684,8 +684,7 @@ hook point; do not implement.
 - [x] Release procedure documented
 - [x] The canonical install command for Phase 6 is stated unambiguously
       (`helm install adapt oci://ghcr.io/mcindi/charts/adapt --version
-      <chart-version>`; stable `0.5.1` tag still to be pushed, see Decision
-      log)
+      0.5.1`, published and verified; see Decision log)
 
 ## ⏸ REVIEW GATE 5
 
@@ -1080,9 +1079,8 @@ Implementation completed on 2026-08-21. Review Gate 4 is pending.
 ### Phase 5
 
 Implementation completed on 2026-08-29, corrected on 2026-08-30 after
-reviewer findings, and verified on 2026-08-31. Review Gate 5 passes for the
-`0.5.1-rc.1` round trip; the stable `0.5.1` chart itself has not been tagged
-or published yet.
+reviewer findings, verified via release candidate on 2026-08-31, and closed
+with the stable release on 2026-08-31. Review Gate 5 passes.
 
 - **Decisions made:** Chose option 5.1(a), OCI distribution through GHCR at
   `oci://ghcr.io/mcindi/charts/adapt`. It reuses the existing GHCR registry,
@@ -1146,16 +1144,29 @@ or published yet.
   `curl` through `kubectl port-forward svc/adapt-gate 18000:80` returned
   `HTTP 200` from `/health`. The release was uninstalled and the kind cluster
   deleted afterward.
+- **Stable release (2026-08-31):** `charts/adapt/Chart.yaml` bumped from
+  `0.5.1-rc.1` to `0.5.1`; committed and pushed to `main`. Tag `chart-v0.5.1`
+  pushed. GitHub Actions run
+  [33388716712](https://github.com/McIndi/adapt/actions/runs/33388716712)
+  succeeded end to end (docs, both FastAPI-version test jobs,
+  dependency-audit, Helm lint/unittest, kind smoke tests on Kubernetes
+  1.31.2/1.32.0/1.33.0 — version-increment skipped as designed — then
+  package-and-push). Anonymous `helm show chart
+  oci://ghcr.io/mcindi/charts/adapt --version 0.5.1` on the Vagrant VM, from
+  a clean directory with no cached registry login, pulled digest
+  `sha256:8e1aceb63d4e5b16edfd1435499c8b8c6425ab0f424d9e7de41ddbd75ddc2c82`
+  and printed the expected metadata. A repeat `kind` install was not run for
+  the stable tag: the chart content is identical to the already
+  install-verified `0.5.1-rc.1` (only the version string differs), so the
+  anonymous `helm show chart` pull was the only additional check needed to
+  close out the stable publish.
 - **Findings routed forward:** None; the round trip surfaced no new chart
   defects.
-- **Remaining step:** Bump `charts/adapt/Chart.yaml` back to a stable
-  `0.5.1` (and the chart README quick-install placeholder can stay generic),
-  commit, tag `chart-v0.5.1`, and push — that publishes the real release the
-  rc stood in for. Nothing else in this phase depends on that tag existing.
 - **Residual risk:** OCI chart signing and provenance were intentionally not
   added; they remain M2 work.
-- **Chart version:** 0.5.1-rc.1 published and verified; stable `0.5.1` tag
-  still to be pushed. `appVersion` remains 0.4.2.
+- **Chart version:** 0.5.1, published to
+  `oci://ghcr.io/mcindi/charts/adapt` and verified. `appVersion` remains
+  0.4.2.
 
 ### Phase 6
 
