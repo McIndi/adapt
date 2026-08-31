@@ -678,11 +678,14 @@ hook point; do not implement.
 
 ### Exit criteria
 
-- [ ] Distribution model decided and recorded
-- [ ] Publishing implemented and gated on tests plus chart CI
-- [ ] Clean-machine `helm install` verified against the registry
-- [ ] Release procedure documented
-- [ ] The canonical install command for Phase 6 is stated unambiguously
+- [x] Distribution model decided and recorded
+- [x] Publishing implemented and gated on tests plus chart CI
+- [x] Clean-machine `helm install` verified against the registry
+- [x] Release procedure documented
+- [x] The canonical install command for Phase 6 is stated unambiguously
+      (`helm install adapt oci://ghcr.io/mcindi/charts/adapt --version
+      <chart-version>`; stable `0.5.1` tag still to be pushed, see Decision
+      log)
 
 ## ⏸ REVIEW GATE 5
 
@@ -1077,8 +1080,9 @@ Implementation completed on 2026-08-21. Review Gate 4 is pending.
 ### Phase 5
 
 Implementation completed on 2026-08-29, corrected on 2026-08-30 after
-reviewer findings. Review Gate 5 is pending re-verification plus the first
-registry publication and clean-machine round trip.
+reviewer findings, and verified on 2026-08-31. Review Gate 5 passes for the
+`0.5.1-rc.1` round trip; the stable `0.5.1` chart itself has not been tagged
+or published yet.
 
 - **Decisions made:** Chose option 5.1(a), OCI distribution through GHCR at
   `oci://ghcr.io/mcindi/charts/adapt`. It reuses the existing GHCR registry,
@@ -1093,8 +1097,8 @@ registry publication and clean-machine round trip.
   feedback, the first published chart is a release candidate,
   `0.5.1-rc.1` (tag `chart-v0.5.1-rc.1`), rather than the stable `0.5.1`, so
   the clean-machine round trip does not consume the first stable version.
-  `0.5.1` will be re-tagged and published as the real release once the rc
-  round trip passes.
+  `0.5.1` will be re-tagged and published as the real release now that the rc
+  round trip has passed.
 - **Implementation:** Added `publish-chart.yml`. Its push trigger accepts
   only `chart-v*` tags. It calls `test.yml` and the full reusable Helm CI
   workflow before packaging and pushing the chart. It verifies that the tag
@@ -1115,43 +1119,43 @@ registry publication and clean-machine round trip.
   stable `0.5.1`. Fixed by bumping `charts/adapt/Chart.yaml` to
   `0.5.1-rc.1` and changing the chart README's quick-install example to a
   generic `<chart-version>` placeholder instead of a hardcoded version.
-- **Local verification (2026-08-29, before the correction, version 0.5.1):**
-  On the Vagrant VM, Helm v3.21.4 passed `helm lint charts/adapt`;
-  helm-unittest v0.6.3 passed all 52 tests in 7 suites; the schema script
-  accepted `values-dev.yaml` and rejected nine invalid values. `helm package
-  charts/adapt --destination /tmp/adapt-chart-package` created
-  `adapt-0.5.1.tgz`. `helm show chart` on that archive reported version
-  `0.5.1`, appVersion `0.4.2`, and the Phase 4 `home`, `sources`,
-  `maintainers`, and `keywords` metadata. This predates the tomllib fix and
-  the rc version bump, so it no longer reflects the current tree.
-- **Still to verify (blocked mid-session by VM instability on 2026-08-30):**
-  - Re-run `helm lint`, `helm unittest`, and the schema script against the
-    chart at `0.5.1-rc.1` to confirm the version bump alone changed nothing
-    else.
-  - Re-package the chart and confirm `helm show chart` reports
-    `0.5.1-rc.1`.
-  - Exercise the corrected tag/version-match step's actual logic (`helm show
-    chart charts/adapt | awk ...`) against the real chart, not just read it —
-    it was never run after being written.
-  - Confirm `helm` is reachable on the VM again; mid-session it stopped
-    resolving on `PATH` even though `find` still located the binary at
-    `/usr/local/bin/helm` — cause undiagnosed, worth a fresh `vagrant ssh`
-    session before retrying.
-- **Pending gate verification:** No repository tag was pushed and no GHCR
-  package was published. The release workflow needs GitHub's scoped
-  `GITHUB_TOKEN`, which only exists inside Actions. Next: push
-  `chart-v0.5.1-rc.1`, confirm the publish workflow's test and Helm CI jobs
-  pass, run `helm show chart` and `helm install` for that rc version from a
-  directory without a repository checkout, and confirm anonymous pull access
-  on the resulting GHCR package (public repo + `GITHUB_TOKEN` publish should
-  default the package to public, per GitHub's packages-with-Actions docs,
-  but this has not been observed directly). Only after that round trip
-  passes: bump `Chart.yaml` back to a stable `0.5.1`, tag `chart-v0.5.1`, and
-  publish the real release.
+  `azure/setup-helm` was also pinned to `v3.21.4` in both workflows.
+- **Registry publication (2026-08-31):** Tag `chart-v0.5.1-rc.1` pushed to
+  `main` at `705a187`. GitHub Actions run
+  [33385954119](https://github.com/McIndi/adapt/actions/runs/33385954119)
+  succeeded end to end: the `test` workflow (docs, both FastAPI-version test
+  jobs, dependency-audit), the full `helm-ci` workflow (lint/unittest, and
+  `kind` install smoke tests on Kubernetes 1.31.2, 1.32.0, and 1.33.0 — the
+  version-increment job correctly skipped, since it only runs on pull
+  requests), and finally `Package and push chart to GHCR`, which exercised
+  the corrected `helm show chart | awk` version-match step for the first
+  time against the real chart and passed.
+- **Clean-machine round trip (2026-08-31):** On the Vagrant VM, from `/tmp/
+  adapt-clean-test` (no repository checkout in that directory) and with no
+  registry login (`helm registry logout ghcr.io` run first to rule out
+  cached credentials): `helm show chart oci://ghcr.io/mcindi/charts/adapt
+  --version 0.5.1-rc.1` pulled anonymously and printed the expected Phase 4
+  metadata (`home`, `sources`, `maintainers`, `keywords`, `version
+  0.5.1-rc.1`, `appVersion 0.4.2`) — confirming the published package is
+  publicly readable without authentication, resolving the open visibility
+  question from the review. A fresh `kind` cluster
+  (`adapt-phase5-gate`, node image `kindest/node:v1.37.0`) was created, and
+  `helm install adapt-gate oci://ghcr.io/mcindi/charts/adapt --version
+  0.5.1-rc.1 --wait` succeeded, rendering the same NOTES content produced by
+  local packaging. The resulting pod reached `Running`/`1/1 Ready`, and
+  `curl` through `kubectl port-forward svc/adapt-gate 18000:80` returned
+  `HTTP 200` from `/health`. The release was uninstalled and the kind cluster
+  deleted afterward.
+- **Findings routed forward:** None; the round trip surfaced no new chart
+  defects.
+- **Remaining step:** Bump `charts/adapt/Chart.yaml` back to a stable
+  `0.5.1` (and the chart README quick-install placeholder can stay generic),
+  commit, tag `chart-v0.5.1`, and push — that publishes the real release the
+  rc stood in for. Nothing else in this phase depends on that tag existing.
 - **Residual risk:** OCI chart signing and provenance were intentionally not
   added; they remain M2 work.
-- **Chart version:** 0.5.1-rc.1 (rc under test; stable `0.5.1` publish still
-  pending). `appVersion` remains 0.4.2.
+- **Chart version:** 0.5.1-rc.1 published and verified; stable `0.5.1` tag
+  still to be pushed. `appVersion` remains 0.4.2.
 
 ### Phase 6
 

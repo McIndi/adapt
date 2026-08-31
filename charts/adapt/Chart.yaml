@@ -2,7 +2,7 @@ apiVersion: v2
 name: adapt
 description: Helm chart for the Adapt FastAPI service.
 type: application
-version: 0.5.1-rc.1
+version: 0.5.1
 appVersion: "0.4.2"
 home: https://www.mcindi.com/adapt/
 sources:

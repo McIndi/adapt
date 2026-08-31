@@ -1,42 +1,206 @@
 # Releasing Adapt
 
-Adapt has independent application and Helm chart releases. Application release
-tags use `v<version>` and publish the Python package and container image.
-Helm chart release tags use `chart-v<chart-version>` and publish only the
-chart to GHCR.
+Adapt has separate application and Helm chart releases. Do not use one tag for
+both release types.
 
-## Release a Helm chart
+| Release | Tag | Result |
+|---|---|---|
+| Application | `v<app-version>` | PyPI package, container image, and documentation |
+| Helm chart | `chart-v<chart-version>` | OCI chart in GHCR |
 
-1. Update `charts/adapt/Chart.yaml` `version` using semantic versioning. Do
-   not change `appVersion` unless the chart is intentionally moving to a new
-   Adapt application release.
-2. Run the chart checks:
+This guide gives the complete Helm chart release procedure.
 
-   ```bash
-   helm lint charts/adapt
-   helm unittest charts/adapt
-   bash tools/test-helm-schema.sh
-   ```
+## Helm chart release
 
-3. Commit the chart change, then create and push a matching annotated tag:
+### 1. Select the chart version
 
-   ```bash
-   git tag -a chart-v<chart-version> -m "Release chart <chart-version>"
-   git push origin chart-v<chart-version>
-   ```
+Use semantic versioning for `charts/adapt/Chart.yaml` `version`.
 
-The `Publish Helm Chart` workflow runs the Python test workflow and the full
-Helm CI workflow before it packages and pushes the chart to
-`oci://ghcr.io/mcindi/charts/adapt`. It rejects a tag whose version differs
-from `Chart.yaml`.
+Use a release candidate for the first registry test of a new chart release:
 
-## Consume a Helm chart
-
-Install a released chart without cloning this repository:
-
-```bash
-helm install adapt oci://ghcr.io/mcindi/charts/adapt --version <chart-version>
+```yaml
+version: 0.5.1-rc.1
 ```
 
-OCI charts do not need `helm repo add`. Chart signing and provenance are
+Set the same value in your shell. The commands below use this variable:
+
+```bash
+ADAPT_CHART_VERSION=0.5.1-rc.1
+```
+
+Keep `appVersion` unchanged unless the chart uses a different Adapt image.
+The application and chart versions are independent.
+
+### 2. Run the local checks
+
+Run these commands from the repository root:
+
+```bash
+helm lint charts/adapt
+helm unittest charts/adapt
+bash tools/test-helm-schema.sh
+```
+
+Package the chart and inspect its metadata:
+
+```bash
+mkdir -p /tmp/adapt-chart-release
+helm package charts/adapt --destination /tmp/adapt-chart-release
+helm show chart "/tmp/adapt-chart-release/adapt-${ADAPT_CHART_VERSION}.tgz"
+```
+
+Make sure that the output contains the correct `version`, `appVersion`,
+`home`, `sources`, `maintainers`, and `keywords` values.
+
+### 3. Commit the release candidate
+
+Commit the version change. For the first OCI release, also commit the
+publishing workflow and this guide before you create the tag.
+
+```bash
+git status --short
+git diff --check
+git add charts/adapt/Chart.yaml
+git commit -m "chore(chart): prepare ${ADAPT_CHART_VERSION}"
+git push origin main
+```
+
+Wait for the normal `main` branch checks to pass.
+
+### 4. Create the chart tag
+
+Create an annotated tag that exactly matches `Chart.yaml`:
+
+```bash
+git tag -a "chart-v${ADAPT_CHART_VERSION}" \
+  -m "Release chart ${ADAPT_CHART_VERSION}"
+git push origin "chart-v${ADAPT_CHART_VERSION}"
+```
+
+The tag push starts the `Publish Helm Chart` workflow in
+`.github/workflows/publish-chart.yml`.
+
+### 5. Monitor the publishing workflow
+
+Open **GitHub Actions > Publish Helm Chart**. Make sure that these jobs pass:
+
+1. `test` runs the Python test workflow.
+2. `helm-ci` runs lint, schema, unit, and kind checks.
+3. `package-and-push` checks the tag, packages the chart, and pushes it.
+
+The last job publishes this OCI chart:
+
+```text
+oci://ghcr.io/mcindi/charts/adapt
+```
+
+The workflow rejects a tag that does not match `Chart.yaml`.
+The publishing job cannot start until both test jobs pass.
+
+### 6. Make sure that the package is public
+
+Open the new package in GitHub Packages. Make sure that anonymous users have
+read access.
+
+If the package is private, change its visibility to public before the next
+step.
+
+### 7. Run the anonymous registry test
+
+Use a machine or VM with no repository checkout. Use a temporary Helm registry
+configuration to exclude saved GHCR credentials.
+
+If no test cluster exists, create one:
+
+```bash
+kind create cluster --name adapt-release-check --wait 180s
+```
+
+Run the registry checks from a clean directory:
+
+```bash
+release_check_dir=$(mktemp -d)
+cd "$release_check_dir"
+export HELM_REGISTRY_CONFIG="$release_check_dir/registry.json"
+
+helm show chart oci://ghcr.io/mcindi/charts/adapt \
+  --version "${ADAPT_CHART_VERSION}"
+
+helm install adapt oci://ghcr.io/mcindi/charts/adapt \
+  --version "${ADAPT_CHART_VERSION}" \
+  --namespace adapt-release-check \
+  --create-namespace \
+  --wait \
+  --timeout 180s
+
+helm get notes adapt --namespace adapt-release-check
+helm test adapt --namespace adapt-release-check --logs --timeout 120s
+kubectl get pods --namespace adapt-release-check
+```
+
+Make sure that the chart metadata is correct. Make sure that the pod is ready
+and the Helm test passes.
+
+Remove the test release:
+
+```bash
+helm uninstall adapt --namespace adapt-release-check
+kubectl delete namespace adapt-release-check
+```
+
+If this procedure created the kind cluster, delete it:
+
+```bash
+kind delete cluster --name adapt-release-check
+```
+
+### 8. Record the result
+
+Record the workflow URL and registry commands in the applicable release or
+milestone log. Do not mark the review gate complete without this evidence.
+
+## Promote a release candidate
+
+If the release candidate passes, change `Chart.yaml` from the release
+candidate to the stable version.
+
+For example, change `0.5.1-rc.1` to `0.5.1`. Then repeat all release steps
+with the stable version and `chart-v0.5.1` tag. Update the shell variable first:
+
+```bash
+ADAPT_CHART_VERSION=0.5.1
+```
+
+Do not reuse or move a published tag. If a release candidate is incorrect,
+create a new version such as `0.5.1-rc.2`.
+
+## Failure recovery
+
+- If a test job fails, correct the failure and create a new release-candidate
+  version.
+- If the tag does not match `Chart.yaml`, correct the version and create a new
+  tag.
+- If GHCR rejects the push, make sure that the workflow has `packages: write`.
+- If anonymous access fails, make the GHCR package public.
+- If an incorrect chart is already published, increment the chart version.
+  Do not replace an OCI chart version after publication.
+
+## Install a released chart
+
+Users install a released chart without cloning the repository:
+
+```bash
+helm install adapt oci://ghcr.io/mcindi/charts/adapt \
+  --version "${ADAPT_CHART_VERSION}"
+```
+
+OCI charts do not use `helm repo add`. Chart signing and provenance remain
 future M2 supply-chain work.
+
+## Application release summary
+
+Application releases use GitHub Releases, not `chart-v*` tags. Publish a
+GitHub Release with a matching `v<app-version>` tag.
+
+That event starts the PyPI, container-image, and documentation workflows. The
+application version must match `pyproject.toml` and `adapt/__init__.py`.

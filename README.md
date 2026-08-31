@@ -319,6 +319,7 @@ More documentation is under `docs/manual/`.
 - MCP guide: [docs/manual/mcp_guide.md](docs/manual/mcp_guide.md)
 - Plugin development: [docs/manual/plugin_development.md](docs/manual/plugin_development.md)
 - Known limitations: [docs/manual/known_limitations.md](docs/manual/known_limitations.md)
+- Release guide: [RELEASING.md](RELEASING.md)
 
 Generated reference documentation is under `docs/reference/`. MkDocs builds
 this documentation, and GitHub Pages publishes it.
