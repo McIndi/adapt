@@ -1,6 +1,7 @@
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/jammy64"
+  config.vm.box = "ubuntu/noble64"
   config.vm.hostname = "adapt-container-test"
+  config.vm.network "private_network", ip: "192.168.58.30"
 
   config.vm.provider "virtualbox" do |virtualbox|
     virtualbox.name = "adapt-container-test"

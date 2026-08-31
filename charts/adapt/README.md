@@ -7,7 +7,7 @@ environment.
 ## Quick install
 
 ```bash
-helm install adapt ./charts/adapt
+helm install adapt oci://ghcr.io/mcindi/charts/adapt --version <chart-version>
 ```
 
 ## Persistence

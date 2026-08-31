@@ -1,0 +1,55 @@
+name: Publish Helm Chart
+
+on:
+  push:
+    tags:
+      - "chart-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  helm-ci:
+    uses: ./.github/workflows/helm-ci.yml
+
+  package-and-push:
+    name: Package and push chart to GHCR
+    needs: [test, helm-ci]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Verify chart tag matches Chart.yaml version
+        id: version
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          expected="${TAG_NAME#chart-v}"
+          actual=$(helm show chart charts/adapt | awk -F': ' '/^version:/ {print $2}')
+          if [ "$expected" != "$actual" ]; then
+            echo "Chart tag '$TAG_NAME' (version $expected) does not match charts/adapt/Chart.yaml version $actual." >&2
+            echo "Bump Chart.yaml, commit it, then create a matching chart-v<version> tag." >&2
+            exit 1
+          fi
+          echo "chart_version=$actual" >> "$GITHUB_OUTPUT"
+
+      - name: Package chart
+        run: helm package charts/adapt --destination .chart-package
+
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | helm registry login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Push chart
+        run: helm push ".chart-package/adapt-${{ steps.version.outputs.chart_version }}.tgz" oci://ghcr.io/mcindi/charts
