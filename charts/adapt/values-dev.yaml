@@ -2,14 +2,16 @@
 # and a stable NodePort.
 #
 # Usage:
-#   helm upgrade --install adapt charts/adapt \
+#   LOCAL_IMAGE=your-local-image
+#   LOCAL_TAG=your-tag
+#   helm upgrade --install myadapt charts/adapt \
 #     -f charts/adapt/values-dev.yaml \
-#     --set image.repository=<your-local-image> --set image.tag=<tag> --set image.pullPolicy=IfNotPresent
+#     --set image.repository="$LOCAL_IMAGE" --set image.tag="$LOCAL_TAG" --set image.pullPolicy=IfNotPresent
 #
-# Open http://<node-ip>:30080. A port-forward is not required.
+# Open http://NODE_IP:30080. A port-forward is not required.
 #
 # Retrieve the generated admin password afterward with:
-#   kubectl get secret adapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
+#   kubectl get secret myadapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
 
 persistence:
   enabled: true

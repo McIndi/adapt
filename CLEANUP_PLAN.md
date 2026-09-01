@@ -1529,6 +1529,32 @@ is not otherwise recorded as a limitation.
   ("Every example on this page ... uses `myadapt` ... none of them use the
   bare release name `adapt`") is live, not just local.
 
+#### Review Gate 6 round 3 — values-dev header (2026-09-01)
+
+The reviewer found one last executable documentation command outside the
+canonical docs pages: `charts/adapt/values-dev.yaml` still used the broken
+bare release name `adapt`, unquoted `<your-local-image>` / `<tag>` values,
+and the wrong bootstrap Secret name. The header now defines
+`LOCAL_IMAGE=your-local-image` and `LOCAL_TAG=your-tag`, runs
+`helm upgrade --install myadapt charts/adapt`, passes quoted variable values,
+uses `NODE_IP` rather than an angle-bracket shell-redirection placeholder,
+and retrieves `myadapt-bootstrap-admin`. Focused VM verification rendered
+the exact command values with:
+
+```bash
+helm template myadapt charts/adapt -f charts/adapt/values-dev.yaml \
+  --set image.repository=your-local-image --set image.tag=your-tag \
+  --set image.pullPolicy=IfNotPresent
+```
+
+The rendered Secret name was `myadapt-bootstrap-admin`, the Deployment name
+and PVC claim name were `myadapt`, the image was
+`your-local-image:your-tag`, and the Service was `NodePort` `30080`. The
+strict MkDocs build also passed after the comment-only overlay change. This
+closes the final remaining Gate 6 command mismatch; the separate
+release-name/service-link collision remains documented as an unfixed chart
+behavior for a future chart version.
+
 ## Deliberately deferred
 
 Record these so a future reader knows they were considered, not missed:
