@@ -1,7 +1,7 @@
 # Container, OCI, and Helm Chart Cleanup Plan
 
-Status: Phase 6 implemented — Review Gate 6 round-1 findings corrected and
-        published live
+Status: Phase 6 implemented — Review Gate 6 round-1 and round-2 findings
+        corrected and published live
 Created: 2026-08-12
 Baseline: `main` @ `60ea9b9` (app `0.4.1`, chart `0.3.2`)
 
@@ -835,7 +835,9 @@ the Phase 3 and 5 changes.
       verified live after `pages.yml` run 33502635532)
 - [x] One canonical Helm document; the other two reduced to pointers
 - [x] Day-1 walkthrough written and executed end to end, using release name
-      `myadapt` (not `adapt` — see the round-1 Finding 1 write-up above)
+      `myadapt` (not `adapt` — see the round-1 and round-2 Finding 1
+      write-ups above); the page's canonical install command and every
+      other example were also brought into line with `myadapt` in round 2
 - [x] Deployment troubleshooting added, including the release-name/
       service-link collision found during Gate 6 round 1
 - [x] `mkdocs build --strict` passes
@@ -1516,11 +1518,16 @@ bump in a future session.
 cold-cache `--wait` timeout observed during existing-PVC verification is
 noted as an environment artifact, not a documentation or chart defect, and
 is not otherwise recorded as a limitation.
-- **Publishing this round's fixes:** committed and pushed to `main`
-  alongside `mkdocs build --strict` verification; the live site was
-  re-published via `pages.yml` the same way as round 1 (see the workflow
-  run linked in the round-1 entry's pattern) so the corrected canonical
-  command and the closed verification gaps are live, not just local.
+- **Publishing this round's fixes:** committed (`beaf2ac`) and pushed to
+  `main`, then republished via `gh workflow run pages.yml --ref main` (run
+  [33504408052](https://github.com/McIndi/adapt/actions/runs/33504408052),
+  all jobs succeeded). Re-fetched
+  `https://www.mcindi.com/adapt/manual/kubernetes/` afterward and confirmed
+  the canonical **Install** command now reads
+  `helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1`,
+  every other example on the page uses `myadapt`, and the round-2 wording
+  ("Every example on this page ... uses `myadapt` ... none of them use the
+  bare release name `adapt`") is live, not just local.
 
 ## Deliberately deferred
 
