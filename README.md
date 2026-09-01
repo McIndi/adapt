@@ -208,102 +208,21 @@ adapt admin create-permissions <root> __all__
 Use `--reload` during development. Uvicorn watches Python files in the document
 root and restarts Adapt after a change.
 
-## Helm (Kubernetes)
+## Container and Kubernetes
 
-A Helm chart is included at `charts/adapt/`.
-
-Uploads are disabled by default. To enable them, pass the upload environment
-variables through Helm values. The container then uses the same
-configuration as a local install.
-
-**Ephemeral (default — data lost on pod restart):**
+A container image is published to `ghcr.io/mcindi/adapt-server`, and a Helm
+chart is published to `oci://ghcr.io/mcindi/charts/adapt`:
 
 ```bash
-helm install adapt ./charts/adapt
+docker run -p 8000:8000 -v "$(pwd)/docroot:/data" ghcr.io/mcindi/adapt-server:latest
+
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
 ```
 
-**Dynamic persistent volume (cluster provisions storage automatically):**
-
-```bash
-helm install adapt ./charts/adapt \
-  --set persistence.enabled=true \
-  --set persistence.size=20Gi \
-  --set persistence.storageClass=standard
-```
-
-**Existing PVC (cluster admin creates the PVC beforehand):**
-
-```bash
-# Cluster admin creates the PVC first, e.g.:
-kubectl apply -f my-adapt-pvc.yaml
-
-helm install adapt ./charts/adapt \
-  --set persistence.enabled=true \
-  --set persistence.existingClaim=my-adapt-pvc
-```
-
-Key persistence values:
-
-| Value | Default | Description |
-|---|---|---|
-| `persistence.enabled` | `false` | Enable durable storage at `/data` |
-| `persistence.existingClaim` | `""` | Name of a pre-created PVC to mount |
-| `persistence.storageClass` | `""` | StorageClass name (cluster default if empty) |
-| `persistence.accessModes` | `[ReadWriteOnce]` | PVC access modes |
-| `persistence.size` | `10Gi` | Storage request size |
-| `persistence.mountPath` | `""` (uses `adapt.rootPath`) | Mount path inside the container |
-| `persistence.annotations` | `{}` | Annotations added to the PVC |
-
-Example upload settings in `values.yaml`:
-
-```yaml
-env:
-  - name: ADAPT_UPLOAD_ENABLED
-    value: "true"
-  - name: ADAPT_UPLOAD_MAX_SIZE_BYTES
-    value: "10485760"
-  - name: ADAPT_UPLOAD_ALLOWED_EXTENSIONS
-    value: ".csv,.md,.txt"
-  - name: ADAPT_UPLOAD_STRICT_MIME_SNIFFING
-    value: "true"
-```
-
-When uploads are enabled, authenticated users with `write` permission on the
-document-root boundary see the upload card on `/`. These users can upload
-directly from the landing page.
-
-> **Admin responsibility:** the cluster admin must supply a matching StorageClass
-> and sufficient quota before enabling dynamic provisioning. For `ReadWriteOnce`
-> volumes, keep `replicaCount=1` (the default).
-
-**Bootstrap a superuser automatically** (requires `persistence.enabled=true`
-— see [docs/manual/installation.md](docs/manual/installation.md#bootstrapping-a-superuser)
-for why):
-
-```bash
-helm install adapt ./charts/adapt \
-  --set persistence.enabled=true \
-  --set bootstrapAdmin.enabled=true
-
-# This example uses the release name "adapt".
-kubectl get secret adapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
-```
-
-For other release names, the Secret is usually
-`<release>-adapt-bootstrap-admin`. If the release name contains `adapt`, the
-name becomes `<release>-bootstrap-admin`. Run `helm get notes <release>` to
-get the correct command.
-
-**Expose it without an Ingress controller** (for example, bare-metal or k3s):
-
-```bash
-helm install adapt ./charts/adapt --set service.type=NodePort --set service.nodePort=30080
-```
-
-`charts/adapt/values-dev.yaml` bundles persistence, bootstrap, and a pinned
-NodePort for local development on a VM or with k3s. See
-[docs/manual/installation.md](docs/manual/installation.md#local-development-overlay)
-for detail.
+Use a release name other than the bare `adapt` — see
+[Deployment](docs/manual/deployment.md) for why, plus the bind-mount
+ownership requirement, persistence, admin bootstrapping, service exposure,
+and a full day-1 walkthrough.
 
 ## Documentation
 
@@ -319,6 +238,7 @@ More documentation is under `docs/manual/`.
 - MCP guide: [docs/manual/mcp_guide.md](docs/manual/mcp_guide.md)
 - Plugin development: [docs/manual/plugin_development.md](docs/manual/plugin_development.md)
 - Known limitations: [docs/manual/known_limitations.md](docs/manual/known_limitations.md)
+- Deployment (container and Kubernetes): [docs/manual/deployment.md](docs/manual/deployment.md)
 - Release guide: [RELEASING.md](RELEASING.md)
 
 Generated reference documentation is under `docs/reference/`. MkDocs builds

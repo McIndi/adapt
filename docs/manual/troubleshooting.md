@@ -217,4 +217,100 @@ When you report an issue, capture these logs:
 - request path and response code
 - relevant configuration from `.adapt/conf.json`
 
+## Deployment Troubleshooting (Container and Kubernetes)
+
+See [Deployment](deployment.md) for the full container and Helm chart
+documentation. This section covers the failures those paths hit most often.
+
+### Pod `CrashLoopBackOff` with `ADAPT_PORT must be an integer`
+
+This happens specifically when the Helm release name resolves to the bare
+name `adapt` (for example `helm install adapt oci://ghcr.io/mcindi/charts/adapt
+...`). The chart's Service is then also named `adapt`, and Kubernetes
+injects an `ADAPT_PORT` service-link environment variable (a URL, not an
+integer) into every pod in the namespace, which collides with — and
+overrides — Adapt's own `ADAPT_PORT` config variable. Reinstall with a
+release name that does not resolve to exactly `adapt`, for example
+`myadapt`. See
+[Known Limitations](known_limitations.md#helm-release-name-adapt-collides-with-its-own-config-variable)
+for the full explanation and
+[Kubernetes (Helm) → Install](kubernetes.md#install) for the warning in
+context.
+
+### Pod `CrashLoopBackOff` on a PVC the container cannot write
+
+The container runs as UID 1000. If the mounted PVC is owned `root:root`
+(common with drivers that ignore `fsGroup`), Adapt cannot create `.adapt/`
+and the pod crash-loops. The chart sets `podSecurityContext.fsGroup: 1000`
+by default, which most CSI drivers honor; for the drivers that ignore it,
+use `persistence.annotations` (driver-specific) or pre-chown an
+`existingClaim` to UID/GID 1000 before mounting it.
+
+### `docker run` bind mount: `Permission denied: '/data/.adapt'`
+
+Same root cause as above, on a plain Docker/Podman bind mount instead of a
+PVC. Fix it on the host:
+
+```bash
+sudo chown 1000:1000 ./docroot
+```
+
+See [Container](container.md#the-uid-1000-ownership-requirement).
+
+### Liveness restarts during startup indexing
+
+A large document root with `search_on_startup` enabled can take longer to
+index than the default liveness window, causing Kubernetes to restart the
+pod before it finishes starting. The chart's `probes.startup` block exists
+for this — increase `probes.startup.failureThreshold` (default allows about
+5 minutes) if your document root is large enough to need more.
+
+### Copied files return `404` immediately after `kubectl cp`
+
+Adapt discovers resources once, at process startup — not continuously. A
+file copied into a running pod is not reachable until the pod restarts:
+
+```bash
+kubectl rollout restart deployment/<release>-adapt
+```
+
+See [Kubernetes (Helm) → Getting documents into the document root](kubernetes.md#getting-documents-into-the-document-root).
+
+### `bootstrapAdmin.enabled=true` rejected without persistence
+
+This is intentional: `charts/adapt/templates/admin-bootstrap-job.yaml` fails
+the render with `fail()` rather than silently bootstrapping a user into a
+throwaway `emptyDir` the main pod cannot see. Set
+`persistence.enabled=true` alongside `bootstrapAdmin.enabled=true`.
+
+### Failed bootstrap Job blocks reinstall
+
+Helm retains a failed hook Job for diagnosis instead of cleaning it up
+automatically. A retained failed Job (and its pod holding an `RWO` volume)
+can block a reinstall or leave the PVC `Terminating`. Delete it first:
+
+```bash
+kubectl delete job <release>-adapt-bootstrap-admin
+kubectl get pods -l job-name=<release>-adapt-bootstrap-admin
+kubectl delete pod <bootstrap-pod-name>   # if still present, to release the volume
+```
+
+### Bootstrap or server Job stuck `ContainerCreating`
+
+An `RWO` volume is bound to whichever node its first mounting pod was
+scheduled on. If the bootstrap Job or a rescheduled server pod lands on a
+different node, it stays `ContainerCreating` waiting for the volume to
+detach and reattach. This is a real multi-node constraint independent of
+replica count — see the `RWX`/multi-replica guidance in
+[Kubernetes (Helm) → Admin prerequisites](kubernetes.md#admin-prerequisites).
+
+### Empty landing page after a default install
+
+Installing with defaults (`persistence.enabled=false`,
+`bootstrapAdmin.enabled=false`) gives you an empty, account-less, ephemeral
+instance — there are no documents, no users, and any state is lost on the
+next pod restart. `helm get notes <release>` says so explicitly. This is
+expected; follow the [day-1 walkthrough](kubernetes.md#day-1-walkthrough)
+for a populated, logged-in instance.
+
 Manual navigation: [Previous: Architecture](architecture.md) | [Index](index.md) | [Next: Known Limitations](known_limitations.md)

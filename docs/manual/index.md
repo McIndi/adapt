@@ -17,6 +17,7 @@ This is the manual for Adapt, the adaptive file-backed web server. It documents 
 11. [Architecture](architecture.md) - Internal architecture and design
 12. [Troubleshooting](troubleshooting.md) - Common issues and solutions
 13. [Known Limitations](known_limitations.md) - Current implementation limits and workarounds
+14. [Deployment](deployment.md) - Container and Kubernetes packaging, including [Container](container.md) and [Kubernetes (Helm)](kubernetes.md)
 
 ## About This Manual
 

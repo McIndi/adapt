@@ -36,6 +36,35 @@ The repository can contain changes that are newer than the published
 `adapt-server` package on PyPI. When you compare behavior with this manual,
 record the source commit or installed package version.
 
+## Helm Release Name `adapt` Collides With Its Own Config Variable
+
+The Helm chart's `fullname` helper collapses to the bare release name
+whenever that name contains `adapt` (`charts/adapt/templates/_helpers.tpl`).
+Installing with the release name literally `adapt` (for example
+`helm install adapt oci://ghcr.io/mcindi/charts/adapt ...`) therefore names
+every chart resource, including the Service, `adapt`. Kubernetes injects
+Docker-links-style environment variables into every pod in the namespace,
+named after each Service (`<SERVICE>_SERVICE_HOST`, `<SERVICE>_PORT`, and so
+on) — for a Service named `adapt`, that includes `ADAPT_PORT`. This collides
+with Adapt's own `ADAPT_PORT` configuration variable, whose value from the
+Service (`tcp://10.x.x.x:80`) is not an integer. The server fails at startup
+with `ADAPT_PORT must be an integer` and the pod crash-loops.
+
+This was confirmed on a real cluster: the pod runs successfully immediately
+after `helm install`, then crash-loops once Kubernetes injects the Service's
+env vars (usually by the second or third pod restart, once the Service
+object exists).
+
+**Workaround:** use any release name that does not resolve to exactly
+`adapt` — for example `myadapt`, which still exercises the chart's
+name-collapse rule (because it contains `adapt`) without colliding, since
+its Service name renders as the distinct prefix `MYADAPT_*`. There is
+currently no chart option to disable Kubernetes' service-link env var
+injection (`enableServiceLinks: false` on the pod spec would be the
+standard fix); this is an open gap, not yet fixed in the chart. See
+[Kubernetes (Helm) → Install](kubernetes.md#install) and
+[Troubleshooting](troubleshooting.md) for the same warning in context.
+
 ## Related Guides
 
 - [Installation](installation.md)
@@ -47,4 +76,4 @@ record the source commit or installed package version.
 - [Architecture](architecture.md)
 - [Troubleshooting](troubleshooting.md)
 
-Manual navigation: [Previous: Troubleshooting](troubleshooting.md) | [Index](index.md)
+Manual navigation: [Previous: Troubleshooting](troubleshooting.md) | [Index](index.md) | [Next: Deployment](deployment.md)

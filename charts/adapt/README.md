@@ -7,15 +7,20 @@ environment.
 ## Quick install
 
 ```bash
-helm install adapt oci://ghcr.io/mcindi/charts/adapt --version <chart-version>
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version <chart-version>
 ```
+
+**Do not use the release name `adapt` by itself** — it collides with a
+Kubernetes-injected environment variable and crash-loops the pod. See
+[Kubernetes (Helm)](https://www.mcindi.com/adapt/manual/kubernetes/#install)
+for why.
 
 ## Persistence
 
 Use `persistence.enabled=true` to keep document content and `.adapt/` state.
 
 ```bash
-helm install adapt ./charts/adapt \
+helm install myadapt ./charts/adapt \
   --set persistence.enabled=true \
   --set persistence.size=20Gi
 ```
@@ -44,4 +49,13 @@ document-root boundary see an upload card on `/` and can also call
 ## Other values
 
 See [`values.yaml`](values.yaml) for the full chart surface, including
-`persistence`, `service`, `ingress`, `env`, and `secretEnv`.
+`persistence`, `service`, `ingress`, `image`, `imagePullSecrets`, `env`, and
+`secretEnv`.
+
+## Full documentation
+
+This page covers the quick install only. For persistence modes, admin
+bootstrapping, service exposure, image/registry overrides, a day-1
+walkthrough, and troubleshooting, see
+[Kubernetes (Helm)](https://www.mcindi.com/adapt/manual/kubernetes/) in the
+full documentation.

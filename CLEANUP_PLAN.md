@@ -1,6 +1,7 @@
 # Container, OCI, and Helm Chart Cleanup Plan
 
-Status: Phase 4 implemented — Review Gate 4 pending
+Status: Phase 6 implemented — Review Gate 6 round-1 findings corrected;
+        publishing the live site pending user-confirmed push/dispatch
 Created: 2026-08-12
 Baseline: `main` @ `60ea9b9` (app `0.4.1`, chart `0.3.2`)
 
@@ -828,13 +829,19 @@ the Phase 3 and 5 changes.
 
 ### Exit criteria
 
-- [ ] Container documentation exists, and every command in it was run
-- [ ] Deployment content is in the nav and reachable
-- [ ] One canonical Helm document; the other two reduced to pointers
-- [ ] Day-1 walkthrough written and executed end to end
-- [ ] Deployment troubleshooting added
-- [ ] `mkdocs build --strict` passes
-- [ ] `PROJECT_STATUS.md` and `MILESTONES.md` reconciled
+- [x] Container documentation exists, and every command in it was run
+- [x] Deployment content is in the nav and reachable **locally**;
+      publishing the live site is pending user-confirmed push/dispatch
+      (Gate 6 round 1, Finding 3)
+- [x] One canonical Helm document; the other two reduced to pointers
+- [x] Day-1 walkthrough written and executed end to end, using release name
+      `myadapt` (not `adapt` — see the round-1 Finding 1 write-up above)
+- [x] Deployment troubleshooting added, including the release-name/
+      service-link collision found during Gate 6 round 1
+- [x] `mkdocs build --strict` passes
+- [x] `PROJECT_STATUS.md` and `MILESTONES.md` reconciled, including the
+      `v0.5.0`/image-`0.5.0` correction and the Docs lane moving to `WIP`
+      pending the live publish
 
 ## ⏸ REVIEW GATE 6 — final
 
@@ -1170,7 +1177,257 @@ with the stable release on 2026-08-31. Review Gate 5 passes.
 
 ### Phase 6
 
-_Not started._
+Implementation completed on 2026-08-31. Review Gate 6 pending.
+
+- **Decisions made:** Added `docs/manual/deployment.md` as a short overview
+  page, `docs/manual/container.md` for the published image, and
+  `docs/manual/kubernetes.md` as the single canonical Helm reference,
+  under a new top-level `Deployment` nav group in `mkdocs.yml` (sibling to
+  `User Manual`/`Reference`, not spliced into the linear
+  Overview→...→Known Limitations footer chain, except that
+  `known_limitations.md` now links forward into it). `docs/manual/installation.md`
+  keeps only local/PyPI/source installation and a one-line pointer; its old
+  Helm section (`### Persistence modes` through `### Local development
+  overlay`) was deleted, not duplicated. `README.md`'s Helm section was cut
+  to a four-line container + chart quick-install plus a link.
+  `charts/adapt/README.md` keeps its existing minimal quick-install and now
+  links to `kubernetes.md` and documents `image`/`imagePullSecrets` as
+  chart-surface pointers rather than duplicating their prose. The day-1
+  walkthrough and troubleshooting entries went into `kubernetes.md` and
+  `troubleshooting.md` respectively, not into `deployment.md`, since every
+  step is Kubernetes-specific.
+- **New finding surfaced while writing the walkthrough (documented, not a
+  regression):** Adapt discovers resources once at process startup — copying
+  a file into a running pod's document root (via `kubectl cp` or a volume
+  mounted after startup) does not make it reachable until the pod restarts.
+  This was previously undocumented. `kubernetes.md` and `troubleshooting.md`
+  now state it explicitly, and it was reproduced live (see verification).
+- **New finding — image digest pinning does not work through chart values:**
+  the Deployment template unconditionally renders
+  `{{ image.repository }}:{{ image.tag }}`; setting `image.repository` to a
+  `repo@sha256:...` reference still gets `:<tag>` appended, producing an
+  invalid image reference. Confirmed with `helm template` against the
+  published chart. Documented as a known limitation in `kubernetes.md`
+  rather than silently advertising an unsupported pattern.
+- **Verification performed (container, on the Phase 3 Vagrant VM):**
+  `docker pull ghcr.io/mcindi/adapt-server:0.4.2`; `docker image inspect`
+  confirmed all six OCI labels; `docker buildx imagetools inspect` confirmed
+  the `linux/amd64` + `linux/arm64` manifest list. `docker run` with a bind
+  mount `chown`-ed to `1000:1000` started successfully and `/health`
+  returned `200`; `docker exec ... adapt addsuperuser` created a superuser
+  non-interactively inside the running container. Reproduced the
+  documented failure mode with a `root:root`-owned bind mount: `adapt check`
+  raised `PermissionError: [Errno 13] Permission denied: '/data/.adapt'`,
+  confirming the UID-1000 requirement is real and not just theoretical.
+  Verified `adapt --help` runs and that appending arguments after the image
+  name overrides the default `CMD`.
+- **Verification performed (Kubernetes day-1 walkthrough, on a fresh `kind`
+  cluster, `adapt-phase6`):** `helm install` with
+  `persistence.enabled=true,bootstrapAdmin.enabled=true` succeeded and
+  rendered the documented `NOTES.txt`; retrieved the generated password from
+  `<release>-adapt-bootstrap-admin`; port-forwarded and got `HTTP 200` from
+  `/health`; `kubectl cp` copied a test document into the running pod, and
+  it returned `404` until `kubectl rollout restart deployment/...` completed,
+  after which the same URL returned `401` (unauthenticated, but now
+  routed) — this is the discovery-is-startup-only finding above, caught
+  live rather than assumed; ran `adapt admin create-permissions __all__`,
+  `list-groups`, `create-user`, and `add-to-group` via `kubectl exec` and
+  confirmed the resulting group/user state; `helm upgrade --reuse-values`
+  with `--set-string env[...].value=...` enabled uploads, after first
+  reproducing the values-schema rejection of unquoted `--set` boolean/number
+  values (`got boolean, want string` / `got number, want string`) that led
+  to documenting `--set-string` explicitly rather than `--set`. Cluster and
+  temporary directories were deleted afterward.
+- **`mkdocs build --strict`:** passed with the new `Deployment` nav group
+  and pages (`python -m mkdocs build --strict`, exit code 0, no
+  warnings/errors in the log).
+- **Findings routed forward:** None new beyond the two documented above (both
+  captured as documentation, not deferred as chart or image work).
+- **Residual risk:** The image digest-pinning gap (above) is a real chart
+  limitation, not just a documentation gap — it is noted here for a future
+  chart-template fix but intentionally left as documentation-only for this
+  phase, since Phase 6 is scoped to docs. `docs/manual/security.md` still
+  does not cover the upload attack surface (pre-existing gap, tracked in
+  `PROJECT_STATUS.md`, out of this phase's scope).
+- **Chart version:** unchanged at 0.5.1; no chart file was touched in this
+  phase.
+
+#### Review Gate 6 round 1 — failed (2026-09-01)
+
+The reviewer found the walkthrough itself did not work end-to-end
+(release name `adapt-adapt` used throughout instead of the chart's actual
+collapsed name), two shell-redirection foot-guns (`<strong-password>`,
+`<resource>_readonly` as literal, unquoted placeholders), the live site not
+yet republished, an incomplete command-execution record, stale version
+references (`v0.4.1`/`0.4.2` instead of the actual `v0.5.0`), and a
+walkthrough that never explicitly confirmed a login. All six findings were
+addressed the same day, re-verified on a fresh `kind` cluster and the Phase 3
+Vagrant VM, before Gate 6 was resubmitted:
+
+- **Finding 1 (High, resource names) — root cause was worse than a
+  documentation typo.** Testing the corrected walkthrough with release name
+  `adapt` (matching every other example in the chart's docs) reproduced a
+  real chart bug, not just wrong names in prose: `adapt.fullname` collapses
+  to the bare release name `adapt` whenever the release name contains
+  `adapt`, so the Service is also named `adapt`. Kubernetes then injects
+  Docker-links-style env vars into every pod in the namespace, named after
+  each Service — for a Service named `adapt`, that includes `ADAPT_PORT`,
+  which collides with and overrides Adapt's own `ADAPT_PORT` config
+  variable. The server crash-loops with `ADAPT_PORT must be an integer`.
+  Confirmed live: `helm install adapt oci://ghcr.io/mcindi/charts/adapt
+  --version 0.5.1 --set persistence.enabled=true
+  --set bootstrapAdmin.enabled=true --set bootstrapAdmin.username=admin
+  --wait` timed out; `kubectl describe pod` showed
+  `CrashLoopBackOff`; `kubectl logs --previous` showed
+  `ADAPT_PORT must be an integer`. Reinstalling with release name `myadapt`
+  (still exercises the `fullname` collapse rule, since it contains `adapt`,
+  but its Service renders as `myadapt` → env prefix `MYADAPT_*`, not
+  `ADAPT_*`) installed cleanly. This is a real, currently-unfixed chart gap,
+  not merely a documentation error — `kubernetes.md` now carries a
+  prominent warning under **Install**, the day-1 walkthrough uses `myadapt`
+  throughout, `known_limitations.md` gained a dedicated entry, and
+  `troubleshooting.md` gained a matching entry. `README.md` and
+  `charts/adapt/README.md`'s quick-install examples were also switched to
+  `myadapt` with a one-line pointer, since they are exactly the surface a
+  new user copy-pastes first. The chart template itself (`enableServiceLinks:
+  false` on the pod spec is the standard fix) was intentionally **not**
+  patched in this phase — Phase 6 is scoped to documentation, and a chart
+  fix needs its own version bump, `helm-unittest` case, and gate, per the
+  conventions at the top of this document. It is recorded here, in
+  `PROJECT_STATUS.md`, and in `known_limitations.md` as an open gap rather
+  than silently routed around.
+- **Finding 2 (High, shell foot-guns) — fixed by removing angle-bracket
+  placeholders from copy-pasteable code blocks.** `kubernetes.md`'s
+  walkthrough now sets `EDITOR_PASSWORD='choose-your-own-password'` in a
+  shell variable and passes `--password "$EDITOR_PASSWORD"`
+  (quoted, no literal `<...>`), and uses the concrete, verified group name
+  `readme_readonly` (matching the `readme.md` seeded earlier in the same
+  walkthrough) instead of a `<resource>_readonly` placeholder.
+  `container.md`'s `addsuperuser` example does the same with
+  `ADMIN_PASSWORD`. Both were re-run verbatim (see verification below) to
+  confirm they now execute without modification.
+- **Finding 3 (High, unpublished site) — not fixed in this round.**
+  `pages.yml` only runs on `release`/`workflow_dispatch`, and the last
+  successful run predates every Phase 6 documentation change, so
+  `https://www.mcindi.com/adapt/manual/kubernetes/` still 404s and the live
+  nav has no `Deployment` group. Publishing requires committing and pushing
+  these changes to `main` and then triggering `pages.yml` (`workflow_dispatch`
+  or the next release) — both actions this session flagged for explicit
+  user confirmation before executing, since they push to a shared branch and
+  redeploy a public site. `PROJECT_STATUS.md`'s Docs lane was changed from
+  `OK` to `WIP` specifically to reflect this: the docs are locally correct
+  and locally verified, but not yet live. This remains open until the
+  push/publish is confirmed and executed.
+- **Finding 4 (Medium, incomplete execution record) — addressed by
+  re-verifying and enumerating every distinct command in the changed
+  documents**, not just the walkthrough (see verification below).
+- **Finding 5 (Medium, stale versions) — fixed.** `PROJECT_STATUS.md`'s
+  business-logic and packaging rows referenced `v0.4.1`/image `0.4.2`; the
+  actual current release is `v0.5.0` (confirmed via `gh release list` and
+  `git tag`), and the actual current multi-arch image tag is `0.5.0`
+  (confirmed via `docker buildx imagetools inspect`). Both were corrected.
+  `container.md`'s six image-tag references were changed from `0.4.2` to
+  `0.5.0` and re-verified against the real `0.5.0` image (pull, label
+  inspect, manifest inspect, bind-mount run, non-interactive
+  `addsuperuser`, `--help`, `CMD` override). Also newly recorded: the
+  chart's `appVersion` (`0.4.2`) has drifted behind the app's `v0.5.0` —
+  this does not break installs (the tag still resolves to a real image) but
+  is real drift, now noted in `PROJECT_STATUS.md` rather than left
+  unmentioned.
+- **Finding 6 (Medium, walkthrough not novice-complete) — fixed.** Step 3
+  now explicitly says `kubectl port-forward` blocks its terminal and to run
+  the following commands in a second terminal (or background it). A new
+  step 7 has the reader actually log in — either through a browser at
+  `/auth/login`, or with a `curl -X POST .../auth/login -d
+  username=editor -d password="$EDITOR_PASSWORD"` that must return `200`
+  with a `set-cookie: adapt_session=...` header — and then read the granted
+  resource with that session cookie, closing the "populated, logged-in
+  instance" gap Gate 6 requires.
+
+**Verification performed (container, re-run against the current `0.5.0`
+image, on the Phase 3 Vagrant VM):** `docker pull
+ghcr.io/mcindi/adapt-server:0.5.0`; `docker image inspect` confirmed all six
+OCI labels with `version: "0.5.0"`; `docker buildx imagetools inspect`
+confirmed the `linux/amd64` + `linux/arm64` manifest list. `docker run` with
+a bind mount `chown`-ed to `1000:1000` started successfully and `/health`
+returned `200` with `"version":"0.5.0"`; `docker exec ... adapt
+addsuperuser` with the corrected `$ADMIN_PASSWORD` variable form created a
+superuser non-interactively; `adapt --help` and the `adapt serve ... --port
+9090` `CMD` override both ran. Test container and bind-mount directory were
+removed afterward.
+
+**Verification performed (Kubernetes, on a fresh `kind` cluster,
+`adapt-gate6`, enumerating every distinct command touched by this phase's
+documents, not only the walkthrough):**
+
+- Reproduced Finding 1 with release name `adapt` (`CrashLoopBackOff`,
+  `ADAPT_PORT must be an integer` in `kubectl logs --previous`), then
+  `helm uninstall adapt` and `kubectl delete pvc adapt` to reset.
+- Full day-1 walkthrough with release name `myadapt`: `helm install
+  myadapt ... --set persistence.enabled=true
+  --set bootstrapAdmin.enabled=true --set bootstrapAdmin.username=admin
+  --wait` (succeeded; rendered notes referencing `myadapt`/
+  `myadapt-bootstrap-admin`, not the collapsed-wrong `myadapt-adapt` form);
+  `kubectl get secret myadapt-bootstrap-admin -o jsonpath='{.data.password}'
+  | base64 -d`; `kubectl port-forward svc/myadapt 8000:80` plus `curl
+  http://localhost:8000/health` (`200`); `kubectl cp` of a seeded
+  `readme.md` into the running pod, confirmed `404` before restart;
+  `kubectl rollout restart deployment/myadapt` +
+  `kubectl rollout status`, confirmed `401` (routed, unauthenticated) after
+  — reproducing the discovery-is-startup-only finding with the corrected
+  names; `kubectl exec deploy/myadapt -- adapt admin create-permissions
+  /data __all__` (created `readme_readonly` among other groups, confirming
+  the concrete group name used in the rewritten walkthrough);
+  `create-user`/`add-to-group` for user `editor` using a quoted
+  `$EDITOR_PASSWORD` shell variable (no unquoted placeholder); a real
+  `curl -X POST .../auth/login -d username=editor -d
+  password="$EDITOR_PASSWORD"` returned `200` with `set-cookie:
+  adapt_session=...`, and a follow-up `curl -b cookies.txt
+  http://localhost:8000/readme` returned `200` — the walkthrough now ends at
+  an actually-verified logged-in, working instance; `helm upgrade
+  --reuse-values --set env[0].name=ADAPT_UPLOAD_ENABLED
+  --set-string env[0].value=true` enabled uploads. Released with
+  `helm uninstall myadapt` and `kubectl delete pvc myadapt`.
+- **Persistence modes / existing-PVC / NodePort / image-override sections:**
+  `helm template shouldfail ... --set bootstrapAdmin.enabled=true` (no
+  `persistence.enabled=true`) reproduced the documented `fail()` guard
+  verbatim. `helm install nptest ... --set service.type=NodePort
+  --set service.nodePort=30080 --wait` installed and `kubectl get svc`
+  confirmed `80:30080/TCP`; uninstalled afterward. `helm template imgtest
+  ... --set image.repository=my-registry.example.com/adapt-server
+  --set image.tag=0.5.0 --set imagePullSecrets[0].name=my-registry-pull-secret`
+  rendered the expected `image:` line, confirming the image-override
+  example in `kubernetes.md`.
+- **Troubleshooting commands:** `helm install jobtest ...
+  --set bootstrapAdmin.existingSecret=doesnotexist` produced a Job stuck in
+  `CreateContainerConfigError` (missing Secret) and the install timed out as
+  documented; `kubectl delete job jobtest-adapt-bootstrap-admin` was then
+  run and confirmed to remove the failed Job (the documented cleanup step),
+  after which `helm uninstall jobtest` and `kubectl delete pvc` completed
+  cleanup. The `fsGroup`/UID-1000 PVC-ownership entry and the RWO
+  node-affinity entry were verified in Phases 2 and 4 respectively (see
+  those Decision log entries) and are cross-referenced here rather than
+  re-run, since neither chart behavior changed in Phase 6.
+- Cluster deleted afterward: `kind delete cluster --name adapt-gate6`.
+
+**`mkdocs build --strict`:** re-run after all fixes; exit code 0, no
+warnings or errors.
+
+**Findings routed forward:** the release-name/service-link-collision chart
+bug (Finding 1) is a real, unfixed chart defect, not a documentation gap —
+it needs its own chart-template fix, `helm-unittest` case, and version bump
+in a future session; recorded in `known_limitations.md`,
+`troubleshooting.md`, and `PROJECT_STATUS.md` so it is not lost. Publishing
+the updated site (Finding 3) requires pushing this session's commits to
+`main` and dispatching `pages.yml`, both explicitly deferred pending user
+confirmation per this session's operational-safety guidance.
+
+**Residual risk:** the image digest-pinning gap (recorded in the first
+Gate 6 attempt above) remains a real, unfixed chart limitation. The
+`appVersion`/app-version drift (`0.4.2` chart `appVersion` vs. `v0.5.0` app
+release) is newly recorded and also unfixed. `docs/manual/security.md`
+still does not cover the upload attack surface. None of these are
+documentation gaps this phase can close by itself.
 
 ## Deliberately deferred
 

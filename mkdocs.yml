@@ -41,6 +41,10 @@ nav:
       - Architecture: manual/architecture.md
       - Troubleshooting: manual/troubleshooting.md
       - Known Limitations: manual/known_limitations.md
+  - Deployment:
+      - Overview: manual/deployment.md
+      - Container: manual/container.md
+      - Kubernetes (Helm): manual/kubernetes.md
   - Reference:
       - Overview: reference/index.md
       - REST API: reference/rest-api.md
