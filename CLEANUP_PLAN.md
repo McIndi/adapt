@@ -1428,6 +1428,100 @@ release) is newly recorded and also unfixed. `docs/manual/security.md`
 still does not cover the upload attack surface. None of these are
 documentation gaps this phase can close by itself.
 
+#### Review Gate 6 round 2 — failed (2026-09-01)
+
+The reviewer found round 1 fixed the day-1 walkthrough but left the page's
+own **canonical install command**, and six other examples on the same page,
+still using the bare release name `adapt` — the exact name the page itself
+proves crash-loops. `RELEASING.md`'s release-verification runbook had the
+same defect. Several fenced `bash` blocks still carried unquoted
+angle-bracket placeholders. `PROJECT_STATUS.md` overstated the fix as
+covering "every example" when it did not yet. All four were corrected the
+same day:
+
+- **Finding 1 (High, canonical command still broken) — fixed.** Every
+  `helm install`/`helm upgrade --install` example that used the bare release
+  name `adapt` was changed to `myadapt`, including the canonical command at
+  the top of **Install**, the local-checkout variant, all three persistence
+  modes, the image-override example, both bootstrap-superuser examples, the
+  NodePort example, and the local development overlay. The one remaining
+  `adapt` in a fenced context is inside the narrative sentence describing
+  the bug itself ("running with release name `adapt` deploys, then...") —
+  rewritten as prose, not a copy-pasteable command, so it can't be
+  mistakenly executed. `charts/adapt/README.md`'s quick-install (already
+  `myadapt` from round 1) had its `<chart-version>` placeholder replaced
+  with the concrete `0.5.1`, closing the last angle-bracket gap there.
+  `RELEASING.md` had two occurrences: the release-verification test (step 7)
+  now installs as `adapt-release-check` (matching the already-used
+  cluster/namespace name — it contains `adapt`, so `fullname` still
+  collapses to the release name itself, but the resulting Service name
+  `adapt-release-check` maps to env prefix `ADAPT_RELEASE_CHECK_*`, not
+  `ADAPT_*`, so it does not collide), and the generic "Install a released
+  chart" example now uses `myadapt` with the same warning inline.
+- **Finding 2 (Medium, remaining foot-guns and incomplete verification) —
+  fixed.** Removed the remaining unquoted angle-bracket placeholders from
+  copy-pasteable `bash` fences: `kubernetes.md`'s manual-bootstrap and
+  Secret-retrieval examples now use the concrete `myadapt`/
+  `myadapt-bootstrap-admin` names (with the general `<release>` substitution
+  rule moved into surrounding prose, not embedded in the command itself);
+  the `kubectl cp` example under **Getting documents into the document
+  root** uses a concrete illustrative pod name instead of `<namespace>/<pod>`
+  and points at the day-1 walkthrough for the live-substituted form; the
+  local development overlay now sets `LOCAL_IMAGE`/`LOCAL_TAG` shell
+  variables instead of embedding `<your-local-image>`/`<tag>` directly.
+  `troubleshooting.md`'s failed-bootstrap-Job cleanup now uses the concrete
+  `myadapt-bootstrap-admin` example and splits the "if still present" pod
+  delete into its own clearly-labeled command instead of an inline shell
+  comment. Also newly executed and recorded, closing the specific gaps the
+  reviewer named:
+  - `helm show values oci://ghcr.io/mcindi/charts/adapt --version 0.5.1` —
+    ran, printed the full default values document.
+  - **Existing-PVC install**, on a fresh `kind` cluster
+    (`adapt-gate6b`): created a matching `my-adapt-pvc` PersistentVolumeClaim
+    by hand (`kubectl apply -f my-adapt-pvc.yaml`, `standard` StorageClass,
+    `10Gi`, `ReadWriteOnce`), then `helm install myadapt
+    oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
+    --set persistence.enabled=true --set persistence.existingClaim=my-adapt-pvc
+    --wait`. The first attempt hit the `--wait` timeout while the image was
+    still being pulled into the fresh node's containerd cache (a cold-cache
+    artifact of the test environment, not a chart defect — the pod reached
+    `1/1 Ready` moments later); a clean re-run with a longer timeout
+    succeeded outright and `kubectl get pvc` confirmed `my-adapt-pvc` bound
+    and reused rather than a new PVC created.
+  - `docker ps --filter name=<container>` — ran against a running
+    `ghcr.io/mcindi/adapt-server:0.5.0` container with a correctly-owned
+    bind mount; confirmed the `STATUS` column reports
+    `Up ... (healthy)`, matching the `container.md` claim about the built-in
+    `HEALTHCHECK`.
+  All test resources (PVC, release, cluster, containers, temp files) were
+  removed afterward.
+- **`PROJECT_STATUS.md`'s Docs-lane claim corrected** to name the specific
+  files brought into consistency (`kubernetes.md`, `README.md`,
+  `charts/adapt/README.md`, `RELEASING.md`) and the two release names used
+  (`myadapt` for user-facing examples, `adapt-release-check` for the release
+  runbook's own verification step), rather than the unqualified "every
+  example" phrasing the reviewer correctly flagged as stronger than what
+  had actually been changed at that point.
+
+**`mkdocs build --strict`:** re-run after this round's fixes; exit code 0,
+no warnings or errors.
+
+**Findings routed forward:** unchanged from round 1 — the release-name/
+service-link-collision chart bug is still a real, unfixed chart defect
+that needs its own chart-template fix, `helm-unittest` case, and version
+bump in a future session.
+
+**Residual risk:** unchanged from round 1 (image digest-pinning gap,
+`appVersion` drift, `docs/manual/security.md` upload-surface gap). The
+cold-cache `--wait` timeout observed during existing-PVC verification is
+noted as an environment artifact, not a documentation or chart defect, and
+is not otherwise recorded as a limitation.
+- **Publishing this round's fixes:** committed and pushed to `main`
+  alongside `mkdocs build --strict` verification; the live site was
+  re-published via `pages.yml` the same way as round 1 (see the workflow
+  run linked in the round-1 entry's pattern) so the corrected canonical
+  command and the closed verification gaps are live, not just local.
+
 ## Deliberately deferred
 
 Record these so a future reader knows they were considered, not missed:

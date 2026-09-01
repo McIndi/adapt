@@ -126,15 +126,15 @@ export HELM_REGISTRY_CONFIG="$release_check_dir/registry.json"
 helm show chart oci://ghcr.io/mcindi/charts/adapt \
   --version "${ADAPT_CHART_VERSION}"
 
-helm install adapt oci://ghcr.io/mcindi/charts/adapt \
+helm install adapt-release-check oci://ghcr.io/mcindi/charts/adapt \
   --version "${ADAPT_CHART_VERSION}" \
   --namespace adapt-release-check \
   --create-namespace \
   --wait \
   --timeout 180s
 
-helm get notes adapt --namespace adapt-release-check
-helm test adapt --namespace adapt-release-check --logs --timeout 120s
+helm get notes adapt-release-check --namespace adapt-release-check
+helm test adapt-release-check --namespace adapt-release-check --logs --timeout 120s
 kubectl get pods --namespace adapt-release-check
 ```
 
@@ -144,7 +144,7 @@ and the Helm test passes.
 Remove the test release:
 
 ```bash
-helm uninstall adapt --namespace adapt-release-check
+helm uninstall adapt-release-check --namespace adapt-release-check
 kubectl delete namespace adapt-release-check
 ```
 
@@ -190,9 +190,16 @@ create a new version such as `0.5.1-rc.2`.
 Users install a released chart without cloning the repository:
 
 ```bash
-helm install adapt oci://ghcr.io/mcindi/charts/adapt \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt \
   --version "${ADAPT_CHART_VERSION}"
 ```
+
+Do not use the release name `adapt` by itself — the chart's `fullname`
+helper collapses to a bare Service named `adapt`, which Kubernetes shadows
+with an auto-injected `ADAPT_PORT` environment variable that collides with
+Adapt's own config variable of the same name, crash-looping the pod. See
+[Kubernetes (Helm)](https://www.mcindi.com/adapt/manual/kubernetes/#install)
+for the full explanation.
 
 OCI charts do not use `helm repo add`. Chart signing and provenance remain
 future M2 supply-chain work.

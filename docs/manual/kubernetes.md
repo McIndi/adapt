@@ -9,7 +9,7 @@ and in the project [README](https://github.com/McIndi/adapt#readme).
 ## Install
 
 ```bash
-helm install adapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
 ```
 
 This is the canonical install command — no `git clone` is required. `helm
@@ -22,7 +22,7 @@ helm show values oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
 ```
 
 If you are developing the chart itself, install from the local checkout
-instead: `helm install adapt ./charts/adapt`.
+instead: `helm install myadapt ./charts/adapt`.
 
 **Avoid the release name `adapt` by itself.** The chart's `fullname` helper
 collapses to the bare release name whenever that name contains `adapt`
@@ -35,16 +35,17 @@ named `adapt` that includes `ADAPT_PORT` — which collides with Adapt's own
 `ADAPT_PORT` configuration variable and is not an integer
 (`tcp://10.x.x.x:80`). The server then fails to start with
 `ADAPT_PORT must be an integer`, and the pod crash-loops. This was confirmed
-on a real `kind` cluster while writing this page: `helm install adapt ...`
-deploys, then the pod restarts into `CrashLoopBackOff` once the Service
-exists. Use any release name that does not resolve to exactly `adapt` —
-for example `myadapt` (still demonstrates the collapse rule, since it
-contains `adapt`, without colliding). The chart does not currently expose
-a way to disable Kubernetes' service-link env var injection
+on a real `kind` cluster while writing this page: running with release name
+`adapt` deploys, then the pod restarts into `CrashLoopBackOff` once the
+Service exists. Use any release name that does not resolve to exactly
+`adapt` — for example `myadapt` (still demonstrates the collapse rule, since
+it contains `adapt`, without colliding). The chart does not currently
+expose a way to disable Kubernetes' service-link env var injection
 (`enableServiceLinks: false` on the pod spec, the standard fix for this
 class of collision); until it does, the release name is the only lever.
-The rest of this page, including the walkthrough below, uses `myadapt` for
-this reason.
+**Every example on this page, including the canonical install command
+above, uses `myadapt` for this reason — none of them use the bare release
+name `adapt`.**
 
 ## Persistence modes
 
@@ -55,13 +56,13 @@ restarts and rescheduling.
 **Ephemeral (default):**
 
 ```bash
-helm install adapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
 ```
 
 **Dynamic PVC — cluster provisions the volume automatically:**
 
 ```bash
-helm install adapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
   --set persistence.enabled=true \
   --set persistence.size=20Gi \
   --set persistence.storageClass=standard
@@ -69,14 +70,15 @@ helm install adapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
 
 The chart creates a `PersistentVolumeClaim` named `<release>-adapt`. If the
 release name contains `adapt`, the claim name is `<release>`. If
-`storageClass` is empty, the cluster uses its default StorageClass.
+`storageClass` is empty, the cluster uses its default StorageClass. For
+`myadapt`, that means the PVC is named `myadapt`, matching the release name.
 
 **Existing PVC — cluster admin creates the volume beforehand:**
 
 ```bash
 kubectl apply -f my-adapt-pvc.yaml
 
-helm install adapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
   --set persistence.enabled=true \
   --set persistence.existingClaim=my-adapt-pvc
 ```
@@ -107,9 +109,9 @@ The chart does not create a `PersistentVolumeClaim` object in this mode.
 Point at a private mirror or an air-gapped registry:
 
 ```bash
-helm install adapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
   --set image.repository=my-registry.example.com/adapt-server \
-  --set image.tag=0.4.2 \
+  --set image.tag=0.5.0 \
   --set imagePullSecrets[0].name=my-registry-pull-secret
 ```
 
@@ -174,21 +176,23 @@ chart do it automatically for you.
 **Manually:**
 
 ```bash
-kubectl exec -it deploy/<release>-adapt -- \
+kubectl exec -it deploy/myadapt -- \
   adapt addsuperuser /data --username admin
 ```
 
-If the release name contains `adapt`, use `deploy/<release>` instead. The
-`-it` flag is required because `addsuperuser` prompts for the password. For
-scripts, use `--password`, `--password-confirm`, and
-`--allow-weak-password` as applicable.
+This assumes the release name is `myadapt`, so `fullname` collapses to
+`myadapt` (it contains `adapt`). For a release name that does not contain
+`adapt`, the Deployment is `deploy/<release>-adapt` instead. The `-it` flag
+is required because `addsuperuser` prompts for the password. For scripts,
+use `--password`, `--password-confirm`, and `--allow-weak-password` as
+applicable.
 
 **Automatically**, set `bootstrapAdmin.enabled=true` to run that same
 command through a `post-install,post-upgrade` Helm hook Job that gets
 credentials from a Kubernetes Secret:
 
 ```bash
-helm install adapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
   --set persistence.enabled=true \
   --set bootstrapAdmin.enabled=true \
   --set bootstrapAdmin.username=admin
@@ -205,13 +209,15 @@ server. The chart does not silently skip this configuration: if you set
 If you leave `bootstrapAdmin.existingSecret` unset, the chart generates a
 Secret named `<release>-adapt-bootstrap-admin` with a random password on the
 first install. If the release name contains `adapt`, the name becomes
-`<release>-bootstrap-admin`. Run `helm get notes <release>` to get the
-correct command. On every later `helm upgrade`, the chart reuses the same
-Secret value — it does not generate a new password, so the Secret always
-matches the password in the created account. Retrieve it with:
+`<release>-bootstrap-admin` — for `myadapt`, that Secret is
+`myadapt-bootstrap-admin`. Run `helm get notes <release>` to get the
+correct command for your own release name. On every later `helm upgrade`,
+the chart reuses the same Secret value — it does not generate a new
+password, so the Secret always matches the password in the created account.
+Retrieve it with:
 
 ```bash
-kubectl get secret <release>-adapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
+kubectl get secret myadapt-bootstrap-admin -o jsonpath='{.data.password}' | base64 -d && echo
 ```
 
 To supply your own credentials, for example from a secrets manager, create a
@@ -239,7 +245,7 @@ it to `NodePort`. You can also pin the port so it stays stable across
 reinstalls:
 
 ```bash
-helm install adapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
   --set service.type=NodePort \
   --set service.nodePort=30080
 ```
@@ -260,11 +266,13 @@ default. Two supported paths:
 - **`kubectl cp` (quick path, no chart change):**
 
   ```bash
-  kubectl cp ./documents/. <namespace>/<pod>:/data
+  kubectl cp ./documents/. default/myadapt-6f9d8c9b8-abcde:/data
   ```
 
-  `helm get notes <release>` prints this command with the namespace, pod
-  selector, and mount path already filled in.
+  Substitute your own namespace and pod name — `helm get notes <release>`
+  prints this command with both already filled in for your actual release,
+  and the [day-1 walkthrough](#day-1-walkthrough) below shows the exact
+  `kubectl get pod ...` substitution used to build it live.
 
 - **`extraVolumes` / `extraVolumeMounts` (repeatable or shared sources):**
   mount a ConfigMap, NFS share, or pre-populated volume below the writable
@@ -290,9 +298,12 @@ directly-browsable instance for local VM or k3s development, instead of
 setting the individual flags above:
 
 ```bash
-helm upgrade --install adapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+LOCAL_IMAGE=your-local-image
+LOCAL_TAG=your-tag
+
+helm upgrade --install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
   -f charts/adapt/values-dev.yaml \
-  --set image.repository=<your-local-image> --set image.tag=<tag>
+  --set image.repository="$LOCAL_IMAGE" --set image.tag="$LOCAL_TAG"
 ```
 
 The overlay uses the `local-path` StorageClass from k3s. For kind or

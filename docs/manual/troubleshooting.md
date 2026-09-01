@@ -287,12 +287,19 @@ throwaway `emptyDir` the main pod cannot see. Set
 
 Helm retains a failed hook Job for diagnosis instead of cleaning it up
 automatically. A retained failed Job (and its pod holding an `RWO` volume)
-can block a reinstall or leave the PVC `Terminating`. Delete it first:
+can block a reinstall or leave the PVC `Terminating`. Delete it first
+(substitute your own release name for `myadapt`):
 
 ```bash
-kubectl delete job <release>-adapt-bootstrap-admin
-kubectl get pods -l job-name=<release>-adapt-bootstrap-admin
-kubectl delete pod <bootstrap-pod-name>   # if still present, to release the volume
+kubectl delete job myadapt-bootstrap-admin
+kubectl get pods -l job-name=myadapt-bootstrap-admin
+```
+
+If a pod from that Job is still present, delete it too, to release the
+volume — substitute the pod name printed by the command above:
+
+```bash
+kubectl delete pod myadapt-bootstrap-admin-abc12
 ```
 
 ### Bootstrap or server Job stuck `ContainerCreating`
