@@ -1,7 +1,7 @@
 # Container, OCI, and Helm Chart Cleanup Plan
 
-Status: Phase 6 implemented — Review Gate 6 round-1 findings corrected;
-        publishing the live site pending user-confirmed push/dispatch
+Status: Phase 6 implemented — Review Gate 6 round-1 findings corrected and
+        published live
 Created: 2026-08-12
 Baseline: `main` @ `60ea9b9` (app `0.4.1`, chart `0.3.2`)
 
@@ -830,9 +830,9 @@ the Phase 3 and 5 changes.
 ### Exit criteria
 
 - [x] Container documentation exists, and every command in it was run
-- [x] Deployment content is in the nav and reachable **locally**;
-      publishing the live site is pending user-confirmed push/dispatch
-      (Gate 6 round 1, Finding 3)
+- [x] Deployment content is in the nav and reachable — locally and on the
+      published site (`https://www.mcindi.com/adapt/manual/kubernetes/`,
+      verified live after `pages.yml` run 33502635532)
 - [x] One canonical Helm document; the other two reduced to pointers
 - [x] Day-1 walkthrough written and executed end to end, using release name
       `myadapt` (not `adapt` — see the round-1 Finding 1 write-up above)
@@ -840,8 +840,8 @@ the Phase 3 and 5 changes.
       service-link collision found during Gate 6 round 1
 - [x] `mkdocs build --strict` passes
 - [x] `PROJECT_STATUS.md` and `MILESTONES.md` reconciled, including the
-      `v0.5.0`/image-`0.5.0` correction and the Docs lane moving to `WIP`
-      pending the live publish
+      `v0.5.0`/image-`0.5.0` correction and the Docs lane restored to `OK`
+      after the live publish was confirmed
 
 ## ⏸ REVIEW GATE 6 — final
 
@@ -1306,18 +1306,20 @@ Vagrant VM, before Gate 6 was resubmitted:
   `container.md`'s `addsuperuser` example does the same with
   `ADMIN_PASSWORD`. Both were re-run verbatim (see verification below) to
   confirm they now execute without modification.
-- **Finding 3 (High, unpublished site) — not fixed in this round.**
-  `pages.yml` only runs on `release`/`workflow_dispatch`, and the last
-  successful run predates every Phase 6 documentation change, so
-  `https://www.mcindi.com/adapt/manual/kubernetes/` still 404s and the live
-  nav has no `Deployment` group. Publishing requires committing and pushing
-  these changes to `main` and then triggering `pages.yml` (`workflow_dispatch`
-  or the next release) — both actions this session flagged for explicit
-  user confirmation before executing, since they push to a shared branch and
-  redeploy a public site. `PROJECT_STATUS.md`'s Docs lane was changed from
-  `OK` to `WIP` specifically to reflect this: the docs are locally correct
-  and locally verified, but not yet live. This remains open until the
-  push/publish is confirmed and executed.
+- **Finding 3 (High, unpublished site) — fixed.** Committed
+  (`dfe94ae`) and pushed all Gate 6 corrections to `main`, then ran
+  `gh workflow run pages.yml --ref main` (run
+  [33502635532](https://github.com/McIndi/adapt/actions/runs/33502635532))
+  since `pages.yml` only triggers on `release`/`workflow_dispatch`, not on
+  plain pushes. The run passed every gate (`test` reusable workflow: docs,
+  both FastAPI-version test jobs, dependency-audit) then `build`/`deploy`.
+  Fetched the live pages afterward to confirm: `https://www.mcindi.com/adapt/manual/kubernetes/`
+  now renders the corrected page — the release-name warning under
+  **Install**, the `myadapt` walkthrough with the quoted `$EDITOR_PASSWORD`
+  variable and the login step, and the nav sidebar listing all ten
+  `kubernetes.md` sections — and `https://www.mcindi.com/adapt/` confirms
+  the site rebuilt. `PROJECT_STATUS.md`'s Docs lane can move back to `OK`
+  now that the live site matches the corrected local docs.
 - **Finding 4 (Medium, incomplete execution record) — addressed by
   re-verifying and enumerating every distinct command in the changed
   documents**, not just the walkthrough (see verification below).
@@ -1417,10 +1419,7 @@ warnings or errors.
 bug (Finding 1) is a real, unfixed chart defect, not a documentation gap —
 it needs its own chart-template fix, `helm-unittest` case, and version bump
 in a future session; recorded in `known_limitations.md`,
-`troubleshooting.md`, and `PROJECT_STATUS.md` so it is not lost. Publishing
-the updated site (Finding 3) requires pushing this session's commits to
-`main` and dispatching `pages.yml`, both explicitly deferred pending user
-confirmation per this session's operational-safety guidance.
+`troubleshooting.md`, and `PROJECT_STATUS.md` so it is not lost.
 
 **Residual risk:** the image digest-pinning gap (recorded in the first
 Gate 6 attempt above) remains a real, unfixed chart limitation. The
