@@ -1,7 +1,6 @@
 # Container, OCI, and Helm Chart Cleanup Plan
 
-Status: Phase 6 implemented — Review Gate 6 round-1 and round-2 findings
-        corrected and published live
+Status: Complete — Review Gate 6 passed on 2026-09-02
 Created: 2026-08-12
 Baseline: `main` @ `60ea9b9` (app `0.4.1`, chart `0.3.2`)
 
@@ -1179,7 +1178,8 @@ with the stable release on 2026-08-31. Review Gate 5 passes.
 
 ### Phase 6
 
-Implementation completed on 2026-08-31. Review Gate 6 pending.
+Implementation completed on 2026-08-31. Review Gate 6 passed on 2026-09-02
+after three correction rounds.
 
 - **Decisions made:** Added `docs/manual/deployment.md` as a short overview
   page, `docs/manual/container.md` for the published image, and
@@ -1554,6 +1554,16 @@ strict MkDocs build also passed after the comment-only overlay change. This
 closes the final remaining Gate 6 command mismatch; the separate
 release-name/service-link collision remains documented as an unfixed chart
 behavior for a future chart version.
+
+#### Review Gate 6 — passed (2026-09-02)
+
+The reviewer accepted the final gate after the round-3 correction. All five
+gate criteria pass.
+
+The reviewer reran the focused Helm lint and render checks. The reviewer also
+reran `mkdocs build --strict` and `git diff --check`. GitHub Test run
+`33543538226` and Helm CI run `33543538185` passed for commit `5d724cc`.
+The repository was clean and synchronized with `origin/main` at acceptance.
 
 ## Deliberately deferred
 
