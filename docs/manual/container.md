@@ -141,7 +141,7 @@ docker ps --filter name=adapt
 ```
 
 **Future work:** signature verification (cosign/sigstore) and an attached
-SBOM are not yet part of the publish pipeline — see the M2 milestone in
+SBOM are not yet part of the publish pipeline — see Phase 3 and milestone M3 in
 [MILESTONES.md](https://github.com/McIndi/adapt/blob/main/MILESTONES.md).
 
 ## Kubernetes

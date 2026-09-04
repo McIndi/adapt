@@ -122,7 +122,8 @@ Setting `image.repository` to a `repo@sha256:...` reference still appends
 (`repo@sha256:...:<tag>`), which the container runtime rejects. If your
 cluster requires digest-pinned images, do not attempt this through values —
 either fork the template or wait for chart support. Signing and provenance
-for the chart itself are also not yet implemented (M2 in `MILESTONES.md`).
+for the chart itself are also not yet implemented (Phase 3 and milestone M3 in
+`MILESTONES.md`).
 
 ## Upload settings
 
