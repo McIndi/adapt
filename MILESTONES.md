@@ -30,10 +30,14 @@ detailed work log is archived at
 
 ### M2 — Coordinated 0.5.2 release
 
-Status: Next
+Status: Next (Phase 1 not started)
 
 Goal: publish application, image, and chart version `0.5.2`. The chart removes
 the known `adapt` release-name failure and supports image digests.
+
+Evidence on 2026-09-08: `pyproject.toml` and `adapt/__init__.py` are `0.5.0`.
+Chart `version` is `0.5.1`. Chart `appVersion` is `0.4.2`. Templates do not
+set `enableServiceLinks: false`. Values have no `image.digest`.
 
 Phase:
 
@@ -130,7 +134,10 @@ Exit criteria:
 
 ### Keycloak OIDC (product tracer, not M2)
 
-Status: Done
+Status: Done in the working tree (commit it before M2 Phase 1)
+
+A Vagrant VM now starts Keycloak on `192.168.58.30:8080` for a live SSO
+check. Automated tests still mock Keycloak.
 
 Goal: optional Keycloak identity for the browser UI, REST API, and `/mcp/`,
 while local passwords and API keys keep working.

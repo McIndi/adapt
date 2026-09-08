@@ -9,41 +9,36 @@ Status tokens: `OK`, `WIP`, `TODO`, `LAG`, `N/A`. `LAG` means the lane is
 behind the current milestone. A milestone counts as reached only when
 every lane below reads `OK` for it.
 
-**Last closed milestone:** M1 — Security floor. The Kubernetes deployment
-tracer also passed its final review gate. M2 — Coordinated 0.5.2 release is
-next.
-The active implementation sequence is in `CLEANUP_PLAN.md`. The completed
-cleanup record is under `archive/`.
+**Last closed milestone:** M1 — Security floor, plus the Kubernetes
+deployment tracer. **Current milestone:** M2 — Coordinated 0.5.2 release
+(not started). Data stays `WIP` on purpose: schema work still uses
+`create_all()` plus additive `ALTER` statements. That is a named gap, not
+M1 `LAG`.
 
-The completed deployment tracer added an entire new deployment surface — a
-Helm chart (`charts/adapt/`) with its own CI
-(`helm-ci.yml`) — plus a file upload feature, PVC-backed persistence and
-automated superuser bootstrapping for the chart, a NodePort option for
-clusters without an Ingress controller, a container-image publish
-pipeline to GHCR, and a fixed authorization bug in the web UI. The app
-released as `v0.5.0` and the chart is now also published to
-`oci://ghcr.io/mcindi/charts/adapt`. The container/Kubernetes
-documentation that surface needed has been consolidated into a single
-canonical location and published live. Verifying it surfaced a real chart
-bug (the `adapt` release-name/service-link collision, still open — see
-the Docs lane) rather than just documentation gaps. All of it is
-reflected in the lane table below; see the per-lane notes for detail and
-for what is still open. The immediate work is a coordinated `0.5.2` release.
-It aligns the application, image, chart version, and chart `appVersion`. It
-also corrects the release-name failure and adds digest image references.
+The active sequence is `CLEANUP_PLAN.md`. The completed Helm and image
+work is under `archive/`.
+
+Shipped today: Python package and image `0.5.0`, chart `0.5.1` at
+`oci://ghcr.io/mcindi/charts/adapt`. Chart `appVersion` is still `0.4.2`.
+A Helm release named `adapt` still collides with Kubernetes service links.
+Keycloak OIDC for UI, REST, and MCP is implemented in the working tree
+(including a Vagrant Keycloak VM). It is not the M2 packaging work.
+
+Assessment 2026-09-08: do not start M3 until M2 Phase 1 in `CLEANUP_PLAN.md`
+passes its review gate.
 
 ## Lane status
 
 | # | Lane | Status | Next action |
 |---|------|--------|-------------|
-| 1 | Business logic | OK | Optional Keycloak OIDC is available for UI, REST, and MCP. Local passwords and API keys still work when OIDC is off, and when it is on unless `local_login` is false. Next packaging work remains the M2 `0.5.2` release. |
-| 2 | Interface | OK | FastAPI app, generated per-resource routes, admin UI, MCP server, uploads, OIDC login/callback/logout, RFC 9728 PRM, and MCP 401 challenge when OIDC is configured. |
-| 3 | Data | WIP | Application data: SQLite via SQLModel still uses `create_all()` and has no migration tool. OIDC added additive `ALTER` columns (`usergroup.oidc_managed`, `dbsession.id_token`). Deployment data: the Helm chart supports PVC-backed persistence through dynamic provisioning or a pre-created claim. |
-| 4 | Packaging | OK | PyPI publishing uses OIDC trusted publishing. GHCR publishes the multi-platform image and the Helm chart. Chart `0.5.1` passed anonymous pull and kind install tests. Phase 1 publishes the application, image, and chart as `0.5.2`. It also sets chart `appVersion` to `0.5.2` and adds digest image selection. The application and chart retain separate tag types. Base-image digest pinning is Phase 2. The artifact evidence inventory, SBOMs, and missing image or chart signatures are Phase 3. PyPI already exposes Trusted Publishing provenance, so Phase 3 must inspect that evidence before adding anything there. |
-| 5 | Automation | OK | CI runs the Python test matrix and `pip-audit`. Helm CI runs lint, unit, schema, and kind checks. The chart gained an `oidc:` values block mapping to `ADAPT_OIDC_*`. The chart, image, and PyPI publish workflows require their test gates and matching release versions. Dependabot and base-image refresh automation are Phase 2. Supply-chain evidence is Phase 3. Python lint and coverage are Phase 4. Backup and restore automation remains unscheduled. |
-| 6 | Tests | OK | 352 Python tests passed locally, with 1 skipped. Helm unittest was not run here because the helm CLI is not installed; Helm CI still runs it. Coverage reporting is Phase 4. |
-| 7 | Docs | OK | Security, MCP, configuration, spec, Helm README, installation, and SECURITY.md cover Keycloak OIDC, PRM, JWT audience, DCR, and JIT group mapping. M2 still has the chart release-name workaround and upload threat notes in Phase 1. |
-| 8 | Security | OK | OIDC validates iss/aud/exp against Keycloak JWKS, uses PKCE for browser SSO, stores JIT users with unusable password hashes, and exempts Bearer-only POSTs from CSRF. Token audience and DCR stay operator responsibilities documented in SECURITY.md. Secret scanning and SAST remain unscheduled. |
+| 1 | Business logic | OK | Land the Keycloak OIDC working tree on the default branch. Then start M2 Phase 1: `enableServiceLinks: false`, versions `0.5.2`, and image digest values. |
+| 2 | Interface | OK | FastAPI, generated routes, admin UI, MCP, uploads, OIDC login/callback/logout, RFC 9728 PRM, and MCP 401 when OIDC is on. No extra interface work is required for M2. |
+| 3 | Data | WIP | SQLite still uses `create_all()`. OIDC adds `usergroup.oidc_managed` and `dbsession.id_token` with `ALTER`. No migration tool. Chart PVC persistence exists. Migrations stay unscheduled until M6 needs them. |
+| 4 | Packaging | OK for M1 | App `0.5.0`, chart `0.5.1`, chart `appVersion` `0.4.2`. M2 must publish package, image, chart `version`, and chart `appVersion` as `0.5.2`. Tags stay `v0.5.2` and `chart-v0.5.2`. Base-image digest pin is M3 Phase 2. SBOM and signing are M3 Phase 3. |
+| 5 | Automation | OK for M1 | Python CI plus `pip-audit`. Helm CI: lint, unit, schema, kind. Chart `oidc:` maps to `ADAPT_OIDC_*`. Vagrant now boots Keycloak for a live SSO check. M2 still needs the `adapt` kind install and digest template tests. Dependabot is M3. Lint and coverage are M4. Backup and restore stay unscheduled. |
+| 6 | Tests | OK | Python suite plus `tests/test_oidc.py` (no live Keycloak). Helm unittest lives in CI. M2 adds Helm tests for service-link disable and digest vs tag image refs. Coverage is M4. |
+| 7 | Docs | OK for M1 | Manual and spec cover OIDC. M2 must add upload threat notes, remove the "do not name the release `adapt`" warning after the fix, and refresh `SECURITY.md` (it still says supported `0.4.x` and puts SBOM in M2). |
+| 8 | Security | OK for M1 | OIDC checks iss/aud/exp on JWKS, PKCE for browser SSO, unusable hashes for JIT users, CSRF exempt for Bearer-only POST. Operator still owns token audience and DCR. M2 adds upload threat notes. Secret scanning, SAST, and image CVE scans stay unscheduled. |
 
 Keep this table's shape stable (one row per lane, status in column 3) so
 it stays `grep`-able — see the rollup convention at the bottom.
