@@ -47,18 +47,25 @@ of two kinds:
 
 Controls already in place (see `docs/manual/security.md` for detail):
 
-- Session-cookie and API-key authentication. API keys are stored as
-  SHA-256 hashes. Passwords are hashed with PBKDF2-HMAC-SHA256 (100k
-  iterations, per-user salt).
+- Session-cookie, API-key, and optional Keycloak Bearer authentication.
+  API keys are stored as SHA-256 hashes. Passwords are hashed with
+  PBKDF2-HMAC-SHA256 (100k iterations, per-user salt). OIDC JIT users
+  get an unusable password hash.
 - Resource-level authorization (`read`/`write`), enforced on every
-  generated route. This includes MCP tool calls.
-- CSRF protection for cookie-authenticated unsafe requests.
+  generated route. This includes MCP tool calls. Keycloak group names map
+  onto existing Adapt groups. Adapt does not create groups from the token.
+- CSRF protection for cookie-authenticated unsafe requests. API-key-only
+  and Bearer-only requests without a session cookie are exempt.
 - Security response headers (CSP, `X-Frame-Options`, HSTS when TLS is
   configured, and more) and `TrustedHostMiddleware`.
 - An audit log for authentication events, admin actions, and dataset
   mutations.
 - Per-resource locking and atomic file replacement. These reduce
   corruption and race conditions on concurrent writes.
+- OIDC Bearer tokens must carry `aud` equal to Adapt `public_url` (or
+  `oidc.audience`). Dynamic client registration is a Keycloak realm
+  setting. Adapt is not an authorization server. JIT users get access
+  only through Adapt groups whose names already exist.
 
 Known, accepted gaps (tracked, not hidden):
 

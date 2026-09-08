@@ -37,6 +37,17 @@ class TestAdaptConfig:
                 "collision_policy": "overwrite",
             },
             "logging": config.logging.copy(),
+            "oidc": {
+                "issuer": "",
+                "client_id": "",
+                "public_url": "",
+                "audience": "",
+                "username_claim": "preferred_username",
+                "groups_claim": "groups",
+                "superuser_roles": ["adapt-admin"],
+                "local_login": True,
+                "scopes": "openid profile",
+            },
         }
         assert data == expected
 
@@ -207,6 +218,12 @@ class TestAdaptConfig:
         monkeypatch.setenv("ADAPT_UPLOAD_STRICT_MIME_SNIFFING", "true")
         monkeypatch.setenv("ADAPT_UPLOAD_ALLOWED_MIME_TYPES", "text/plain,application/json")
         monkeypatch.setenv("ADAPT_UPLOAD_COLLISION_POLICY", "reject")
+        monkeypatch.setenv("ADAPT_OIDC_ISSUER", "https://keycloak.example.com/realms/prod")
+        monkeypatch.setenv("ADAPT_OIDC_CLIENT_ID", "adapt-web")
+        monkeypatch.setenv("ADAPT_OIDC_CLIENT_SECRET", "from-env")
+        monkeypatch.setenv("ADAPT_OIDC_PUBLIC_URL", "https://adapt.example.com")
+        monkeypatch.setenv("ADAPT_OIDC_SUPERUSER_ROLES", "adapt-admin,other-admin")
+        monkeypatch.setenv("ADAPT_OIDC_LOCAL_LOGIN", "false")
 
         config = AdaptConfig(root=tmp_path)
         config.load_from_file()
@@ -222,4 +239,22 @@ class TestAdaptConfig:
         assert config.upload["strict_mime_sniffing"] is True
         assert config.upload["allowed_mime_types"] == ["text/plain", "application/json"]
         assert config.upload["collision_policy"] == "reject"
+        assert config.oidc["issuer"] == "https://keycloak.example.com/realms/prod"
+        assert config.oidc["client_id"] == "adapt-web"
+        assert config.oidc["client_secret"] == "from-env"
+        assert config.oidc["public_url"] == "https://adapt.example.com"
+        assert config.oidc["superuser_roles"] == ["adapt-admin", "other-admin"]
+        assert config.oidc["local_login"] is False
+        assert config.oidc_enabled() is True
         assert config.logging["root"]["level"] == "DEBUG"
+
+    def test_oidc_client_secret_rejected_in_conf_json(self, tmp_path, caplog):
+        conf_path = tmp_path / ".adapt" / "conf.json"
+        conf_path.parent.mkdir(parents=True)
+        with conf_path.open("w") as f:
+            json.dump({"oidc": {"client_secret": "nope"}}, f)
+
+        config = AdaptConfig(root=tmp_path)
+        with pytest.raises(SystemExit):
+            config.load_from_file()
+        assert "client_secret" in caplog.text

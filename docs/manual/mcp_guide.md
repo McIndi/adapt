@@ -17,12 +17,13 @@ There is no separate API surface and no separate process to run. If a user
 can read or write a resource over `/api/*`, the same user can do it through
 MCP.
 
-Authentication is enforced when a tool executes, not during MCP
-initialization or tool discovery. MCP uses Adapt's shared authentication
-resolver, so a tool call can authenticate with either a session cookie or an
-API key. API keys are the supported and recommended mechanism for MCP
-clients. A client that sends a session cookie must also handle CSRF on its
-HTTP POST requests.
+Authentication is enforced when a tool executes, and also at the HTTP
+layer when Keycloak OIDC is configured. MCP uses Adapt's shared
+authentication resolver. A tool call can authenticate with a session
+cookie, an API key, or a Bearer JWT. API keys remain the simple option
+for scripts and CI. OAuth MCP clients should send `Authorization: Bearer`.
+A client that sends a session cookie must also handle CSRF on its HTTP POST
+requests.
 
 ## Prerequisites
 
@@ -77,6 +78,14 @@ addition. Repeat `add-to-group` for every resource namespace the agent needs.
 
 Sign in as `agent` at `/auth/login`. Open `/profile`. Create an API key
 there. A user does not need superuser involvement to create their own key.
+
+If the MCP client is an OAuth app (Cursor, Claude, VS Code MCP), skip the
+API key. Point the client at `{public_url}/mcp`. Adapt returns `401` with
+`WWW-Authenticate` and serves RFC 9728 metadata at
+`/.well-known/oauth-protected-resource/mcp`. The client then registers with
+Keycloak (DCR) and sends a Bearer token whose `aud` is Adapt `public_url`.
+JIT provisioning creates the Adapt user from the token. Put that user in the
+same Keycloak groups you created in Step 2.
 
 Adapt shows the raw API key only once. Save it somewhere safe. Adapt stores
 only its hash on the server.
@@ -157,9 +166,12 @@ To read `products` sorted by category ascending, pass MCP tool arguments like:
 
 ## Troubleshooting
 
-- **"Authentication required" from every tool call** — the `X-API-Key`
-  header is missing, misspelled, or the client is not forwarding custom
-  headers for HTTP MCP servers. Look again at Step 6.
+- **"Authentication required" from every tool call** — the `X-API-Key` or
+  `Authorization` header is missing, misspelled, or the client is not
+  forwarding custom headers for HTTP MCP servers. Look again at Step 4 and
+  Step 6. If OIDC is on and the HTTP request itself returned `401`, check
+  that the client fetched `/.well-known/oauth-protected-resource/mcp` and
+  that the access token `aud` matches Adapt `public_url`.
 - **"Permission denied: read/write on `<namespace>`"** — the agent's user is
   not in a group with that permission. Revisit Step 3 and
   `adapt admin list-groups`.

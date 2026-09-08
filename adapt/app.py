@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, Depends
-from fastapi.openapi.docs import get_swagger_ui_html, get_swagger_ui_oauth2_redirect_html
+from fastapi.openapi.docs import get_swagger_ui_oauth2_redirect_html
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -20,6 +20,7 @@ from datetime import datetime, timezone
 from .auth import router as auth_router
 from .auth.dependencies import get_current_user
 from .auth.session import get_session
+from .auth.oidc import protected_resource_metadata, www_authenticate_header
 from .admin import router as admin_router
 from .admin.uploads import router as uploads_router
 from .config import AdaptConfig
@@ -46,7 +47,7 @@ _START_TIME = time.time()
 logger = logging.getLogger(__name__)
 
 _DOCS_INTERNAL_PATHS = frozenset({"/docs", "/docs/", "/docs/oauth2-redirect", "/openapi.json"})
-_PUBLIC_OPENAPI_PATHS = frozenset({"/", "/auth/login", "/health"})
+_PUBLIC_OPENAPI_PATHS = frozenset({"/", "/auth/login", "/auth/oidc/login", "/auth/oidc/callback", "/health"})
 _AUTHENTICATED_OPENAPI_PATHS = frozenset({"/auth/logout", "/auth/me", "/profile", "/api/apikeys", "/search"})
 
 
@@ -385,8 +386,36 @@ def create_app(config: AdaptConfig) -> FastAPI:
         response = await call_next(request)
         return response
 
+    @app.middleware("http")
+    async def mcp_oidc_challenge(request: Request, call_next):
+        """Return RFC 6750/9728 401 on unauthenticated MCP HTTP when OIDC is on."""
+        if not config.oidc_enabled() or not config.mcp_enabled:
+            return await call_next(request)
+        path = request.url.path
+        if path.rstrip("/") != "/mcp" and not path.startswith("/mcp/"):
+            return await call_next(request)
+        if request.method.upper() == "OPTIONS":
+            return await call_next(request)
+        if get_current_user(request) is not None:
+            return await call_next(request)
+        headers = {"WWW-Authenticate": www_authenticate_header(config)}
+        response = JSONResponse(
+            status_code=401,
+            content={"detail": "Not authenticated"},
+            headers=headers,
+        )
+        apply_security_headers(response, use_tls=request.app.state.use_tls)
+        return response
+
     # Mount authentication routes
     app.include_router(auth_router, prefix="", tags=["auth"])
+
+    @app.get("/.well-known/oauth-protected-resource", include_in_schema=False)
+    @app.get("/.well-known/oauth-protected-resource/mcp", include_in_schema=False)
+    def oauth_protected_resource():
+        if not config.oidc_enabled():
+            raise HTTPException(status_code=404, detail="OIDC is not configured")
+        return JSONResponse(protected_resource_metadata(config))
 
     # Mount admin routes
     app.include_router(admin_router)
@@ -429,13 +458,13 @@ def create_app(config: AdaptConfig) -> FastAPI:
 
     @app.get("/docs", include_in_schema=False)
     @app.get("/docs/", include_in_schema=False)
-    def swagger_ui():
-        """Render Swagger UI against the request-filtered OpenAPI schema."""
-        return get_swagger_ui_html(
-            openapi_url="/openapi.json",
-            title=f"{app.title} - API Docs",
-            oauth2_redirect_url="/docs/oauth2-redirect",
-        )
+    def swagger_ui(request: Request):
+        """Render Swagger UI and attach the CSRF header from the adapt_csrf cookie."""
+        return request.app.state.templates.TemplateResponse(request, "swagger.html", {
+            "title": f"{app.title} - API Docs",
+            "openapi_url": "/openapi.json",
+            "oauth2_redirect_url": "/docs/oauth2-redirect",
+        })
 
     @app.get("/docs/oauth2-redirect", include_in_schema=False)
     def swagger_ui_redirect():

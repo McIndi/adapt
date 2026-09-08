@@ -33,8 +33,10 @@ def requires_csrf_validation(request: Request) -> bool:
 
     has_session_cookie = bool(request.cookies.get(SESSION_COOKIE_NAME))
     has_api_key_header = bool(request.headers.get(API_KEY_HEADER))
+    authorization = request.headers.get("authorization") or ""
+    has_bearer = authorization.lower().startswith("bearer ")
 
-    if has_api_key_header and not has_session_cookie:
+    if (has_api_key_header or has_bearer) and not has_session_cookie:
         return False
 
     return has_session_cookie

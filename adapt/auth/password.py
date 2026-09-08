@@ -8,6 +8,14 @@ from ..storage import DBSession, User
 
 logger = logging.getLogger(__name__)
 
+def unusable_password_hash() -> str:
+    """Return a hash that verify_password will never accept.
+
+    OIDC JIT users need a non-null password_hash without a known password.
+    """
+    return f"!oidc-unusable-{secrets.token_hex(16)}"
+
+
 def hash_password(password: str) -> str:
     """Hash a password using PBKDF2 with a random salt."""
     salt = secrets.token_hex(16)

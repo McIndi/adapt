@@ -4,6 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from pydantic import BaseModel
 import logging
+import secrets
 
 from ..storage import User, DBSession, APIKey, get_db_session
 from ..audit import log_action
@@ -13,7 +14,20 @@ from .password import update_password, verify_password
 from ..commands.passwords import is_weak_password
 from .session import create_session, SESSION_COOKIE
 from .dependencies import require_auth
+from .oidc import (
+    OIDC_COOKIE_MAX_AGE,
+    OIDC_NEXT_COOKIE,
+    OIDC_STATE_COOKIE,
+    OIDC_VERIFIER_COOKIE,
+    authorization_redirect_url,
+    end_session_url,
+    exchange_code,
+    generate_pkce_pair,
+    sync_oidc_user,
+    validate_access_token,
+)
 from . import router
+from ..security_urls import is_safe_next_path, normalize_next_path
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +40,32 @@ class PasswordChangeRequest(BaseModel):
     current_password: str
     new_password: str
 
+def _set_oidc_cookie(response: Response, key: str, value: str, secure: bool) -> None:
+    response.set_cookie(
+        key=key,
+        value=value,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        max_age=OIDC_COOKIE_MAX_AGE,
+        path="/",
+    )
+
+
+def _clear_oidc_cookies(response: Response) -> None:
+    for key in (OIDC_STATE_COOKIE, OIDC_VERIFIER_COOKIE, OIDC_NEXT_COOKIE):
+        response.delete_cookie(key=key, path="/")
+
+
 @router.get("/auth/login")
 def login_page(request: Request):
     """Render the login page."""
+    config = request.app.state.config
     logger.debug("Rendering login page")
-    return request.app.state.templates.TemplateResponse(request, "login.html")
+    return request.app.state.templates.TemplateResponse(request, "login.html", {
+        "oidc_enabled": config.oidc_enabled(),
+        "local_login": config.local_login_enabled(),
+    })
 
 @router.post("/auth/login")
 def login(form: OAuth2PasswordRequestForm = Depends(), request: Request = None, response: Response = None):
@@ -38,6 +73,8 @@ def login(form: OAuth2PasswordRequestForm = Depends(), request: Request = None, 
     # form.username, form.password
     db_engine = request.app.state.db_engine
     config = request.app.state.config
+    if not config.local_login_enabled():
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Local password login is disabled")
     with Session(db_engine) as db:
         stmt = select(User).where(User.username == form.username)
         user = db.exec(stmt).first()
@@ -60,25 +97,106 @@ def login(form: OAuth2PasswordRequestForm = Depends(), request: Request = None, 
         )
         return {"message": "Logged in"}
 
+@router.get("/auth/oidc/login")
+def oidc_login(request: Request):
+    """Start the OIDC authorization-code + PKCE flow."""
+    config = request.app.state.config
+    if not config.oidc_enabled():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OIDC is not configured")
+    if not config.oidc_public_url():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="OIDC public_url is not configured")
+    state = secrets.token_urlsafe(32)
+    verifier, challenge = generate_pkce_pair()
+    try:
+        redirect_to = authorization_redirect_url(config, state, challenge)
+    except Exception:
+        logger.exception("Failed to start OIDC login")
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="OIDC discovery failed")
+    response = RedirectResponse(url=redirect_to, status_code=302)
+    secure = config.secure_cookies
+    _set_oidc_cookie(response, OIDC_STATE_COOKIE, state, secure)
+    _set_oidc_cookie(response, OIDC_VERIFIER_COOKIE, verifier, secure)
+    next_path = request.query_params.get("next")
+    if is_safe_next_path(next_path):
+        _set_oidc_cookie(response, OIDC_NEXT_COOKIE, normalize_next_path(next_path), secure)
+    return response
+
+
+@router.get("/auth/oidc/callback")
+def oidc_callback(request: Request):
+    """Complete OIDC login: exchange code, JIT sync, set session cookie."""
+    config = request.app.state.config
+    if not config.oidc_enabled():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OIDC is not configured")
+    error = request.query_params.get("error")
+    if error:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=error)
+    code = request.query_params.get("code")
+    state = request.query_params.get("state")
+    expected_state = request.cookies.get(OIDC_STATE_COOKIE)
+    verifier = request.cookies.get(OIDC_VERIFIER_COOKIE)
+    if not code or not state or not expected_state or not verifier:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing OIDC callback parameters")
+    if not secrets.compare_digest(state, expected_state):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid OIDC state")
+    try:
+        tokens = exchange_code(config, code, verifier)
+    except Exception:
+        logger.exception("OIDC token exchange failed")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OIDC token exchange failed")
+    access_token = tokens.get("access_token")
+    id_token = tokens.get("id_token")
+    if not access_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="OIDC token response missing access_token")
+    claims = validate_access_token(config, access_token)
+    if claims is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid OIDC access token")
+    with Session(request.app.state.db_engine) as db:
+        user = sync_oidc_user(db, config, claims)
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        session_token = create_session(db, user.id, id_token=id_token if isinstance(id_token, str) else None)
+        log_action(request, "login", "auth", "User logged in via OIDC", user.id)
+        logger.info("User %s logged in via OIDC", user.username)
+    next_path = normalize_next_path(request.cookies.get(OIDC_NEXT_COOKIE))
+    response = RedirectResponse(url=next_path, status_code=302)
+    response.set_cookie(
+        key="adapt_session",
+        value=session_token,
+        httponly=True,
+        secure=config.secure_cookies,
+        samesite="lax",
+        max_age=int((7 * 24 * 60 * 60)),
+    )
+    _clear_oidc_cookies(response)
+    return response
+
 @router.post("/auth/logout")
 def logout(request: Request, response: Response):
-    """Handle user logout."""
+    """Handle user logout. Redirect to Keycloak end_session when an id_token is stored."""
     token = request.cookies.get(SESSION_COOKIE)
+    id_token = None
     if token:
         db_engine = request.app.state.db_engine
         with Session(db_engine) as db:
             stmt = select(DBSession).where(DBSession.token == token)
             sess = db.exec(stmt).first()
             if sess:
+                id_token = sess.id_token
                 log_action(request, "logout", "auth", "User logged out", sess.user_id)
                 logger.info("User %d logged out", sess.user_id)
-                
                 db.delete(sess)
                 db.commit()
         response.delete_cookie(key=SESSION_COOKIE)
     else:
         logger.debug("Logout attempted without session cookie")
-    return RedirectResponse(url="/auth/login", status_code=302)
+    redirect_url = "/auth/login"
+    config = request.app.state.config
+    if id_token and config.oidc_enabled():
+        kc_logout = end_session_url(config, id_token)
+        if kc_logout:
+            redirect_url = kc_logout
+    return RedirectResponse(url=redirect_url, status_code=302)
 
 @router.get("/profile")
 def profile_page(request: Request, user: User = Depends(require_auth)):

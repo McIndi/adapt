@@ -330,10 +330,10 @@ connecting a client.
 | `write_resource` | `POST`/`PATCH`/`DELETE /api/{resource}/` |
 | `search` | `GET /search` |
 
-Adapt enforces authentication when a tool executes, not while the client
-initializes or discovers tools. MCP uses Adapt's shared authentication
-resolver, which accepts either a session cookie or an API key. API keys are
-the supported and recommended mechanism for MCP clients. Set
+Adapt enforces authentication when a tool executes. When OIDC is on, an
+unauthenticated HTTP request to `/mcp/` also returns `401` plus RFC 9728
+metadata. MCP uses Adapt's shared authentication resolver (session cookie,
+API key, or Bearer JWT). API keys remain the simple option for scripts. Set
 `mcp_enabled: false` in `.adapt/conf.json` (or `ADAPT_MCP_ENABLED=false`) to
 remove `/mcp/` entirely.
 

@@ -46,6 +46,9 @@ dependencies = [
     "pandas>=2.0,<4",
     "fastparquet>=2024.0.0,<2027",
     "mcp>=1.28,<2",
+    "PyJWT>=2.8,<3",
+    "cryptography>=43,<50",
+    "httpx>=0.27,<1",
 ]
 
 [project.optional-dependencies]

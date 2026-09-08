@@ -1,0 +1,21 @@
+[Unit]
+Description=Adapt OIDC test server
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vagrant
+Group=vagrant
+WorkingDirectory=/home/vagrant/adapt-docroot
+Environment=ADAPT_OIDC_ISSUER=http://192.168.58.30:8080/realms/adapt
+Environment=ADAPT_OIDC_CLIENT_ID=adapt-web
+Environment=ADAPT_OIDC_CLIENT_SECRET=adapt-web-secret
+Environment=ADAPT_OIDC_PUBLIC_URL=http://192.168.58.30:8000
+ExecStartPre=/usr/bin/curl -sf --retry 30 --retry-delay 2 --retry-all-errors http://192.168.58.30:8080/realms/adapt/.well-known/openid-configuration
+ExecStart=/home/vagrant/venv/bin/adapt serve /home/vagrant/adapt-docroot --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

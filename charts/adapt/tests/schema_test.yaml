@@ -50,6 +50,12 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "ingress.*enabeld"
+  - it: rejects misspelled oidc values
+    set:
+      oidc.clienId: adapt-web
+    asserts:
+      - failedTemplate:
+          errorPattern: "oidc.*clienId"
   - it: rejects misspelled resource values
     set:
       resources.limtis.cpu: 1

@@ -132,6 +132,7 @@ Supported top-level keys:
 - `debug`
 - `mcp_enabled`
 - `upload`
+- `oidc`
 - `logging`
 
 Environment overrides:
@@ -148,6 +149,16 @@ Environment overrides:
 - `ADAPT_UPLOAD_STRICT_MIME_SNIFFING`
 - `ADAPT_UPLOAD_ALLOWED_MIME_TYPES`
 - `ADAPT_UPLOAD_COLLISION_POLICY`
+- `ADAPT_OIDC_ISSUER`
+- `ADAPT_OIDC_CLIENT_ID`
+- `ADAPT_OIDC_CLIENT_SECRET`
+- `ADAPT_OIDC_PUBLIC_URL`
+- `ADAPT_OIDC_AUDIENCE`
+- `ADAPT_OIDC_USERNAME_CLAIM`
+- `ADAPT_OIDC_GROUPS_CLAIM`
+- `ADAPT_OIDC_SUPERUSER_ROLES`
+- `ADAPT_OIDC_LOCAL_LOGIN`
+- `ADAPT_OIDC_SCOPES`
 
 `ADAPT_PORT` accepts an integer from 1 through 65535. The Boolean
 variables accept `1`, `true`, `yes`, or `on` for true. They accept `0`,

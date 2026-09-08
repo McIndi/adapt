@@ -49,8 +49,26 @@ document-root boundary see an upload card on `/` and can also call
 ## Other values
 
 See [`values.yaml`](values.yaml) for the full chart surface, including
-`persistence`, `service`, `ingress`, `image`, `imagePullSecrets`, `env`, and
-`secretEnv`.
+`persistence`, `service`, `ingress`, `image`, `imagePullSecrets`, `env`,
+`secretEnv`, and `oidc`.
+
+## Keycloak OIDC
+
+Set `oidc.issuer` and `oidc.clientId` to wire `ADAPT_OIDC_*` on the
+container. Store the confidential client secret in `oidc.existingSecret`
+(key `client-secret` by default) or in `secretEnv` as
+`ADAPT_OIDC_CLIENT_SECRET`.
+
+```yaml
+oidc:
+  issuer: https://keycloak.example.com/realms/prod
+  clientId: adapt-web
+  publicUrl: https://adapt.example.com
+  existingSecret: adapt-oidc
+```
+
+See the [security manual](https://www.mcindi.com/adapt/manual/security/#keycloak-oidc)
+for the Keycloak realm checklist.
 
 ## Full documentation
 

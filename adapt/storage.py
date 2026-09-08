@@ -62,6 +62,7 @@ class UserGroup(SQLModel, table=True):
     """Database model for user-group associations."""
     user_id: int = Field(sa_column=Column(Integer, SA_ForeignKey("users.id", ondelete="CASCADE"), primary_key=True))
     group_id: int = Field(sa_column=Column(Integer, SA_ForeignKey("groups.id", ondelete="CASCADE"), primary_key=True))
+    oidc_managed: bool = Field(default=False, sa_column=Column(Boolean, default=False, nullable=False))
 
 class GroupPermission(SQLModel, table=True):
     """Database model for group-permission associations."""
@@ -98,6 +99,7 @@ class DBSession(SQLModel, table=True):
     created_at: datetime = Field(default_factory=lambda: datetime.now(tz=timezone.utc), sa_type=DateTime(timezone=True))
     expires_at: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
     last_active: datetime | None = Field(default=None, sa_type=DateTime(timezone=True))
+    id_token: str | None = Field(default=None, sa_column=Column(Text, nullable=True))
 
 def init_database(path: Path):
     """Initialize the database and return the engine.
@@ -120,7 +122,28 @@ def init_database(path: Path):
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.close()
     SQLModel.metadata.create_all(engine)
+    _apply_sqlite_schema_patches(engine)
     return engine
+
+
+def _table_columns(connection, table_name: str) -> set[str]:
+    rows = connection.exec_driver_sql(f"PRAGMA table_info({table_name})")
+    return {row[1] for row in rows}
+
+
+def _apply_sqlite_schema_patches(engine) -> None:
+    """Add columns that create_all will not attach to existing SQLite tables."""
+    if "sqlite" not in engine.url.drivername:
+        return
+    with engine.begin() as connection:
+        usergroup_columns = _table_columns(connection, "usergroup")
+        if usergroup_columns and "oidc_managed" not in usergroup_columns:
+            connection.exec_driver_sql(
+                "ALTER TABLE usergroup ADD COLUMN oidc_managed BOOLEAN NOT NULL DEFAULT 0"
+            )
+        session_columns = _table_columns(connection, "dbsession")
+        if session_columns and "id_token" not in session_columns:
+            connection.exec_driver_sql("ALTER TABLE dbsession ADD COLUMN id_token TEXT")
 
 
 def get_db_session(request: Request) -> Generator[Session, None, None]:

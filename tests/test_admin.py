@@ -35,6 +35,15 @@ def test_login_page(client):
     assert response.status_code == 200
     assert "Sign In" in response.text
 
+
+def test_swagger_ui_sends_csrf_header(client):
+    """API Docs must copy adapt_csrf onto Try it out requests."""
+    docs = client.get("/docs")
+    assert docs.status_code == 200
+    assert "X-CSRF-Token" in docs.text
+    assert "adapt_csrf" in docs.text
+    assert "requestInterceptor" in docs.text
+
 def test_admin_ui_redirect(client):
     # Should redirect to login
     response = client.get("/admin/", follow_redirects=False)

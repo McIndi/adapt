@@ -59,13 +59,16 @@ Configuration precedence is CLI arguments, environment variables,
 * `readonly`
 * `debug`
 * `mcp_enabled`
+* `upload`
+* `oidc`
 * `logging`
 
 Unknown keys, invalid types, invalid ports, and malformed JSON stop the command.
 
 The environment can override `host`, `port`, `readonly`, `debug`, and
 `mcp_enabled` through `ADAPT_HOST`, `ADAPT_PORT`, `ADAPT_READONLY`,
-`ADAPT_DEBUG`, and `ADAPT_MCP_ENABLED`.
+`ADAPT_DEBUG`, `ADAPT_MCP_ENABLED`, and `ADAPT_OIDC_*` (issuer, client id,
+secret, public URL, audience, claims, superuser roles, local login, scopes).
 
 Boolean environment values accept `1`, `true`, `yes`, or `on` for true. They
 accept `0`, `false`, `no`, or `off` for false. Case and surrounding spaces do

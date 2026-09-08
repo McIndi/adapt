@@ -133,6 +133,22 @@ env: []
 
 secretEnv: []
 
+# Optional Keycloak OIDC. Enabled when issuer and clientId are both set.
+# Put the confidential client secret in oidc.existingSecret or secretEnv
+# (ADAPT_OIDC_CLIENT_SECRET). Do not store it in conf.json.
+oidc:
+  issuer: ""
+  clientId: ""
+  publicUrl: ""
+  audience: ""
+  usernameClaim: preferred_username
+  groupsClaim: groups
+  superuserRoles: adapt-admin
+  localLogin: true
+  scopes: "openid profile"
+  existingSecret: ""
+  existingSecretClientSecretKey: client-secret
+
 # Mount external document sources such as ConfigMaps, NFS shares, or
 # pre-populated volumes into the pod. Mount ConfigMaps below the writable
 # document root; use externalDocumentRoot only for a writable source.

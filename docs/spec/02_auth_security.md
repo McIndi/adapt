@@ -34,10 +34,10 @@ The role-based access control system has six main components:
 | --- | --- | --- |
 | `users` | User accounts | Unique `username` |
 | `groups` | Permission groups | Unique `name` |
-| `usergroup` | User and group links | Composite primary key. Foreign keys reference `users.id` and `groups.id`. |
+| `usergroup` | User and group links | Composite primary key. Foreign keys reference `users.id` and `groups.id`. `oidc_managed` marks memberships that OIDC may remove on later sync. |
 | `permission` | Resource actions | Unique pair of `resource` and `action` |
 | `grouppermission` | Group and permission links | Composite primary key. Foreign keys reference `groups.id` and `permission.id`. |
-| `dbsession` | Browser sessions | Unique `token`. `user_id` references `users.id`. |
+| `dbsession` | Browser sessions | Unique `token`. `user_id` references `users.id`. Nullable `id_token` for Keycloak logout. |
 | `apikey` | Hashed API keys | Unique `key_hash`. `user_id` references `users.id`. |
 | `auditlog` | Audit events | Nullable `user_id` and nullable `resource` |
 | `lock_records` | Resource write locks | Unique indexed `resource` |
@@ -74,6 +74,10 @@ sequenceDiagram
     Auth->>Auth: Compute SHA-256 hash
     Auth->>DB: Lookup active, unexpired key + user active
     Auth->>DB: Update last_used_at
+  else Bearer JWT (OIDC)
+    Client->>Adapt: Protected request with Authorization Bearer
+    Adapt->>Auth: Validate JWT (iss, aud, exp, JWKS)
+    Auth->>DB: JIT user and oidc_managed group sync
   end
 
   Auth->>Perm: Map method to read/write action
@@ -100,6 +104,16 @@ sequenceDiagram
 4. The dependency rejects the key if its user is inactive.
 5. The dependency returns the associated user and updates `last_used_at`.
 
+#### **OIDC Bearer (REST and MCP)**
+1. Include `Authorization: Bearer <jwt>` when `oidc.issuer` and
+   `oidc.client_id` are set.
+2. The resolver validates signature against Keycloak JWKS, then `iss`,
+   `aud`, and `exp`.
+3. The resolver creates or updates the user from `preferred_username`.
+4. The resolver syncs `oidc_managed` group memberships and `adapt-admin`
+   superuser status.
+5. Inactive users are rejected.
+
 #### **API Key Management**
 - **Self-issue:** Authenticated users can create their own keys through
   `POST /api/apikeys` or the Profile UI.
@@ -112,7 +126,7 @@ sequenceDiagram
 
 For each protected route:
 
-1. Resolve the user from the session cookie or API key.
+1. Resolve the user from the session cookie, API key, or Bearer JWT.
 2. If the user is a superuser, permit the action.
 3. Query permissions through the user group membership:
    ```sql
@@ -138,7 +152,7 @@ app.include_router(
 )
 ```
 
-The `permission_dependency` function resolves a session or API key. It maps
+The `permission_dependency` function resolves a session, API key, or Bearer JWT. It maps
 `GET` to `read` and unsafe methods to `write`. It returns `403` when permission
 is denied.
 
@@ -155,7 +169,7 @@ is denied.
 - **Secure cookies:** Direct TLS through `adapt serve` enables the Secure flag.
 - **SameSite=Lax:** The session cookie uses this browser policy.
 - **CSRF:** Unsafe cookie-authenticated requests require a matching CSRF
-  cookie and header. API-key requests are exempt.
+  cookie and header. API-key-only and Bearer-only requests are exempt.
 - **Constant-time comparison:** Password verification uses
   `secrets.compare_digest`.
 - **Secure by Default:** No permission means no access.
@@ -164,15 +178,16 @@ is denied.
   and successful dataset mutations.
 - **Row-Level Filtering:** Plugins can filter rows during reads. Built-in
   plugins do not do so, and the hook does not safely enforce write-level RLS.
-- **Inactive-user enforcement:** Login, session, and API-key authentication
-  require `User.is_active`. Deactivation also revokes browser sessions.
+- **Inactive-user enforcement:** Login, session, API-key, and Bearer
+  authentication require `User.is_active`. Deactivation also revokes browser sessions.
 ### **Runtime Behavior Locations**
 
 - `adapt/auth/password.py` hashes and compares passwords.
 - `adapt/auth/session.py` creates, resolves, and extends sessions.
 - `adapt/auth/dependencies.py` resolves users and checks permissions.
 - `adapt/api_keys.py` creates, resolves, and revokes API keys.
-- `adapt/auth/routes.py` provides login, logout, profile, password-change, and self-service key routes.
+- `adapt/auth/oidc.py` validates JWTs, runs JIT user and group sync, and builds OIDC redirects.
+- `adapt/auth/routes.py` provides login, logout, OIDC callback, profile, password-change, and self-service key routes.
 - `adapt/admin/` provides the administrative routes. These routes include user status changes.
 - `adapt/users.py` changes user status and revokes sessions during deactivation.
 - `adapt/audit.py` creates audit records.

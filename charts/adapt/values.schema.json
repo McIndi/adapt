@@ -138,11 +138,33 @@
     },
     "env": { "$ref": "#/definitions/environment" },
     "secretEnv": { "$ref": "#/definitions/environment" },
+    "oidc": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "issuer": { "type": "string" },
+        "clientId": { "type": "string" },
+        "publicUrl": { "type": "string" },
+        "audience": { "type": "string" },
+        "usernameClaim": { "type": "string", "minLength": 1 },
+        "groupsClaim": { "type": "string", "minLength": 1 },
+        "superuserRoles": { "type": "string" },
+        "localLogin": { "type": "boolean" },
+        "scopes": { "type": "string" },
+        "existingSecret": { "type": "string" },
+        "existingSecretClientSecretKey": { "type": "string", "minLength": 1 }
+      },
+      "required": [
+        "issuer", "clientId", "publicUrl", "audience", "usernameClaim",
+        "groupsClaim", "superuserRoles", "localLogin", "scopes",
+        "existingSecret", "existingSecretClientSecretKey"
+      ]
+    },
     "extraVolumes": { "type": "array", "items": { "type": "object" } },
     "extraVolumeMounts": { "type": "array", "items": { "type": "object" } },
     "externalDocumentRoot": { "type": "boolean" }
   },
-  "required": ["image", "service", "persistence", "bootstrapAdmin", "probes", "resources", "env", "secretEnv"] ,
+  "required": ["image", "service", "persistence", "bootstrapAdmin", "probes", "resources", "env", "secretEnv", "oidc"] ,
   "definitions": {
     "httpProbe": {
       "type": "object",

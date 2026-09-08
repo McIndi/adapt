@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 SESSION_COOKIE = "adapt_session"
 SESSION_TTL = timedelta(days=7)
 
-def create_session(db: Session, user_id: int) -> str:
+def create_session(db: Session, user_id: int, id_token: str | None = None) -> str:
     """Create a new session for a user."""
     token = secrets.token_urlsafe(32)
     now = datetime.now(tz=timezone.utc)
@@ -21,6 +21,7 @@ def create_session(db: Session, user_id: int) -> str:
         created_at=now,
         expires_at=now + SESSION_TTL,
         last_active=now,
+        id_token=id_token,
     )
     db.add(session_obj)
     db.commit()

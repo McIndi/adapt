@@ -87,6 +87,41 @@ spec:
           periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
           timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
           failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+        {{- $oidcOn := and .Values.oidc.issuer .Values.oidc.clientId }}
+        {{- if or $oidcOn .Values.oidc.existingSecret }}
+        env:
+        {{- if $oidcOn }}
+        - name: ADAPT_OIDC_ISSUER
+          value: {{ .Values.oidc.issuer | quote }}
+        - name: ADAPT_OIDC_CLIENT_ID
+          value: {{ .Values.oidc.clientId | quote }}
+        {{- if .Values.oidc.publicUrl }}
+        - name: ADAPT_OIDC_PUBLIC_URL
+          value: {{ .Values.oidc.publicUrl | quote }}
+        {{- end }}
+        {{- if .Values.oidc.audience }}
+        - name: ADAPT_OIDC_AUDIENCE
+          value: {{ .Values.oidc.audience | quote }}
+        {{- end }}
+        - name: ADAPT_OIDC_USERNAME_CLAIM
+          value: {{ .Values.oidc.usernameClaim | quote }}
+        - name: ADAPT_OIDC_GROUPS_CLAIM
+          value: {{ .Values.oidc.groupsClaim | quote }}
+        - name: ADAPT_OIDC_SUPERUSER_ROLES
+          value: {{ .Values.oidc.superuserRoles | quote }}
+        - name: ADAPT_OIDC_LOCAL_LOGIN
+          value: {{ .Values.oidc.localLogin | quote }}
+        - name: ADAPT_OIDC_SCOPES
+          value: {{ .Values.oidc.scopes | quote }}
+        {{- end }}
+        {{- if .Values.oidc.existingSecret }}
+        - name: ADAPT_OIDC_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.oidc.existingSecret | quote }}
+              key: {{ .Values.oidc.existingSecretClientSecretKey | quote }}
+        {{- end }}
+        {{- end }}
         {{- if or .Values.env .Values.secretEnv }}
         envFrom:
         {{- if .Values.env }}

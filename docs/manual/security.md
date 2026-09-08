@@ -4,15 +4,18 @@ This guide documents security behavior currently implemented in Adapt.
 
 ## Authentication
 
-Adapt supports:
+Adapt authenticates with:
 
-1. Session cookie authentication (`adapt_session`)
-2. API key authentication (`X-API-Key`)
+- Session cookie (`adapt_session`) after a local password login or Keycloak SSO
+- API key (`X-API-Key`)
+- Bearer JWT (`Authorization: Bearer`) when Keycloak OIDC is configured
+- Local username and password at `POST /auth/login`, unless `oidc.local_login` is false
 
-Login/logout routes:
+Login and logout routes:
 
 - `GET /auth/login`
 - `POST /auth/login`
+- `GET /auth/oidc/login` and `GET /auth/oidc/callback` when OIDC is on
 - `POST /auth/logout`
 
 Session behavior:
@@ -35,11 +38,51 @@ Deactivation revokes browser sessions for the user. API keys remain stored but
 cannot authenticate until an administrator activates the user.
 
 The MCP interface (`/mcp/`, see the [MCP Guide](mcp_guide.md)) uses the same
-authentication resolver as HTTP routes. Tool calls accept either a
-session cookie or an API key. API keys are the supported and recommended MCP
-client mechanism. Adapt enforces authentication when a tool executes, not
-during initialization or tool discovery. Cookie-authenticated MCP requests
-are still subject to CSRF validation because the transport uses HTTP POST.
+authentication resolver as HTTP routes. Tool calls accept a session cookie,
+an API key, or a Bearer JWT. API keys remain the simple option for scripts.
+OAuth MCP clients (Cursor, Claude, VS Code) use Bearer tokens. When OIDC is
+configured, an unauthenticated HTTP request to `/mcp/` returns `401` with a
+`WWW-Authenticate` header that points at Adapt's protected-resource metadata.
+Adapt still checks authentication when a tool executes. Cookie-authenticated
+MCP requests are still subject to CSRF validation because the transport uses
+HTTP POST.
+
+## Keycloak OIDC
+
+OIDC is off until both `oidc.issuer` and `oidc.client_id` are set (or the
+matching `ADAPT_OIDC_*` environment variables). The client secret must come
+from `ADAPT_OIDC_CLIENT_SECRET`, not `conf.json`.
+
+Adapt is a relying party for the browser (authorization code and PKCE) and a
+resource server for REST and MCP (JWT Bearer). It does not register OAuth
+clients and it does not proxy Keycloak discovery. Keycloak remains the
+authorization server.
+
+On each successful OIDC login and each valid Bearer token, Adapt:
+
+- Uses `preferred_username` (or `oidc.username_claim`) as the Adapt username
+- Creates the user if needed, with a password hash that cannot log in locally
+- Rejects inactive users
+- Maps Keycloak `groups` (path prefix stripped) and `realm_access.roles` onto
+  existing Adapt groups of the same name
+- Sets `is_superuser` when a configured role is present (default `adapt-admin`)
+- Removes only group memberships that OIDC previously added (`oidc_managed`)
+
+Unknown Keycloak group names are ignored. Run `adapt admin create-permissions`
+so Keycloak groups can match `<resource>_readonly` and `<resource>_readwrite`.
+Do not expect Adapt to create groups from Keycloak.
+
+Operator checklist for Keycloak 26.6 or later:
+
+- Confidential client `adapt-web`: authorization code and PKCE, redirect
+  `{public_url}/auth/oidc/callback`, logout redirect `{public_url}/auth/login`
+- Audience mapper so access tokens carry `aud` equal to Adapt `public_url`
+  (or RFC 8707 `RESOURCE_INDICATOR` on Keycloak 26.8+)
+- Group membership mapper onto the `groups` claim
+- Realm role `adapt-admin` for Adapt superusers
+- Realm dynamic client registration (DCR) enabled so MCP clients can register
+  themselves with Keycloak
+- Groups named to match Adapt groups (`products_readonly`, and so on)
 
 ## Authorization
 
@@ -76,7 +119,14 @@ Key points:
 - CSRF header name: `X-CSRF-Token`
 - Form field fallback: `csrf_token`
 - API-key-only requests without session cookies are exempt
-- If both session and API key are present, CSRF still applies
+- Bearer-only requests without session cookies are exempt
+- If a session cookie is present, CSRF still applies even when an API key or
+  Bearer token is also sent
+
+The `/docs` Swagger UI reads the `adapt_csrf` cookie and sends it as
+`X-CSRF-Token` on Try it out requests. Cookie login (password or Keycloak)
+can mutate resources from API Docs. curl and other clients still have to
+set the header themselves.
 
 For example, log in and store the session and CSRF cookies in a curl cookie
 jar. Then copy the CSRF cookie into the header for an unsafe request:

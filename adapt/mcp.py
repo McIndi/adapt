@@ -50,7 +50,7 @@ async def _authenticated_user(ctx: Context) -> User:
     request = ctx.request_context.request
     user = get_current_user(request)
     if user is None:
-        raise ToolError("Authentication required: send a valid X-API-Key header.")
+        raise ToolError("Authentication required: send a valid X-API-Key header or Authorization Bearer token.")
     return user
 
 

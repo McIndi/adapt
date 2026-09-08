@@ -171,11 +171,11 @@ claude mcp add --transport http adapt http://localhost:8000/mcp \
 ```
 
 MCP does an authentication check when a tool runs. Tool calls use the shared
-authentication resolver, which accepts a session cookie or an API key. API
-keys are the supported and recommended mechanism for MCP clients. Set
-`mcp_enabled: false` in `.adapt/conf.json` (or `ADAPT_MCP_ENABLED=false`) to
-remove `/mcp` entirely. For setup and troubleshooting, read the
-[MCP guide](docs/manual/mcp_guide.md).
+authentication resolver (session cookie, API key, or Bearer JWT when OIDC is
+on). API keys remain the simple option for scripts. OAuth MCP clients use
+Bearer tokens. Set `mcp_enabled: false` in `.adapt/conf.json` (or
+`ADAPT_MCP_ENABLED=false`) to remove `/mcp` entirely. For setup and
+troubleshooting, read the [MCP guide](docs/manual/mcp_guide.md).
 For dataset reads, `sort` is the column name and `order` must be `asc` or
 `desc`.
 

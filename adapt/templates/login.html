@@ -70,6 +70,20 @@
             background-color: #2563eb;
         }
 
+        .oidc-button {
+            display: block;
+            width: 100%;
+            padding: 0.625rem;
+            background-color: #0f172a;
+            color: white;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            text-align: center;
+            text-decoration: none;
+            box-sizing: border-box;
+            margin-bottom: 1rem;
+        }
+
         .error {
             color: #ef4444;
             font-size: 0.875rem;
@@ -83,6 +97,10 @@
 <body>
     <div class="login-card">
         <h1>Sign In</h1>
+        {% if oidc_enabled %}
+        <a class="oidc-button" href="/auth/oidc/login">Sign in with Keycloak</a>
+        {% endif %}
+        {% if local_login %}
         <form id="login-form">
             <input type="hidden" id="csrf_token" name="csrf_token" value="{{ request.state.csrf_token if request and request.state else '' }}">
             <div class="form-group">
@@ -96,6 +114,7 @@
             <button type="submit">Login</button>
             <div id="error-msg" class="error">Invalid credentials</div>
         </form>
+        {% endif %}
     </div>
     <script>
         function getCookie(name) {
@@ -123,7 +142,7 @@
             return trimmed;
         }
 
-        document.getElementById('login-form').addEventListener('submit', async (e) => {
+        document.getElementById('login-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
             const csrfToken = getCookie('adapt_csrf') || formData.get('csrf_token') || '';

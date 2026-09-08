@@ -25,6 +25,7 @@ Current accepted keys are:
 - `debug`
 - `mcp_enabled`
 - `upload`
+- `oidc`
 - `logging`
 
 Adapt treats unknown keys as configuration errors.
@@ -52,11 +53,22 @@ Environment variables currently supported:
 - `ADAPT_UPLOAD_STRICT_MIME_SNIFFING`
 - `ADAPT_UPLOAD_ALLOWED_MIME_TYPES`
 - `ADAPT_UPLOAD_COLLISION_POLICY`
+- `ADAPT_OIDC_ISSUER`
+- `ADAPT_OIDC_CLIENT_ID`
+- `ADAPT_OIDC_CLIENT_SECRET`
+- `ADAPT_OIDC_PUBLIC_URL`
+- `ADAPT_OIDC_AUDIENCE`
+- `ADAPT_OIDC_USERNAME_CLAIM`
+- `ADAPT_OIDC_GROUPS_CLAIM`
+- `ADAPT_OIDC_SUPERUSER_ROLES`
+- `ADAPT_OIDC_LOCAL_LOGIN`
+- `ADAPT_OIDC_SCOPES`
 
 `ADAPT_HOST` accepts a host string. `ADAPT_PORT` accepts an integer from 1
 through 65535. The Boolean variables are `ADAPT_READONLY`, `ADAPT_DEBUG`,
-`ADAPT_MCP_ENABLED`, `ADAPT_UPLOAD_ENABLED`, and
-`ADAPT_UPLOAD_STRICT_MIME_SNIFFING`. They accept these case-insensitive values:
+`ADAPT_MCP_ENABLED`, `ADAPT_UPLOAD_ENABLED`,
+`ADAPT_UPLOAD_STRICT_MIME_SNIFFING`, and `ADAPT_OIDC_LOCAL_LOGIN`. They accept
+these case-insensitive values:
 
 - True: `1`, `true`, `yes`, `on`
 - False: `0`, `false`, `no`, `off`
@@ -82,6 +94,13 @@ Upload behavior defaults:
 - `upload.max_size_bytes` defaults to `10485760` (10 MiB).
 - `upload.collision_policy` defaults to `overwrite`.
 
+OIDC is enabled only when `issuer` and `client_id` are set. Put the
+confidential client secret in `ADAPT_OIDC_CLIENT_SECRET`. `conf.json` must
+not contain `oidc.client_secret`. `oidc.audience` defaults to `public_url`.
+`oidc.local_login` defaults to `true`. `oidc.superuser_roles` defaults to
+`["adapt-admin"]`. See [Security](security.md#keycloak-oidc) for the Keycloak
+realm checklist.
+
 ## Example `conf.json`
 
 ```json
@@ -99,6 +118,17 @@ Upload behavior defaults:
     "strict_mime_sniffing": false,
     "allowed_mime_types": [],
     "collision_policy": "overwrite"
+  },
+  "oidc": {
+    "issuer": "",
+    "client_id": "",
+    "public_url": "",
+    "audience": "",
+    "username_claim": "preferred_username",
+    "groups_claim": "groups",
+    "superuser_roles": ["adapt-admin"],
+    "local_login": true,
+    "scopes": "openid profile"
   },
   "tls_cert": null,
   "tls_key": null,
@@ -180,7 +210,9 @@ TLS note:
 `mcp_enabled` (default `true`) controls whether Adapt mounts the MCP server
 at `/mcp`. Set it to `false` in `conf.json`, or set `ADAPT_MCP_ENABLED=false`,
 to remove the route. This is useful for deployments that want only the REST
-API surface. See the [MCP Guide](mcp_guide.md) for setup.
+API surface. See the [MCP Guide](mcp_guide.md) for setup. When OIDC is on,
+unauthenticated `/mcp/` requests return `401` plus RFC 9728 metadata at
+`/.well-known/oauth-protected-resource/mcp`.
 
 ## Plugin Registry Notes
 

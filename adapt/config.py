@@ -13,6 +13,22 @@ from adapt import __version__ as adapt_version
 logger = logging.getLogger(__name__)
 
 
+def default_oidc_config() -> dict[str, Any]:
+    """Return default OIDC settings. Enable only when issuer and client_id are set."""
+    return {
+        "issuer": "",
+        "client_id": "",
+        "client_secret": "",
+        "public_url": "",
+        "audience": "",
+        "username_claim": "preferred_username",
+        "groups_claim": "groups",
+        "superuser_roles": ["adapt-admin"],
+        "local_login": True,
+        "scopes": "openid profile",
+    }
+
+
 @dataclass
 class AdaptConfig:
     """Configuration class for the Adapt application.
@@ -47,6 +63,7 @@ class AdaptConfig:
         "allowed_mime_types": [],
         "collision_policy": "overwrite",
     })
+    oidc: dict[str, Any] = field(default_factory=default_oidc_config)
     plugin_registry: dict[str, str] = field(default_factory=lambda: {
         ".csv": "adapt.plugins.csv_plugin.CsvPlugin",
         ".xlsx": "adapt.plugins.excel_plugin.ExcelPlugin",
@@ -100,6 +117,30 @@ class AdaptConfig:
         self.root = self.root.resolve()
         self.db_path = self.root / ".adapt" / "adapt.db"
         logger.debug("Config initialized: root=%s, db_path=%s, readonly=%s", self.root, self.db_path, self.readonly)
+
+    def oidc_enabled(self) -> bool:
+        """Return True when Keycloak OIDC is configured (issuer and client_id)."""
+        issuer = str(self.oidc.get("issuer") or "").strip()
+        client_id = str(self.oidc.get("client_id") or "").strip()
+        return bool(issuer and client_id)
+
+    def oidc_audience(self) -> str:
+        """JWT audience to accept. Defaults to public_url when audience is empty."""
+        audience = str(self.oidc.get("audience") or "").strip()
+        if audience:
+            return audience
+        return str(self.oidc.get("public_url") or "").rstrip("/")
+
+    def oidc_public_url(self) -> str:
+        return str(self.oidc.get("public_url") or "").rstrip("/")
+
+    def oidc_issuer(self) -> str:
+        return str(self.oidc.get("issuer") or "").rstrip("/")
+
+    def local_login_enabled(self) -> bool:
+        if not self.oidc_enabled():
+            return True
+        return bool(self.oidc.get("local_login", True))
 
     @staticmethod
     def _parse_env_bool(value: str, key: str) -> bool:
@@ -164,6 +205,7 @@ class AdaptConfig:
             "debug": self.debug,
             "mcp_enabled": self.mcp_enabled,
             "upload": self.upload.copy(),
+            "oidc": {k: v for k, v in self.oidc.items() if k != "client_secret"},
             "logging": self.logging.copy(),
         }
         with conf_path.open("w") as f:
@@ -183,7 +225,7 @@ class AdaptConfig:
         allowed_keys = {
             "plugin_registry", "host", "port", "tls_cert", "tls_key",
             "secure_cookies", "search_on_startup", "readonly", "debug", "logging",
-            "mcp_enabled", "upload",
+            "mcp_enabled", "upload", "oidc",
         }
         for key in data:
             if key not in allowed_keys:
@@ -254,6 +296,35 @@ class AdaptConfig:
                 if upload["collision_policy"] not in {"overwrite", "reject"}:
                     logger.error("upload.collision_policy must be 'overwrite' or 'reject'")
                     sys.exit(1)
+        if "oidc" in data:
+            if not isinstance(data["oidc"], dict):
+                logger.error("oidc must be a dict")
+                sys.exit(1)
+            if "client_secret" in data["oidc"]:
+                logger.error("oidc.client_secret must not be stored in conf.json; use ADAPT_OIDC_CLIENT_SECRET")
+                sys.exit(1)
+            allowed_oidc = {
+                "issuer", "client_id", "public_url", "audience",
+                "username_claim", "groups_claim", "superuser_roles",
+                "local_login", "scopes",
+            }
+            oidc = data["oidc"]
+            for key in oidc:
+                if key not in allowed_oidc:
+                    logger.error("Unknown oidc key in %s: %s", conf_path, key)
+                    sys.exit(1)
+            for str_key in ("issuer", "client_id", "public_url", "audience", "username_claim", "groups_claim", "scopes"):
+                if str_key in oidc and not isinstance(oidc[str_key], str):
+                    logger.error("oidc.%s must be str", str_key)
+                    sys.exit(1)
+            if "local_login" in oidc and not isinstance(oidc["local_login"], bool):
+                logger.error("oidc.local_login must be bool")
+                sys.exit(1)
+            if "superuser_roles" in oidc:
+                roles = oidc["superuser_roles"]
+                if not isinstance(roles, list) or not all(isinstance(item, str) for item in roles):
+                    logger.error("oidc.superuser_roles must be a list of strings")
+                    sys.exit(1)
 
     def _apply_file_config(self, data: dict) -> None:
         """Merge validated file config dict into this instance."""
@@ -279,6 +350,8 @@ class AdaptConfig:
             self.mcp_enabled = data["mcp_enabled"]
         if "upload" in data:
             self.upload.update(data["upload"])
+        if "oidc" in data:
+            self.oidc.update(data["oidc"])
         if "logging" in data:
             self.logging.update(data["logging"])
 
@@ -335,3 +408,25 @@ class AdaptConfig:
                 logger.error("ADAPT_UPLOAD_COLLISION_POLICY must be 'overwrite' or 'reject'")
                 sys.exit(1)
             self.upload["collision_policy"] = policy
+        if "ADAPT_OIDC_ISSUER" in os.environ:
+            self.oidc["issuer"] = os.environ["ADAPT_OIDC_ISSUER"].strip()
+        if "ADAPT_OIDC_CLIENT_ID" in os.environ:
+            self.oidc["client_id"] = os.environ["ADAPT_OIDC_CLIENT_ID"].strip()
+        if "ADAPT_OIDC_CLIENT_SECRET" in os.environ:
+            self.oidc["client_secret"] = os.environ["ADAPT_OIDC_CLIENT_SECRET"]
+        if "ADAPT_OIDC_PUBLIC_URL" in os.environ:
+            self.oidc["public_url"] = os.environ["ADAPT_OIDC_PUBLIC_URL"].strip()
+        if "ADAPT_OIDC_AUDIENCE" in os.environ:
+            self.oidc["audience"] = os.environ["ADAPT_OIDC_AUDIENCE"].strip()
+        if "ADAPT_OIDC_USERNAME_CLAIM" in os.environ:
+            self.oidc["username_claim"] = os.environ["ADAPT_OIDC_USERNAME_CLAIM"].strip()
+        if "ADAPT_OIDC_GROUPS_CLAIM" in os.environ:
+            self.oidc["groups_claim"] = os.environ["ADAPT_OIDC_GROUPS_CLAIM"].strip()
+        if "ADAPT_OIDC_SUPERUSER_ROLES" in os.environ:
+            self.oidc["superuser_roles"] = self._parse_env_list(os.environ["ADAPT_OIDC_SUPERUSER_ROLES"])
+        if "ADAPT_OIDC_LOCAL_LOGIN" in os.environ:
+            self.oidc["local_login"] = self._parse_env_bool(
+                os.environ["ADAPT_OIDC_LOCAL_LOGIN"], "ADAPT_OIDC_LOCAL_LOGIN"
+            )
+        if "ADAPT_OIDC_SCOPES" in os.environ:
+            self.oidc["scopes"] = os.environ["ADAPT_OIDC_SCOPES"].strip()

@@ -128,6 +128,28 @@ Exit criteria:
   rolling upgrades, and rollback pass without data loss or access-control
   regressions.
 
+### Keycloak OIDC (product tracer, not M2)
+
+Status: Done
+
+Goal: optional Keycloak identity for the browser UI, REST API, and `/mcp/`,
+while local passwords and API keys keep working.
+
+This tracer is independent of the coordinated `0.5.2` packaging work in M2.
+Schema changes stay additive SQLite `ALTER` statements until a migration
+tool exists.
+
+Exit criteria:
+
+- OIDC enables only when issuer and client_id are set.
+- Browser SSO uses authorization code and PKCE.
+- REST and MCP accept Bearer JWTs with iss, aud, exp, and JWKS checks.
+- Unauthenticated `/mcp/` requests return RFC 9728 protected-resource metadata
+  when OIDC is on.
+- JIT users and `oidc_managed` group sync leave manual memberships in place.
+- Tests cover tokens, PRM, MCP 401, callback, local login, and CSRF without
+  a live Keycloak.
+
 ## Unscheduled work
 
 The following gaps remain outside the six ordered phases:

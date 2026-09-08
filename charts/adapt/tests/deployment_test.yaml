@@ -153,3 +153,47 @@ tests:
     asserts:
       - failedTemplate:
           errorPattern: "externalDocumentRoot=true is incompatible with persistence.enabled=true"
+  - it: omits OIDC env when issuer and clientId are empty
+    asserts:
+      - isNull:
+          path: spec.template.spec.containers[0].env
+  - it: maps oidc values to ADAPT_OIDC environment variables
+    set:
+      oidc:
+        issuer: https://keycloak.example.com/realms/prod
+        clientId: adapt-web
+        publicUrl: https://adapt.example.com
+        audience: https://adapt.example.com
+        localLogin: false
+        existingSecret: adapt-oidc
+        existingSecretClientSecretKey: client-secret
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ADAPT_OIDC_ISSUER
+            value: https://keycloak.example.com/realms/prod
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ADAPT_OIDC_CLIENT_ID
+            value: adapt-web
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ADAPT_OIDC_PUBLIC_URL
+            value: https://adapt.example.com
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ADAPT_OIDC_LOCAL_LOGIN
+            value: "false"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: ADAPT_OIDC_CLIENT_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: adapt-oidc
+                key: client-secret
+

@@ -25,4 +25,11 @@ def test_iter_effective_routes_matches_get_openapi(tmp_path):
     effective_paths = {path for path, _ in iter_effective_routes(app.routes)}
 
     assert schema_paths <= effective_paths
-    assert effective_paths - schema_paths == {"/docs", "/docs/", "/docs/oauth2-redirect", "/openapi.json"}
+    assert effective_paths - schema_paths == {
+        "/docs",
+        "/docs/",
+        "/docs/oauth2-redirect",
+        "/openapi.json",
+        "/.well-known/oauth-protected-resource",
+        "/.well-known/oauth-protected-resource/mcp",
+    }

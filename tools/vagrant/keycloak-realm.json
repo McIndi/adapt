@@ -1,0 +1,123 @@
+{
+  "id": "adapt",
+  "realm": "adapt",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "adapt-admin",
+        "description": "Adapt superuser"
+      }
+    ]
+  },
+  "groups": [
+    {
+      "name": "products_readonly"
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "adapt-web",
+      "name": "Adapt web",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "adapt-web-secret",
+      "clientAuthenticatorType": "client-secret",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [
+        "http://192.168.58.30:8000/auth/oidc/callback",
+        "http://127.0.0.1:8000/auth/oidc/callback",
+        "http://localhost:8000/auth/oidc/callback"
+      ],
+      "webOrigins": [
+        "http://192.168.58.30:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://192.168.58.30:8000/auth/login##http://127.0.0.1:8000/auth/login##http://localhost:8000/auth/login"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-private",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "http://192.168.58.30:8000",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "audience-loopback",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "http://127.0.0.1:8000",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "enabled": true,
+      "email": "alice@example.com",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Reader",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Alice!Adapt-Test1",
+          "temporary": false
+        }
+      ],
+      "groups": ["/products_readonly"]
+    },
+    {
+      "username": "adapt-admin",
+      "enabled": true,
+      "email": "admin@example.com",
+      "emailVerified": true,
+      "firstName": "Adapt",
+      "lastName": "Admin",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin!Adapt-Test1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["adapt-admin"]
+    }
+  ]
+}

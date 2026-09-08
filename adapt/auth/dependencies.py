@@ -6,11 +6,12 @@ import logging
 from ..storage import User, UserGroup, GroupPermission, Permission
 from .session import get_session
 from ..api_keys import verify_api_key
+from .oidc import authenticate_bearer, extract_bearer_token
 
 logger = logging.getLogger(__name__)
 
 def get_current_user(request: Request) -> User | None:
-    """Get the current authenticated user from session or API key."""
+    """Get the current authenticated user from session, API key, or Bearer JWT."""
     # 1. Try Session Cookie
     token = request.cookies.get("adapt_session")
     if token:
@@ -31,9 +32,18 @@ def get_current_user(request: Request) -> User | None:
                 logger.debug("Authenticated user %s via API key", user.username)
                 return user
 
+    # 3. Try OIDC Bearer JWT
+    config = getattr(request.app.state, "config", None)
+    bearer = extract_bearer_token(request.headers.get("authorization"))
+    if bearer and config is not None and config.oidc_enabled():
+        with Session(request.app.state.db_engine) as db:
+            user = authenticate_bearer(db, config, bearer)
+            if user:
+                logger.debug("Authenticated user %s via bearer JWT", user.username)
+                return user
+
     logger.debug("No authentication found for request")
     return None
-
 
 
 def require_auth(request: Request) -> User:
