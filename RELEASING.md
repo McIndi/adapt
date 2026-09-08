@@ -202,7 +202,7 @@ Adapt's own config variable of the same name, crash-looping the pod. See
 for the full explanation.
 
 OCI charts do not use `helm repo add`. Chart signing and provenance remain
-future M2 supply-chain work.
+Phase 3 work in milestone M3.
 
 ## Application release summary
 

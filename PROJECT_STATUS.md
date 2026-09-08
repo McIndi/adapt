@@ -1,4 +1,4 @@
-<!-- MILEMARKER: milestone=M1 lanes_ok=8/8 lag=0 updated=2026-09-03 -->
+<!-- MILEMARKER: milestone=M1 lanes_ok=8/8 lag=0 updated=2026-09-04 -->
 # Project Status — adapt
 
 Tracked with the [milemarker-8](https://github.com) skill: eight lanes,
@@ -10,8 +10,9 @@ behind the current milestone. A milestone counts as reached only when
 every lane below reads `OK` for it.
 
 **Last closed milestone:** M1 — Security floor. The Kubernetes deployment
-tracer also passed its final review gate. M2 — Correct chart delivery is next.
-The active implementation sequence is in `CLEANUP_PLAN.md`; the completed
+tracer also passed its final review gate. M2 — Coordinated 0.5.2 release is
+next.
+The active implementation sequence is in `CLEANUP_PLAN.md`. The completed
 cleanup record is under `archive/`.
 
 The completed deployment tracer added an entire new deployment surface — a
@@ -27,9 +28,9 @@ canonical location and published live. Verifying it surfaced a real chart
 bug (the `adapt` release-name/service-link collision, still open — see
 the Docs lane) rather than just documentation gaps. All of it is
 reflected in the lane table below; see the per-lane notes for detail and
-for what is still open. The immediate work is chart `0.5.2`: fix the bare
-`adapt` release name, add digest image references, align `appVersion`, and
-complete the upload security documentation.
+for what is still open. The immediate work is a coordinated `0.5.2` release.
+It aligns the application, image, chart version, and chart `appVersion`. It
+also corrects the release-name failure and adds digest image references.
 
 ## Lane status
 
@@ -38,7 +39,7 @@ complete the upload security documentation.
 | 1 | Business logic | OK | v0.5.0 (bumped from v0.4.2 alongside the chart-publishing work below; no new business-logic change accompanied the bump). Since the last review: file upload (API + UI, permission-gated, path-traversal and MIME-sniffing checks), Helm chart persistence (PVC), automated superuser bootstrapping for the chart, and a NodePort service option. No action needed. |
 | 2 | Interface | OK | FastAPI app, generated per-resource routes, admin UI, MCP server, and now `POST /api/uploads` (with an upload card in the web UI for permitted users). The Helm chart adds a `NodePort` option for reaching the service without an Ingress controller. All present and documented. No action needed. |
 | 3 | Data | WIP | Application data: SQLite via SQLModel still uses `create_all()` and has no migration tool. This is retained as unscheduled work. Deployment data: the Helm chart supports PVC-backed persistence through dynamic provisioning or a pre-created claim. |
-| 4 | Packaging | OK | PyPI publishing uses OIDC trusted publishing. GHCR publishes the multi-platform image and the Helm chart. Chart `0.5.1` passed anonymous pull and kind install tests. Chart `appVersion` is still `0.4.2` while the app is `0.5.0`, and the chart cannot select an image by digest; both are Phase 1 work for chart `0.5.2`. Base-image digest pinning is Phase 2. The complete artifact evidence inventory, SBOMs, and missing image or chart signatures are Phase 3. PyPI already exposes Trusted Publishing provenance, so Phase 3 must inspect that evidence before adding anything there. |
+| 4 | Packaging | OK | PyPI publishing uses OIDC trusted publishing. GHCR publishes the multi-platform image and the Helm chart. Chart `0.5.1` passed anonymous pull and kind install tests. Phase 1 publishes the application, image, and chart as `0.5.2`. It also sets chart `appVersion` to `0.5.2` and adds digest image selection. The application and chart retain separate tag types. Base-image digest pinning is Phase 2. The artifact evidence inventory, SBOMs, and missing image or chart signatures are Phase 3. PyPI already exposes Trusted Publishing provenance, so Phase 3 must inspect that evidence before adding anything there. |
 | 5 | Automation | OK | CI runs the Python test matrix and `pip-audit`. Helm CI runs lint, unit, schema, and kind checks. The chart, image, and PyPI publish workflows require their test gates and matching release versions. Dependabot and base-image refresh automation are Phase 2. Supply-chain evidence is Phase 3. Python lint and coverage are Phase 4. Backup and restore automation remains unscheduled. |
 | 6 | Tests | OK | 334 Python tests (333 passed and 1 skipped) are gated in CI. The Helm chart has 52 `helm-unittest` cases plus kind smoke tests. Phase 1 adds regression coverage for disabled service links, the bare `adapt` release name, and image digests. Coverage reporting is Phase 4. |
 | 7 | Docs | OK | README, the Diataxis-style manual, the disclaimed specification, and `SECURITY.md` cover the current product and deployment surface. `RELEASING.md` documents application, image, and chart releases. Container and Kubernetes guidance is consolidated under `docs/manual/deployment.md`. The temporary chart guidance avoids a bare `adapt` release name because its Service injects an `ADAPT_PORT` value that conflicts with application configuration; Phase 1 fixes the chart and then removes this workaround. Phase 1 also adds the missing upload attack-surface discussion to `docs/manual/security.md`. `CHANGELOG.md` and its release automation remain unscheduled work. |
@@ -70,8 +71,8 @@ Business logic, interface, tests, and docs had already run far ahead of a
       threat-model note.
 
 M0 and M1 remain closed. The deployment tracer also passed its final review
-gate. Its remaining findings now start the ordered plan: chart correction in
-M2, dependency and supply-chain hardening in M3, and quality visibility in M4.
+gate. Its remaining findings now start the ordered plan: the coordinated
+`0.5.2` release in M2, supply-chain hardening in M3, and quality work in M4.
 M5 and M6 remain conditional on real user or availability requirements.
 
 ## Lane guidance

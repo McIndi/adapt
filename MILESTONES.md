@@ -28,25 +28,27 @@ detailed work log is archived at
 
 ## Active roadmap
 
-### M2 — Correct chart delivery
+### M2 — Coordinated 0.5.2 release
 
 Status: Next
 
-Goal: publish chart `0.5.2` without the known `adapt` release-name failure and
-with correct application metadata and digest-pinned image support.
+Goal: publish application, image, and chart version `0.5.2`. The chart removes
+the known `adapt` release-name failure and supports image digests.
 
 Phase:
 
-1. Corrective chart release.
+1. Coordinated application and chart release.
 
 Exit criteria:
 
 - The server and bootstrap pods disable Kubernetes service-link injection.
 - A kind install named `adapt` becomes ready and serves `/health`.
 - Both image tag and image digest forms are supported and tested.
-- Chart `appVersion` matches app `0.5.0`.
+- The Python package, container image, chart `version`, and chart `appVersion`
+  are `0.5.2`.
+- The application uses tag `v0.5.2`. The chart uses tag `chart-v0.5.2`.
 - The security manual covers the upload attack surface.
-- The release candidate and stable `0.5.2` pass a public registry round trip.
+- Chart `0.5.2-rc.1` and chart `0.5.2` pass a public registry round trip.
 
 ### M3 — Dependency and supply-chain hardening
 

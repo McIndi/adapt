@@ -2,6 +2,7 @@
 
 Status: Active — Phase 1 is next
 Created: 2026-09-03
+Updated: 2026-09-04
 
 This plan replaces the completed container and Helm cleanup plan. The full
 record of that work is in
@@ -16,7 +17,7 @@ The phases are grouped into these milestones:
 
 | Milestone | Phases | Outcome |
 |---|---:|---|
-| M2 — Correct chart delivery | 1 | The chart is safe under its natural release name and publishes a correct, digest-pinnable image reference. |
+| M2 — Coordinated 0.5.2 release | 1 | Application, image, and chart `0.5.2` publish with aligned metadata and a digest-pinnable image reference. |
 | M3 — Dependency and supply-chain hardening | 2–3 | Automated updates, a pinned base image, artifact inventories, SBOMs, signatures, and verification instructions are in place. |
 | M4 — Quality visibility | 4 | Python lint and test coverage run in CI with an agreed baseline. |
 | M5 — Declarative docroot seeding | 5 | If users need it, the chart can seed a docroot safely and repeatably. Otherwise, the decision to omit it is recorded. |
@@ -33,14 +34,14 @@ The phases are grouped into these milestones:
 - A conditional phase can close as `N/A` when its decision gate finds no real
   requirement. Record the reason instead of building speculative features.
 
-## Phase 1 — Corrective chart release
+## Phase 1 — Coordinated application and chart release
 
 Milestone: M2
 
 ### Goal
 
-Remove the known release-name failure and publish a chart whose metadata and
-image reference controls match the current application release.
+Remove the known release-name failure. Publish application, image, and chart
+version `0.5.2` with aligned metadata.
 
 ### Scope
 
@@ -48,36 +49,47 @@ image reference controls match the current application release.
   Job. This prevents the Service named `adapt` from injecting an `ADAPT_PORT`
   value that conflicts with Adapt configuration.
 - Add Helm unit tests for both pod specifications.
-- Run the kind smoke test with the exact Helm release name `adapt` and confirm
+- Run the kind smoke test with the exact Helm release name `adapt` and verify
   that the pod becomes ready and `/health` returns HTTP 200.
 - Add `image.digest` to values, schema, templates, tests, and documentation.
   When set, render `repository@digest` without a tag.
-- Set the chart `appVersion` to the current application version (`0.5.0`).
-- Bump the chart to `0.5.2` after the templates and metadata are ready.
+- Set the application version to `0.5.2` in `pyproject.toml` and
+  `adapt/__init__.py`.
+- Set both `version` and `appVersion` to `0.5.2` in
+  `charts/adapt/Chart.yaml` for the stable release.
+- Keep the application and chart tag types separate. Use `v0.5.2` for the
+  application release and `chart-v0.5.2` for the chart release.
+- Publish the `0.5.2` Python package and container image before the chart. This
+  order makes the chart default image available during chart verification.
 - Add the upload threat surface to `docs/manual/security.md`: path traversal,
   content-type or MIME confusion, file-size limits, and authorization.
-- Publish and test a release candidate before the stable chart.
+- Update `RELEASING.md` with the coordinated release order.
+- Publish and test chart `0.5.2-rc.1` with `appVersion: "0.5.2"` before the
+  stable chart.
 - After stable verification, remove the temporary warning that tells users not
   to use `adapt` as the release name.
 
-### Validation
+### Verification
 
 - `helm lint charts/adapt`
 - `helm unittest charts/adapt`
 - `bash tools/test-helm-schema.sh`
 - The supported kind matrix passes, including an install named `adapt`.
 - `helm template` tests cover image tag and digest rendering.
+- The application version command and package metadata report `0.5.2`.
+- The published `0.5.2` container image supports both target architectures.
 - `mkdocs build --strict`
 - A clean environment can anonymously pull and install the release candidate.
-- The same check passes for stable `0.5.2` before this phase closes.
+- The clean-environment installation passes for stable chart `0.5.2`.
 
 ### Review Gate 1
 
 - The bare `adapt` release name no longer causes a crash loop.
 - Tag and digest image modes both render valid, exclusive image references.
-- Chart version and `appVersion` are correct.
+- The package, image, chart `version`, and chart `appVersion` are `0.5.2`.
+- The `v0.5.2` and `chart-v0.5.2` tags publish the correct artifact types.
 - The security manual covers uploads.
-- The release candidate and stable package both pass the remote round trip.
+- Chart `0.5.2-rc.1` and chart `0.5.2` both pass the remote round trip.
 
 ## Phase 2 — Dependency automation and base-image pinning
 
@@ -95,8 +107,8 @@ Keep dependencies current and make the Docker base image input reproducible.
 - Pin the Python base image by tag and multi-platform manifest digest.
 - Keep the human-readable Python version in the `FROM` line.
 - Document how and when the digest is refreshed.
-- Let dependency-update pull requests handle routine action runtime updates;
-  do not mix unrelated upgrades into the initial configuration change.
+- Let dependency-update pull requests handle routine action runtime updates.
+  Do not mix unrelated upgrades into the initial configuration change.
 
 ### Validation
 
@@ -142,8 +154,8 @@ duplicating evidence that the registries already produce.
 - Download or pull every artifact from its public registry.
 - Verify its identity, signature or provenance, and SBOM from a clean
   environment with the documented commands.
-- Confirm that failed verification returns a nonzero exit code.
-- Confirm that publish workflows still require their existing test gates.
+- Verify that failed verification returns a nonzero exit code.
+- Verify that publish workflows still require their existing test gates.
 
 ### Review Gate 3
 
@@ -245,7 +257,7 @@ single-replica limit.
 - Produce a migration and rollback plan for existing single-replica installs.
 - Complete an architecture review before changing `replicaCount` behavior.
 
-### Implementation and validation if approved
+### Implementation and verification if approved
 
 - Implement the approved storage and coordination design across the
   application and chart.
