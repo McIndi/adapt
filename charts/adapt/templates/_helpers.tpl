@@ -39,3 +39,17 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{- define "adapt.image" -}}
+{{- $repo := required "image.repository is required" .Values.image.repository -}}
+{{- $digest := default "" .Values.image.digest | toString | trim -}}
+{{- $tag := default "" .Values.image.tag | toString | trim -}}
+{{- if and $digest $tag -}}
+{{- fail "Set image.digest or image.tag, not both. When image.digest is set, leave image.tag empty so the chart renders repository@digest." -}}
+{{- end -}}
+{{- if $digest -}}
+{{- printf "%s@%s" $repo $digest -}}
+{{- else -}}
+{{- printf "%s:%s" $repo ($tag | default .Chart.AppVersion) -}}
+{{- end -}}
+{{- end }}

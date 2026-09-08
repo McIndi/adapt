@@ -133,6 +133,48 @@ tests:
           path: spec.template.spec.containers[0].volumeMounts[0].mountPath
           value: /data
 
+  - it: disables Kubernetes service-link environment variables
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.enableServiceLinks
+          value: false
+
+  - it: uses Chart appVersion when tag and digest are empty
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/mcindi/adapt-server:0.5.2
+
+  - it: renders repository@digest when digest is set
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+      image.digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/mcindi/adapt-server@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+  - it: rejects tag and digest together
+    set:
+      bootstrapAdmin.enabled: true
+      persistence.enabled: true
+      image.tag: "0.5.2"
+      image.digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    template: templates/admin-bootstrap-job.yaml
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.digest or image.tag"
+
   - it: Job mounts an existingClaim PVC when configured
     set:
       bootstrapAdmin.enabled: true

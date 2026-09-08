@@ -196,4 +196,35 @@ tests:
               secretKeyRef:
                 name: adapt-oidc
                 key: client-secret
+  - it: disables Kubernetes service-link environment variables
+    asserts:
+      - equal:
+          path: spec.template.spec.enableServiceLinks
+          value: false
+  - it: uses Chart appVersion when tag and digest are empty
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/mcindi/adapt-server:0.5.2
+  - it: renders an explicit image tag
+    set:
+      image.tag: "local-build"
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/mcindi/adapt-server:local-build
+  - it: renders repository@digest when digest is set
+    set:
+      image.digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: ghcr.io/mcindi/adapt-server@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+  - it: rejects tag and digest together
+    set:
+      image.tag: "0.5.2"
+      image.digest: sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+    asserts:
+      - failedTemplate:
+          errorPattern: "image.digest or image.tag"
 

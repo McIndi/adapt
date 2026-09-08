@@ -30,14 +30,15 @@ detailed work log is archived at
 
 ### M2 — Coordinated 0.5.2 release
 
-Status: Next (Phase 1 not started)
+Status: In progress (repository work for Phase 1; publish still open)
 
 Goal: publish application, image, and chart version `0.5.2`. The chart removes
 the known `adapt` release-name failure and supports image digests.
 
-Evidence on 2026-09-08: `pyproject.toml` and `adapt/__init__.py` are `0.5.0`.
-Chart `version` is `0.5.1`. Chart `appVersion` is `0.4.2`. Templates do not
-set `enableServiceLinks: false`. Values have no `image.digest`.
+Evidence on 2026-09-08: source versions are `0.5.2`. Templates set
+`enableServiceLinks: false`. Values include `image.digest`. Helm unit tests
+cover tag and digest forms. Helm CI installs a release named `adapt`.
+Registry tags `v0.5.2` and `chart-v0.5.2` are not cut yet.
 
 Phase:
 
@@ -134,7 +135,7 @@ Exit criteria:
 
 ### Keycloak OIDC (product tracer, not M2)
 
-Status: Done in the working tree (commit it before M2 Phase 1)
+Status: Done
 
 A Vagrant VM now starts Keycloak on `192.168.58.30:8080` for a live SSO
 check. Automated tests still mock Keycloak.

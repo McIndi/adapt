@@ -9,7 +9,7 @@ and in the project [README](https://github.com/McIndi/adapt#readme).
 ## Install
 
 ```bash
-helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2
 ```
 
 This is the canonical install command — no `git clone` is required. `helm
@@ -17,35 +17,19 @@ show chart` and `helm show values` work the same way, against the OCI
 reference, without a checkout:
 
 ```bash
-helm show chart oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
-helm show values oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
+helm show chart oci://ghcr.io/mcindi/charts/adapt --version 0.5.2
+helm show values oci://ghcr.io/mcindi/charts/adapt --version 0.5.2
 ```
 
 If you are developing the chart itself, install from the local checkout
 instead: `helm install myadapt ./charts/adapt`.
 
-**Avoid the release name `adapt` by itself.** The chart's `fullname` helper
-collapses to the bare release name whenever that name contains `adapt`
-(`charts/adapt/templates/_helpers.tpl`). If the release name is literally
-`adapt`, every chart resource — including the Service — is also named
-`adapt`. Kubernetes then injects Docker-links-style environment variables
-into every pod in the namespace named after each Service
-(`<SERVICE>_SERVICE_HOST`, `<SERVICE>_PORT`, and so on), and for a Service
-named `adapt` that includes `ADAPT_PORT` — which collides with Adapt's own
-`ADAPT_PORT` configuration variable and is not an integer
-(`tcp://10.x.x.x:80`). The server then fails to start with
-`ADAPT_PORT must be an integer`, and the pod crash-loops. This was confirmed
-on a real `kind` cluster while writing this page: running with release name
-`adapt` deploys, then the pod restarts into `CrashLoopBackOff` once the
-Service exists. Use any release name that does not resolve to exactly
-`adapt` — for example `myadapt` (still demonstrates the collapse rule, since
-it contains `adapt`, without colliding). The chart does not currently
-expose a way to disable Kubernetes' service-link env var injection
-(`enableServiceLinks: false` on the pod spec, the standard fix for this
-class of collision); until it does, the release name is the only lever.
-**Every example on this page, including the canonical install command
-above, uses `myadapt` for this reason — none of them use the bare release
-name `adapt`.**
+The release name `adapt` is valid. The server Deployment and the bootstrap
+Job set `enableServiceLinks: false`, so Kubernetes does not inject
+`ADAPT_PORT` from a Service named `adapt`. Examples on this page still use
+`myadapt` because that name shows the chart `fullname` collapse rule: when
+the release name contains `adapt`, resource names equal the release name
+(`myadapt`, not `myadapt-adapt`).
 
 ## Persistence modes
 
@@ -56,13 +40,13 @@ restarts and rescheduling.
 **Ephemeral (default):**
 
 ```bash
-helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2
 ```
 
 **Dynamic PVC — cluster provisions the volume automatically:**
 
 ```bash
-helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2 \
   --set persistence.enabled=true \
   --set persistence.size=20Gi \
   --set persistence.storageClass=standard
@@ -78,7 +62,7 @@ release name contains `adapt`, the claim name is `<release>`. If
 ```bash
 kubectl apply -f my-adapt-pvc.yaml
 
-helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2 \
   --set persistence.enabled=true \
   --set persistence.existingClaim=my-adapt-pvc
 ```
@@ -102,28 +86,30 @@ The chart does not create a `PersistentVolumeClaim` object in this mode.
 | Value | Default | Description |
 |---|---|---|
 | `image.repository` | `ghcr.io/mcindi/adapt-server` | Image repository |
-| `image.tag` | `""` (uses `Chart.yaml` `appVersion`) | Image tag |
+| `image.tag` | `""` (uses `Chart.yaml` `appVersion`) | Image tag. Leave empty when `image.digest` is set. |
+| `image.digest` | `""` | Image digest (`sha256:...`). When set, the chart renders `repository@digest` and does not append a tag. |
 | `image.pullPolicy` | `IfNotPresent` | Image pull policy |
 | `imagePullSecrets` | `[]` | List of `{name: <secret>}` objects for a private registry |
 
 Point at a private mirror or an air-gapped registry:
 
 ```bash
-helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2 \
   --set image.repository=my-registry.example.com/adapt-server \
-  --set image.tag=0.5.0 \
+  --set image.tag=0.5.2 \
   --set imagePullSecrets[0].name=my-registry-pull-secret
 ```
 
-**Known limitation — digest pinning is not supported through values.** The
-Deployment template always renders `{{ image.repository }}:{{ image.tag }}`.
-Setting `image.repository` to a `repo@sha256:...` reference still appends
-`:<tag>`, producing an invalid image reference
-(`repo@sha256:...:<tag>`), which the container runtime rejects. If your
-cluster requires digest-pinned images, do not attempt this through values —
-either fork the template or wait for chart support. Signing and provenance
-for the chart itself are also not yet implemented (Phase 3 and milestone M3 in
-`MILESTONES.md`).
+Pin the image by digest. Do not set `image.tag` in the same install:
+
+```bash
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2 \
+  --set image.digest=sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+```
+
+Do not put `@sha256:...` inside `image.repository`. The chart would then
+render an invalid reference. Signing and provenance for the chart itself
+are not yet implemented (milestone M3 in `MILESTONES.md`).
 
 ## Upload settings
 
@@ -193,7 +179,7 @@ command through a `post-install,post-upgrade` Helm hook Job that gets
 credentials from a Kubernetes Secret:
 
 ```bash
-helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2 \
   --set persistence.enabled=true \
   --set bootstrapAdmin.enabled=true \
   --set bootstrapAdmin.username=admin
@@ -246,7 +232,7 @@ it to `NodePort`. You can also pin the port so it stays stable across
 reinstalls:
 
 ```bash
-helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2 \
   --set service.type=NodePort \
   --set service.nodePort=30080
 ```
@@ -302,7 +288,7 @@ setting the individual flags above:
 LOCAL_IMAGE=your-local-image
 LOCAL_TAG=your-tag
 
-helm upgrade --install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+helm upgrade --install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2 \
   -f charts/adapt/values-dev.yaml \
   --set image.repository="$LOCAL_IMAGE" --set image.tag="$LOCAL_TAG"
 ```
@@ -316,15 +302,15 @@ value to an available StorageClass.
 
 One ordered path from an empty cluster to a populated, logged-in instance.
 Every command below was run in order against a real `kind` cluster while
-writing this page, using the release name `myadapt` (see the warning under
-[Install](#install) for why not `adapt`). Substitute your own values for
-`editor` (username), the two example passwords, and the document(s) you
-copy in — everything else can be copy-pasted as-is.
+writing this page, using the release name `myadapt`. Substitute your own
+values for `editor` (username), the two example passwords, and the
+document(s) you copy in. Everything else can be copy-pasted as-is. The
+release name `adapt` is also valid.
 
 1. **Install with persistence and automated bootstrap:**
 
    ```bash
-   helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+   helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2 \
      --set persistence.enabled=true \
      --set bootstrapAdmin.enabled=true \
      --set bootstrapAdmin.username=admin \
@@ -417,7 +403,7 @@ copy in — everything else can be copy-pasted as-is.
    requirement from the upload settings section above:
 
    ```bash
-   helm upgrade myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1 \
+   helm upgrade myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2 \
      --reuse-values \
      --set env[0].name=ADAPT_UPLOAD_ENABLED \
      --set-string env[0].value=true

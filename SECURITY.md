@@ -2,13 +2,13 @@
 
 ## Supported Versions
 
-Adapt is pre-1.0 (currently `0.4.x`). Only the latest published release on
+Adapt is pre-1.0 (currently `0.5.x`). Only the latest published release on
 PyPI is supported with security fixes. There is no LTS branch yet.
 
 | Version | Supported |
 |---------|-----------|
-| 0.4.x   | Yes |
-| < 0.4   | No  |
+| 0.5.x   | Yes |
+| < 0.5   | No  |
 
 ## Reporting a Vulnerability
 
@@ -44,6 +44,10 @@ of two kinds:
   or change data.
 - An authenticated low-privilege user that tries to go beyond their
   granted permissions.
+
+Uploads (`POST /api/uploads`) are off by default. When enabled, they
+require `write` on the document root, reject path traversal, enforce a
+size limit, and can sniff MIME types. See `docs/manual/security.md`.
 
 Controls already in place (see `docs/manual/security.md` for detail):
 
@@ -94,5 +98,5 @@ Do not wait until someone finds a vulnerability to update it.
   (`.github/workflows/publish-pypi.yml`). This repository stores no
   long-lived PyPI token.
 - Artifact signing and SBOM (Software Bill of Materials) generation are
-  not yet in place. These are planned for milestone M2 (see
+  not yet in place. These are planned for milestone M3 (see
   `MILESTONES.md`).

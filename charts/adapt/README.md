@@ -7,13 +7,13 @@ environment.
 ## Quick install
 
 ```bash
-helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2
 ```
 
-**Do not use the release name `adapt` by itself** — it collides with a
-Kubernetes-injected environment variable and crash-loops the pod. See
+The release name `adapt` is valid. Server and bootstrap pods set
+`enableServiceLinks: false`. See
 [Kubernetes (Helm)](https://www.mcindi.com/adapt/manual/kubernetes/#install)
-for why.
+for resource naming when the release name contains `adapt`.
 
 ## Persistence
 
@@ -50,7 +50,8 @@ document-root boundary see an upload card on `/` and can also call
 
 See [`values.yaml`](values.yaml) for the full chart surface, including
 `persistence`, `service`, `ingress`, `image`, `imagePullSecrets`, `env`,
-`secretEnv`, and `oidc`.
+`secretEnv`, `oidc`, and `image.digest`. Set `image.digest` to a
+`sha256:...` value and leave `image.tag` empty to pin by digest.
 
 ## Keycloak OIDC
 

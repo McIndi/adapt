@@ -34,6 +34,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
     spec:
+      enableServiceLinks: false
       serviceAccountName: {{ include "adapt.serviceAccountName" . }}
       {{- with .Values.podSecurityContext }}
       securityContext:
@@ -45,7 +46,7 @@ spec:
       {{- end }}
       containers:
       - name: adapt
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        image: {{ include "adapt.image" . | quote }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           {{- toYaml .Values.securityContext | nindent 10 }}

@@ -216,13 +216,11 @@ chart is published to `oci://ghcr.io/mcindi/charts/adapt`:
 ```bash
 docker run -p 8000:8000 -v "$(pwd)/docroot:/data" ghcr.io/mcindi/adapt-server:latest
 
-helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.1
+helm install myadapt oci://ghcr.io/mcindi/charts/adapt --version 0.5.2
 ```
 
-Use a release name other than the bare `adapt` — see
-[Deployment](docs/manual/deployment.md) for why, plus the bind-mount
-ownership requirement, persistence, admin bootstrapping, service exposure,
-and a full day-1 walkthrough.
+The Helm chart README and the Kubernetes manual cover persistence, uploads,
+admin bootstrap, and service exposure.
 
 ## Documentation
 

@@ -10,6 +10,26 @@ both release types.
 
 This guide gives the complete Helm chart release procedure.
 
+## Coordinated application and chart release
+
+Publish the Python package and the container image before the chart. The
+chart `appVersion` must match an image that already exists.
+
+For `0.5.2`:
+
+1. Confirm `pyproject.toml` and `adapt/__init__.py` report `0.5.2`.
+2. Create the GitHub Release with tag `v0.5.2`. That publishes PyPI and
+   `ghcr.io/mcindi/adapt-server:0.5.2`.
+3. Confirm the image exists for `linux/amd64` and `linux/arm64`.
+4. Set chart `version` to `0.5.2-rc.1` and `appVersion` to `"0.5.2"`. Tag
+   `chart-v0.5.2-rc.1` and follow the Helm chart release steps below.
+5. From a clean machine, pull and install the RC. Include
+   `helm install adapt ...` and confirm `/health` returns HTTP 200.
+6. Set chart `version` to `0.5.2`. Tag `chart-v0.5.2` and repeat the Helm
+   chart release steps.
+
+Do not use one git tag for both the application and the chart.
+
 ## Helm chart release
 
 ### 1. Select the chart version
@@ -19,17 +39,17 @@ Use semantic versioning for `charts/adapt/Chart.yaml` `version`.
 Use a release candidate for the first registry test of a new chart release:
 
 ```yaml
-version: 0.5.1-rc.1
+version: 0.5.2-rc.1
 ```
 
 Set the same value in your shell. The commands below use this variable:
 
 ```bash
-ADAPT_CHART_VERSION=0.5.1-rc.1
+ADAPT_CHART_VERSION=0.5.2-rc.1
 ```
 
-Keep `appVersion` unchanged unless the chart uses a different Adapt image.
-The application and chart versions are independent.
+Keep `appVersion` equal to the Adapt image you already published. For the
+`0.5.2` chart, `appVersion` is `"0.5.2"`.
 
 ### 2. Run the local checks
 
@@ -164,15 +184,15 @@ milestone log. Do not mark the review gate complete without this evidence.
 If the release candidate passes, change `Chart.yaml` from the release
 candidate to the stable version.
 
-For example, change `0.5.1-rc.1` to `0.5.1`. Then repeat all release steps
-with the stable version and `chart-v0.5.1` tag. Update the shell variable first:
+For example, change `0.5.2-rc.1` to `0.5.2`. Then repeat all release steps
+with the stable version and `chart-v0.5.2` tag. Update the shell variable first:
 
 ```bash
-ADAPT_CHART_VERSION=0.5.1
+ADAPT_CHART_VERSION=0.5.2
 ```
 
 Do not reuse or move a published tag. If a release candidate is incorrect,
-create a new version such as `0.5.1-rc.2`.
+create a new version such as `0.5.2-rc.2`.
 
 ## Failure recovery
 
@@ -194,12 +214,7 @@ helm install myadapt oci://ghcr.io/mcindi/charts/adapt \
   --version "${ADAPT_CHART_VERSION}"
 ```
 
-Do not use the release name `adapt` by itself — the chart's `fullname`
-helper collapses to a bare Service named `adapt`, which Kubernetes shadows
-with an auto-injected `ADAPT_PORT` environment variable that collides with
-Adapt's own config variable of the same name, crash-looping the pod. See
-[Kubernetes (Helm)](https://www.mcindi.com/adapt/manual/kubernetes/#install)
-for the full explanation.
+The release name `adapt` is valid on chart `0.5.2` and later.
 
 OCI charts do not use `helm repo add`. Chart signing and provenance remain
 Phase 3 work in milestone M3.

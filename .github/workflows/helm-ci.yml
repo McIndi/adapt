@@ -95,6 +95,19 @@ jobs:
           --charts charts/adapt
           --helm-extra-set-args "--set image.repository=adapt-ci --set image.tag=${{ github.sha }} --set image.pullPolicy=IfNotPresent --set persistence.enabled=true --set persistence.storageClass=standard"
 
+      - name: Install with Helm release name adapt
+        run: |
+          set -eu
+          kubectl create namespace adapt-name-smoke
+          helm install adapt charts/adapt \
+            --namespace adapt-name-smoke \
+            --set image.repository=adapt-ci \
+            --set image.tag="${{ github.sha }}" \
+            --set image.pullPolicy=IfNotPresent \
+            --wait --timeout 5m
+          kubectl -n adapt-name-smoke wait --for=condition=available deploy/adapt --timeout=180s
+          helm test adapt --namespace adapt-name-smoke
+
   version-increment:
     name: Chart version increment check
     runs-on: ubuntu-latest

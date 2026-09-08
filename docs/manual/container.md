@@ -9,7 +9,7 @@ from a local `pip install` covered in [Installation](installation.md).
 The image is published to GHCR as `ghcr.io/mcindi/adapt-server`:
 
 - `ghcr.io/mcindi/adapt-server:<version>` — pushed on every release, matching
-  the `pyproject.toml` version (for example `0.5.0`, the current release)
+  the `pyproject.toml` version (for example `0.5.2`, the current release)
 - `ghcr.io/mcindi/adapt-server:latest` — pushed only for non-prerelease
   releases
 
@@ -18,7 +18,7 @@ Each tag is a multi-arch manifest list covering `linux/amd64` and
 architecture automatically.
 
 ```bash
-docker pull ghcr.io/mcindi/adapt-server:0.5.0
+docker pull ghcr.io/mcindi/adapt-server:0.5.2
 ```
 
 ## Running the image
@@ -34,7 +34,7 @@ sudo chown 1000:1000 ./docroot   # required — see below
 docker run -d --name adapt \
   -p 8000:8000 \
   -v "$(pwd)/docroot:/data" \
-  ghcr.io/mcindi/adapt-server:0.5.0
+  ghcr.io/mcindi/adapt-server:0.5.2
 ```
 
 Open `http://localhost:8000`.
@@ -91,7 +91,7 @@ docker run -d --name adapt \
   -v "$(pwd)/docroot:/data" \
   -e ADAPT_UPLOAD_ENABLED=true \
   -e ADAPT_UPLOAD_MAX_SIZE_BYTES=10485760 \
-  ghcr.io/mcindi/adapt-server:0.5.0
+  ghcr.io/mcindi/adapt-server:0.5.2
 ```
 
 See [Installation → Configuration File](installation.md#configuration-file)
@@ -109,10 +109,10 @@ Append arguments after the image name to run a different command against the
 same image, for example to change the port or run a one-off admin command:
 
 ```bash
-docker run --rm -v "$(pwd)/docroot:/data" ghcr.io/mcindi/adapt-server:0.5.0 \
+docker run --rm -v "$(pwd)/docroot:/data" ghcr.io/mcindi/adapt-server:0.5.2 \
   adapt serve /data --host 0.0.0.0 --port 9090
 
-docker run --rm ghcr.io/mcindi/adapt-server:0.5.0 adapt --help
+docker run --rm ghcr.io/mcindi/adapt-server:0.5.2 adapt --help
 ```
 
 ## Verifying the image
@@ -121,7 +121,7 @@ Inspect the OCI labels a plain `docker build` or a pulled release image
 carries:
 
 ```bash
-docker image inspect ghcr.io/mcindi/adapt-server:0.5.0 --format '{{json .Config.Labels}}'
+docker image inspect ghcr.io/mcindi/adapt-server:0.5.2 --format '{{json .Config.Labels}}'
 ```
 
 This includes `org.opencontainers.image.version`, `.source`, `.revision`,
@@ -130,7 +130,7 @@ This includes `org.opencontainers.image.version`, `.source`, `.revision`,
 Inspect the multi-arch manifest list to confirm both platforms are present:
 
 ```bash
-docker buildx imagetools inspect ghcr.io/mcindi/adapt-server:0.5.0
+docker buildx imagetools inspect ghcr.io/mcindi/adapt-server:0.5.2
 ```
 
 The image also carries a built-in `HEALTHCHECK` that polls `/health` every

@@ -1,4 +1,4 @@
-<!-- MILEMARKER: milestone=M1 lanes_ok=7/8 lag=0 updated=2026-09-08 -->
+<!-- MILEMARKER: milestone=M2 lanes_ok=5/8 lag=0 updated=2026-09-08 -->
 # Project Status — adapt
 
 Tracked with the [milemarker-8](https://github.com) skill: eight lanes,
@@ -11,34 +11,32 @@ every lane below reads `OK` for it.
 
 **Last closed milestone:** M1 — Security floor, plus the Kubernetes
 deployment tracer. **Current milestone:** M2 — Coordinated 0.5.2 release
-(not started). Data stays `WIP` on purpose: schema work still uses
-`create_all()` plus additive `ALTER` statements. That is a named gap, not
-M1 `LAG`.
+(in the repository; publish is still open). Data stays `WIP` on purpose:
+schema work still uses `create_all()` plus additive `ALTER` statements.
 
 The active sequence is `CLEANUP_PLAN.md`. The completed Helm and image
 work is under `archive/`.
 
-Shipped today: Python package and image `0.5.0`, chart `0.5.1` at
-`oci://ghcr.io/mcindi/charts/adapt`. Chart `appVersion` is still `0.4.2`.
-A Helm release named `adapt` still collides with Kubernetes service links.
-Keycloak OIDC for UI, REST, and MCP is implemented in the working tree
-(including a Vagrant Keycloak VM). It is not the M2 packaging work.
+Repository versions are now `0.5.2` (`pyproject.toml`, `adapt/__init__.py`,
+chart `version`, chart `appVersion`). The chart sets
+`enableServiceLinks: false` and supports `image.digest`. Helm CI installs
+a release named `adapt` and runs `helm test`. Tags `v0.5.2` and
+`chart-v0.5.2` are not published yet. Follow `RELEASING.md` for that order.
 
-Assessment 2026-09-08: do not start M3 until M2 Phase 1 in `CLEANUP_PLAN.md`
-passes its review gate.
+Do not start M3 until Review Gate 1 in `CLEANUP_PLAN.md` passes.
 
 ## Lane status
 
 | # | Lane | Status | Next action |
 |---|------|--------|-------------|
-| 1 | Business logic | OK | Land the Keycloak OIDC working tree on the default branch. Then start M2 Phase 1: `enableServiceLinks: false`, versions `0.5.2`, and image digest values. |
-| 2 | Interface | OK | FastAPI, generated routes, admin UI, MCP, uploads, OIDC login/callback/logout, RFC 9728 PRM, and MCP 401 when OIDC is on. No extra interface work is required for M2. |
-| 3 | Data | WIP | SQLite still uses `create_all()`. OIDC adds `usergroup.oidc_managed` and `dbsession.id_token` with `ALTER`. No migration tool. Chart PVC persistence exists. Migrations stay unscheduled until M6 needs them. |
-| 4 | Packaging | OK for M1 | App `0.5.0`, chart `0.5.1`, chart `appVersion` `0.4.2`. M2 must publish package, image, chart `version`, and chart `appVersion` as `0.5.2`. Tags stay `v0.5.2` and `chart-v0.5.2`. Base-image digest pin is M3 Phase 2. SBOM and signing are M3 Phase 3. |
-| 5 | Automation | OK for M1 | Python CI plus `pip-audit`. Helm CI: lint, unit, schema, kind. Chart `oidc:` maps to `ADAPT_OIDC_*`. Vagrant now boots Keycloak for a live SSO check. M2 still needs the `adapt` kind install and digest template tests. Dependabot is M3. Lint and coverage are M4. Backup and restore stay unscheduled. |
-| 6 | Tests | OK | Python suite plus `tests/test_oidc.py` (no live Keycloak). Helm unittest lives in CI. M2 adds Helm tests for service-link disable and digest vs tag image refs. Coverage is M4. |
-| 7 | Docs | OK for M1 | Manual and spec cover OIDC. M2 must add upload threat notes, remove the "do not name the release `adapt`" warning after the fix, and refresh `SECURITY.md` (it still says supported `0.4.x` and puts SBOM in M2). |
-| 8 | Security | OK for M1 | OIDC checks iss/aud/exp on JWKS, PKCE for browser SSO, unusable hashes for JIT users, CSRF exempt for Bearer-only POST. Operator still owns token audience and DCR. M2 adds upload threat notes. Secret scanning, SAST, and image CVE scans stay unscheduled. |
+| 1 | Business logic | OK | No new product behavior in M2. Next: create tag `v0.5.2` after this change lands. |
+| 2 | Interface | OK | FastAPI, generated routes, admin UI, MCP, uploads, OIDC. Chart values gained `image.digest`. |
+| 3 | Data | WIP | SQLite still uses `create_all()`. OIDC adds columns with `ALTER`. No migration tool. Chart PVC persistence exists. |
+| 4 | Packaging | WIP | Source versions are `0.5.2`. PyPI, GHCR image, and OCI chart `0.5.2` are not published. Publish the image before the chart. RC chart `0.5.2-rc.1` then stable `chart-v0.5.2`. |
+| 5 | Automation | WIP | Helm CI now installs release name `adapt`. Gate still needs a green kind run on CI and the public registry round trip. Dependabot is M3. |
+| 6 | Tests | OK | Helm unit tests cover service links and digest vs tag. Python suite unchanged for this phase. Coverage is M4. |
+| 7 | Docs | OK | Security manual covers uploads. `SECURITY.md` tracks `0.5.x`. Kubernetes docs describe digest pins and a valid `adapt` release name. |
+| 8 | Security | OK | Upload threat notes are in the security manual. Secret scanning, SAST, and image CVE scans stay unscheduled. SBOM and signing stay M3. |
 
 Keep this table's shape stable (one row per lane, status in column 3) so
 it stays `grep`-able — see the rollup convention at the bottom.

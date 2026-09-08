@@ -224,18 +224,11 @@ documentation. This section covers the failures those paths hit most often.
 
 ### Pod `CrashLoopBackOff` with `ADAPT_PORT must be an integer`
 
-This happens specifically when the Helm release name resolves to the bare
-name `adapt` (for example `helm install adapt oci://ghcr.io/mcindi/charts/adapt
-...`). The chart's Service is then also named `adapt`, and Kubernetes
-injects an `ADAPT_PORT` service-link environment variable (a URL, not an
-integer) into every pod in the namespace, which collides with — and
-overrides — Adapt's own `ADAPT_PORT` config variable. Reinstall with a
-release name that does not resolve to exactly `adapt`, for example
-`myadapt`. See
-[Known Limitations](known_limitations.md#helm-release-name-adapt-collides-with-its-own-config-variable)
-for the full explanation and
-[Kubernetes (Helm) → Install](kubernetes.md#install) for the warning in
-context.
+Older chart versions injected Kubernetes service-link variables. A Helm
+release named `adapt` then set `ADAPT_PORT` to a URL, and the server
+rejected it. Chart `0.5.2` sets `enableServiceLinks: false` on the server
+and bootstrap pods. Upgrade to chart `0.5.2` or later if you still see
+this error. See [Kubernetes (Helm) → Install](kubernetes.md#install).
 
 ### Pod `CrashLoopBackOff` on a PVC the container cannot write
 

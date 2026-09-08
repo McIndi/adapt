@@ -228,6 +228,52 @@ The record does not contain dataset values.
 Audit records describe successful operations. If you need a history that
 includes failed requests, use trusted reverse-proxy access logs.
 
+## File uploads
+
+Uploads are off by default (`upload.enabled` / `ADAPT_UPLOAD_ENABLED`).
+`POST /api/uploads` is the only write path that creates a new file in the
+document root from an HTTP client.
+
+Authorization:
+
+- The caller must authenticate.
+- The caller must have `write` on the document root (`""`). Superusers have
+  this permission. Other users need an explicit grant.
+- Read-only mode (`--readonly`) rejects uploads with `405`.
+
+Path traversal:
+
+- The `filename` field must be a single basename. Slashes, backslashes,
+  absolute paths, `..` segments, hidden names, and directories are rejected.
+- The resolved target must stay in the document root. Symlinks that escape
+  the root are rejected.
+
+Size limits:
+
+- The default limit is 10 MiB (`upload.max_size_bytes` /
+  `ADAPT_UPLOAD_MAX_SIZE_BYTES`).
+- The handler counts bytes while it writes. A payload over the limit
+  returns `413`.
+
+Content type and MIME confusion:
+
+- Extension allow and deny lists apply first (`allowed_extensions`,
+  `denied_extensions`).
+- Strict MIME sniffing is off by default. When
+  `upload.strict_mime_sniffing` is true, Adapt sniffs the first 4096 bytes
+  and compares that type with the filename extension and the provided
+  `Content-Type`. A mismatch returns `400`.
+- Optional `allowed_mime_types` applies only when strict sniffing is on.
+
+Collision:
+
+- Default policy is `overwrite`. Set `collision_policy` to `reject` to
+  return `409` when the file already exists.
+
+Successful and denied uploads write audit records (`upload_success`,
+`upload_denied`, `upload_failed`). A new file also gets an owner group
+(`upload_owner_<filename>`) with read and write on the discovered resource.
+
 ## Practical Checks
 
 ```bash

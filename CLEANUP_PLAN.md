@@ -1,8 +1,9 @@
 # Adapt Hardening Plan
 
-Status: Active — Phase 1 is next
+Status: Active — Phase 1 is in the repository. Review Gate 1 waits on
+publish (`v0.5.2`, chart `0.5.2-rc.1`, then `chart-v0.5.2`).
 Created: 2026-09-03
-Updated: 2026-09-04
+Updated: 2026-09-08
 
 This plan replaces the completed container and Helm cleanup plan. The full
 record of that work is in

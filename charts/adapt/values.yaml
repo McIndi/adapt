@@ -4,6 +4,9 @@ image:
   repository: ghcr.io/mcindi/adapt-server
   pullPolicy: IfNotPresent
   tag: ""
+  # Digest form (sha256:...). When set, leave tag empty. The chart renders
+  # repository@digest and does not append a tag.
+  digest: ""
 
 imagePullSecrets: []
 nameOverride: ""

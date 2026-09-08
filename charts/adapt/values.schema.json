@@ -10,9 +10,10 @@
       "properties": {
         "repository": { "type": "string", "minLength": 1 },
         "pullPolicy": { "type": "string", "enum": ["Always", "IfNotPresent", "Never"] },
-        "tag": { "type": "string" }
+        "tag": { "type": "string" },
+        "digest": { "type": "string" }
       },
-      "required": ["repository", "pullPolicy", "tag"]
+      "required": ["repository", "pullPolicy", "tag", "digest"]
     },
     "imagePullSecrets": { "type": "array", "items": { "type": "object" } },
     "nameOverride": { "type": "string" },
