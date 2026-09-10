@@ -1,0 +1,34 @@
+# Weekly updates for Python packages, GitHub Actions, and the Dockerfile
+# base image. Group routine updates so each ecosystem usually opens one
+# pull request. Do not mix unrelated upgrades into the first config change;
+# let later Dependabot PRs bump action and package versions.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      python:
+        patterns:
+          - "*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3

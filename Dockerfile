@@ -1,4 +1,9 @@
-FROM python:3.14-slim
+# Official Python slim image. Keep the 3.14 tag for humans. Pin the
+# multi-platform index digest (not an amd64-only or arm64-only digest) so
+# both publish architectures resolve the same input. Dependabot updates
+# the tag and digest together. To refresh by hand, copy the index Digest
+# from: docker buildx imagetools inspect python:3.14-slim
+FROM python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
 
 ARG IMAGE_VERSION="0.4.1"
 ARG IMAGE_SOURCE="https://github.com/McIndi/adapt"

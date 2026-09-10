@@ -21,6 +21,35 @@ architecture automatically.
 docker pull ghcr.io/mcindi/adapt-server:0.5.2
 ```
 
+## Base image pin
+
+The `Dockerfile` starts from `python:3.14-slim` plus a multi-platform index
+digest. The tag shows the Python series. The digest stops a silent retag of
+that name from changing the build input.
+
+Dependabot watches the Docker ecosystem every Monday. It opens a pull
+request when the tag or the index digest changes. Accept that pull request
+after the image build and the Python 3.14 check in Helm CI pass.
+
+To refresh the pin by hand:
+
+```bash
+docker buildx imagetools inspect python:3.14-slim
+```
+
+Copy the top-level `Digest` (`sha256:...`) into the `FROM` line. Do not copy
+an architecture digest from the platform list. A single-architecture digest
+breaks the other platform in the publish workflow.
+
+Then rebuild and check the interpreter:
+
+```bash
+docker build --pull -t adapt-local .
+docker run --rm --entrypoint python adapt-local -c "import sys; print(sys.version)"
+```
+
+The printed version must start with `3.14`.
+
 ## Running the image
 
 The image runs as a non-root user pinned to UID 1000 / GID 1000, and serves

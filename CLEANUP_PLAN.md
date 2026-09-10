@@ -1,8 +1,8 @@
 # Adapt Hardening Plan
 
-Status: Active — Review Gate 1 passed. Phase 2 is next.
+Status: Active — Review Gate 1 passed. Phase 2 is in the tree; Gate 2 is open.
 Created: 2026-09-03
-Updated: 2026-09-08
+Updated: 2026-09-10
 
 This plan replaces the completed container and Helm cleanup plan. The full
 record of that work is in
@@ -124,8 +124,22 @@ Keep dependencies current and make the Docker base image input reproducible.
 
 ### Review Gate 2
 
+Open. Repo work for this phase is in place:
+
+- `.github/dependabot.yml` covers `pip`, `github-actions`, and `docker`
+  on a Monday weekly schedule, with grouped Python and Actions updates and
+  an open-PR limit of 3.
+- `Dockerfile` uses `python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6`
+  (Docker Hub index digest for tag `3.14-slim` as of 2026-09-01).
+- Helm CI checks that the built image reports Python 3.14.
+- `docs/manual/container.md` and `SECURITY.md` describe the pin and the
+  refresh path.
+
+Still required to close the gate:
+
 - Dependabot has opened or queued valid update checks for all three ecosystems.
-- The pinned base image builds for both supported architectures.
+- The pinned base image builds for both supported architectures (existing
+  publish workflow; Helm CI covers the runner architecture).
 - No unrelated dependency upgrade is required to pass the gate.
 
 ## Phase 3 — Artifact SBOMs, provenance, and signing

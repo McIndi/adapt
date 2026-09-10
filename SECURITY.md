@@ -91,6 +91,11 @@ Do not wait until someone finds a vulnerability to update it.
 
 - Runtime dependencies in `pyproject.toml` carry version limits (a lower
   bound plus an upper bound), instead of staying fully open-ended.
+- Dependabot checks `pip`, GitHub Actions, and Docker every Monday
+  (`.github/dependabot.yml`).
+- The container `FROM` line keeps the `python:3.14-slim` tag and pins the
+  multi-platform index digest. Refresh steps are in
+  `docs/manual/container.md`.
 - CI runs `pip-audit` against installed dependencies on every push and
   every pull request (`.github/workflows/test.yml`, `dependency-audit`
   job).
@@ -98,5 +103,5 @@ Do not wait until someone finds a vulnerability to update it.
   (`.github/workflows/publish-pypi.yml`). This repository stores no
   long-lived PyPI token.
 - Artifact signing and SBOM (Software Bill of Materials) generation are
-  not yet in place. These are planned for milestone M3 (see
+  not yet in place. These remain milestone M3 Phase 3 (see
   `MILESTONES.md`).

@@ -78,6 +78,13 @@ jobs:
       - name: Build app image
         run: docker build -t adapt-ci:${{ github.sha }} .
 
+      - name: Confirm base image Python 3.14
+        run: |
+          set -eu
+          python_ver=$(docker run --rm --entrypoint python adapt-ci:${{ github.sha }} -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+          echo "Image Python version: ${python_ver}"
+          test "${python_ver}" = "3.14"
+
       - name: Load image into kind
         run: kind load docker-image adapt-ci:${{ github.sha }} --name chart-testing
 
