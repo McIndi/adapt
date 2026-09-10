@@ -1,4 +1,4 @@
-<!-- MILEMARKER: milestone=M2 lanes_ok=5/8 lag=0 updated=2026-09-08 -->
+<!-- MILEMARKER: milestone=M2 lanes_ok=7/8 lag=0 updated=2026-09-08 -->
 # Project Status — adapt
 
 Tracked with the [milemarker-8](https://github.com) skill: eight lanes,
@@ -9,33 +9,37 @@ Status tokens: `OK`, `WIP`, `TODO`, `LAG`, `N/A`. `LAG` means the lane is
 behind the current milestone. A milestone counts as reached only when
 every lane below reads `OK` for it.
 
-**Last closed milestone:** M1 — Security floor, plus the Kubernetes
-deployment tracer. **Current milestone:** M2 — Coordinated 0.5.2 release
-(in the repository; publish is still open). Data stays `WIP` on purpose:
+**Last closed milestone:** M2 — Coordinated 0.5.2 release. **Next:** M3 —
+Dependency and supply-chain hardening. Data stays `WIP` on purpose:
 schema work still uses `create_all()` plus additive `ALTER` statements.
 
-The active sequence is `CLEANUP_PLAN.md`. The completed Helm and image
-work is under `archive/`.
+The active sequence is `CLEANUP_PLAN.md` Phase 2. The completed Helm and
+image work is under `archive/`.
 
-Repository versions are now `0.5.2` (`pyproject.toml`, `adapt/__init__.py`,
-chart `version`, chart `appVersion`). The chart sets
-`enableServiceLinks: false` and supports `image.digest`. Helm CI installs
-a release named `adapt` and runs `helm test`. Tags `v0.5.2` and
-`chart-v0.5.2` are not published yet. Follow `RELEASING.md` for that order.
+Published artifacts: PyPI `adapt-server 0.5.2`, image
+`ghcr.io/mcindi/adapt-server:0.5.2` (`linux/amd64` and `linux/arm64`),
+chart `oci://ghcr.io/mcindi/charts/adapt:0.5.2` (`appVersion` `0.5.2`).
+Tags: `v0.5.2` and `chart-v0.5.2`. Chart `0.5.2-rc.1` was skipped; the
+stable chart was pulled anonymously and installed as release `adapt`.
 
-Do not start M3 until Review Gate 1 in `CLEANUP_PLAN.md` passes.
+Live install 2026-09-08 on the Vagrant VM (`kind` cluster
+`adapt-release-check`, node `kindest/node:v1.37.0`): empty Helm registry
+config, `helm show chart` and `helm install adapt ... --version 0.5.2`,
+pod Ready, `helm test` succeeded, `/health` returned
+`{"status":"ok","version":"0.5.2",...}`. Cluster and release were deleted
+after the check.
 
 ## Lane status
 
 | # | Lane | Status | Next action |
 |---|------|--------|-------------|
-| 1 | Business logic | OK | No new product behavior in M2. Next: create tag `v0.5.2` after this change lands. |
-| 2 | Interface | OK | FastAPI, generated routes, admin UI, MCP, uploads, OIDC. Chart values gained `image.digest`. |
+| 1 | Business logic | OK | M2 shipped as `0.5.2`. Next product work is unscheduled. M3 is supply-chain, not features. |
+| 2 | Interface | OK | FastAPI, generated routes, admin UI, MCP, uploads, OIDC. Chart values include `image.digest`. |
 | 3 | Data | WIP | SQLite still uses `create_all()`. OIDC adds columns with `ALTER`. No migration tool. Chart PVC persistence exists. |
-| 4 | Packaging | WIP | Source versions are `0.5.2`. PyPI, GHCR image, and OCI chart `0.5.2` are not published. Publish the image before the chart. RC chart `0.5.2-rc.1` then stable `chart-v0.5.2`. |
-| 5 | Automation | WIP | Helm CI now installs release name `adapt`. Gate still needs a green kind run on CI and the public registry round trip. Dependabot is M3. |
-| 6 | Tests | OK | Helm unit tests cover service links and digest vs tag. Python suite unchanged for this phase. Coverage is M4. |
-| 7 | Docs | OK | Security manual covers uploads. `SECURITY.md` tracks `0.5.x`. Kubernetes docs describe digest pins and a valid `adapt` release name. |
+| 4 | Packaging | OK | PyPI, GHCR image, and OCI chart `0.5.2` are public. Base-image digest pin is M3 Phase 2. SBOM and signing are M3 Phase 3. |
+| 5 | Automation | OK | Helm CI and a live `kind` install named `adapt` both passed. Dependabot and base-image refresh are M3. Backup and restore stay unscheduled. |
+| 6 | Tests | OK | Helm unit tests cover service links and digest vs tag. Python suite is green in CI. Coverage is M4. |
+| 7 | Docs | OK | Security manual covers uploads. Kubernetes docs describe digest pins and a valid `adapt` release name. |
 | 8 | Security | OK | Upload threat notes are in the security manual. Secret scanning, SAST, and image CVE scans stay unscheduled. SBOM and signing stay M3. |
 
 Keep this table's shape stable (one row per lane, status in column 3) so

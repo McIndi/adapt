@@ -26,34 +26,15 @@ access, Helm tests, kind tests, and consolidated deployment documentation. Its
 detailed work log is archived at
 `archive/CONTAINER_OCI_HELM_CLEANUP_PLAN_2026-09-02.md`.
 
+### M2 — Coordinated 0.5.2 release (done)
+
+Application, image, and chart `0.5.2` are public. The chart disables
+service-link injection and supports `image.digest`. A Vagrant VM `kind`
+install named `adapt` became Ready and `/health` returned version `0.5.2`.
+Chart `0.5.2-rc.1` was not published; the stable chart passed the anonymous
+pull and live install.
+
 ## Active roadmap
-
-### M2 — Coordinated 0.5.2 release
-
-Status: In progress (repository work for Phase 1; publish still open)
-
-Goal: publish application, image, and chart version `0.5.2`. The chart removes
-the known `adapt` release-name failure and supports image digests.
-
-Evidence on 2026-09-08: source versions are `0.5.2`. Templates set
-`enableServiceLinks: false`. Values include `image.digest`. Helm unit tests
-cover tag and digest forms. Helm CI installs a release named `adapt`.
-Registry tags `v0.5.2` and `chart-v0.5.2` are not cut yet.
-
-Phase:
-
-1. Coordinated application and chart release.
-
-Exit criteria:
-
-- The server and bootstrap pods disable Kubernetes service-link injection.
-- A kind install named `adapt` becomes ready and serves `/health`.
-- Both image tag and image digest forms are supported and tested.
-- The Python package, container image, chart `version`, and chart `appVersion`
-  are `0.5.2`.
-- The application uses tag `v0.5.2`. The chart uses tag `chart-v0.5.2`.
-- The security manual covers the upload attack surface.
-- Chart `0.5.2-rc.1` and chart `0.5.2` pass a public registry round trip.
 
 ### M3 — Dependency and supply-chain hardening
 

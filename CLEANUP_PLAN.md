@@ -1,7 +1,6 @@
 # Adapt Hardening Plan
 
-Status: Active — Phase 1 is in the repository. Review Gate 1 waits on
-publish (`v0.5.2`, chart `0.5.2-rc.1`, then `chart-v0.5.2`).
+Status: Active — Review Gate 1 passed. Phase 2 is next.
 Created: 2026-09-03
 Updated: 2026-09-08
 
@@ -85,12 +84,16 @@ version `0.5.2` with aligned metadata.
 
 ### Review Gate 1
 
+Passed 2026-09-08.
+
 - The bare `adapt` release name no longer causes a crash loop.
 - Tag and digest image modes both render valid, exclusive image references.
 - The package, image, chart `version`, and chart `appVersion` are `0.5.2`.
-- The `v0.5.2` and `chart-v0.5.2` tags publish the correct artifact types.
+- Tags `v0.5.2` and `chart-v0.5.2` published the matching artifacts.
 - The security manual covers uploads.
-- Chart `0.5.2-rc.1` and chart `0.5.2` both pass the remote round trip.
+- Chart `0.5.2-rc.1` was skipped. Stable chart `0.5.2` passed an anonymous
+  `helm show`/`helm install adapt` on the Vagrant VM (`kind` 1.37.0).
+  `/health` returned HTTP 200 with `"version":"0.5.2"`.
 
 ## Phase 2 — Dependency automation and base-image pinning
 
