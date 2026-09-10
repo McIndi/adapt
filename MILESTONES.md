@@ -79,41 +79,28 @@ Exit criteria:
 - The coverage baseline and threshold policy are recorded.
 - Deliberate lint and coverage failures have proved both gates work.
 
-### M5 — Declarative docroot seeding
+### M5 — Schema migrations and backup restore
 
-Status: Conditional
+Status: Planned
 
-Goal: support safe chart-managed seed content only if a current user workflow
-requires it.
-
-Phase:
-
-5. Declarative docroot seeding.
-
-Exit criteria:
-
-- The requirement and design choice are recorded, or M5 closes as `N/A`.
-- If implemented, seeding is idempotent, preserves existing files, works with
-  persistent storage, and passes install and upgrade tests.
-
-### M6 — Multi-replica operation
-
-Status: Conditional
-
-Goal: support more than one replica only after an availability requirement and
-safe state architecture are approved.
+Goal: move schema changes onto versioned migrations, and prove a backup and
+restore path that has been exercised.
 
 Phase:
 
-6. Multi-replica operation.
+5. Schema migrations and a tested backup-and-restore drill.
 
 Exit criteria:
 
-- The availability objective and architecture decision are recorded, or M6
-  closes as `N/A` and the single-replica limit remains explicit.
-- If implemented, concurrent writes, pod loss, migrations, bootstrap races,
-  rolling upgrades, and rollback pass without data loss or access-control
-  regressions.
+- Schema changes go through a migration tool. Live databases do not rely on
+  `create_all()` or one-off `ALTER` statements.
+- A baseline migration covers the current SQLite schema, including the OIDC
+  additive columns.
+- Existing installs can apply the migrations without data loss.
+- Backup and restore procedures exist for the SQLite database. A restore has
+  been run and checked.
+- Tests cover migrate-up and restore. Operator docs describe backup, restore,
+  and how to add a migration.
 
 ### Keycloak OIDC (product tracer, not M2)
 
@@ -126,8 +113,7 @@ Goal: optional Keycloak identity for the browser UI, REST API, and `/mcp/`,
 while local passwords and API keys keep working.
 
 This tracer is independent of the coordinated `0.5.2` packaging work in M2.
-Schema changes stay additive SQLite `ALTER` statements until a migration
-tool exists.
+Schema changes stay additive SQLite `ALTER` statements until M5.
 
 Exit criteria:
 
@@ -160,12 +146,15 @@ Exit criteria:
 
 ## Unscheduled work
 
-The following gaps remain outside the six ordered phases:
+The following gaps remain outside the ordered phases:
 
-- Database schema migrations and a tested backup-and-restore drill.
+- Declarative docroot seeding (former M5). Record the requirement, or keep
+  mounted volumes, uploads, and custom images as the supported options.
+- Multi-replica operation (former M6). Keep the documented single-replica
+  limit until an availability requirement and a safe state architecture exist.
+  M5 is a prerequisite if this work is later scheduled.
 - Automated version selection and changelog generation.
 - Secret scanning, static security analysis, and container vulnerability
   scanning.
 
-Create a scoped milestone before starting any of these items. Schema migration
-and restore work becomes a prerequisite if M6 is approved.
+Create a scoped milestone before starting any of these items.

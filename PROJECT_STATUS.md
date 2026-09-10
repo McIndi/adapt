@@ -1,4 +1,4 @@
-<!-- MILEMARKER: milestone=M3 lanes_ok=6/8 lag=0 updated=2026-09-10 -->
+<!-- MILEMARKER: milestone=M3 lanes_ok=5/8 lag=0 updated=2026-09-10 -->
 # Project Status — adapt
 
 Tracked with the [milemarker-8](https://github.com) skill: eight lanes,
@@ -10,9 +10,8 @@ behind the current milestone. A milestone counts as reached only when
 every lane below reads `OK` for it.
 
 **Last closed milestone:** M2 — Coordinated 0.5.2 release. **Current:** M3
-Phase 3 — Artifact SBOMs, provenance, and signing. Data stays `WIP` on
-purpose: schema work still uses `create_all()` plus additive `ALTER`
-statements.
+Phase 3 — Artifact SBOMs, provenance, and signing. Data stays `WIP` until
+M5: schema work still uses `create_all()` plus additive `ALTER` statements.
 
 The active sequence is `CLEANUP_PLAN.md` Phase 3. Review Gate 2 passed
 2026-09-10. A separate product tracer upgrades MCP to SDK 2.2 without
@@ -38,12 +37,12 @@ after the check.
 |---|------|--------|-------------|
 | 1 | Business logic | OK | M2 shipped as `0.5.2`. Next product work is unscheduled. M3 is supply-chain, not features. |
 | 2 | Interface | OK | MCP uses SDK 2.2 (`MCPServer`). Live Cursor/Claude check is still open. |
-| 3 | Data | WIP | SQLite still uses `create_all()`. OIDC adds columns with `ALTER`. No migration tool. Chart PVC persistence exists. |
-| 4 | Packaging | OK | `Dockerfile` pins `python:3.14-slim` to the multi-platform index digest. SBOM and signing are M3 Phase 3. |
-| 5 | Automation | OK | Dependabot accepted `pip`, `github-actions`, and `docker`. Actions group PR #1 merged. Backup and restore stay unscheduled. |
+| 3 | Data | WIP | SQLite still uses `create_all()`. OIDC adds columns with `ALTER`. Migrations and a restore drill are M5. |
+| 4 | Packaging | WIP | Base image is pinned. Phase 3 still needs SBOMs and missing image/chart signatures on publish. |
+| 5 | Automation | OK | Dependabot accepted `pip`, `github-actions`, and `docker`. Actions group PR #1 merged. The restore script is M5. |
 | 6 | Tests | OK | MCP tests use `httpx2`, `is_error`, and `input_schema`. 356 passed locally. Coverage is M4. |
 | 7 | Docs | OK | Container manual covers tag plus digest refresh. `SECURITY.md` records Dependabot and the base-image pin. |
-| 8 | Security | WIP | Phase 2 Host pin and Dependabot are live. Phase 3 is SBOM, provenance, and signing. |
+| 8 | Security | WIP | Phase 2 Dependabot and the base-image pin are live. Next: inventory current attestations, then add missing SBOM, provenance, and signatures. |
 
 Keep this table's shape stable (one row per lane, status in column 3) so
 it stays `grep`-able — see the rollup convention at the bottom.
@@ -72,8 +71,9 @@ Business logic, interface, tests, and docs had already run far ahead of a
 
 M0 and M1 remain closed. The deployment tracer also passed its final review
 gate. Its remaining findings now start the ordered plan: the coordinated
-`0.5.2` release in M2, supply-chain hardening in M3, and quality work in M4.
-M5 and M6 remain conditional on real user or availability requirements.
+`0.5.2` release in M2, supply-chain hardening in M3, quality work in M4, and
+schema migrations plus a restore drill in M5. Docroot seeding and
+multi-replica operation stay unscheduled.
 
 ## Lane guidance
 

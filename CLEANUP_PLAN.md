@@ -10,8 +10,9 @@ record of that work is in
 
 ## Goal
 
-Close the remaining deployment, supply-chain, and quality gaps in priority
-order. Do not start a later phase until the current review gate passes.
+Close the remaining deployment, supply-chain, quality, and data gaps in
+priority order. Do not start a later phase until the current review gate
+passes.
 
 The phases are grouped into these milestones:
 
@@ -20,8 +21,7 @@ The phases are grouped into these milestones:
 | M2 — Coordinated 0.5.2 release | 1 | Application, image, and chart `0.5.2` publish with aligned metadata and a digest-pinnable image reference. |
 | M3 — Dependency and supply-chain hardening | 2–3 | Automated updates, a pinned base image, artifact inventories, SBOMs, signatures, and verification instructions are in place. |
 | M4 — Quality visibility | 4 | Python lint and test coverage run in CI with an agreed baseline. |
-| M5 — Declarative docroot seeding | 5 | If users need it, the chart can seed a docroot safely and repeatably. Otherwise, the decision to omit it is recorded. |
-| M6 — Multi-replica operation | 6 | If high availability is required, Adapt has an approved architecture and tested implementation. Otherwise, the single-replica limit stays explicit. |
+| M5 — Schema migrations and backup restore | 5 | Schema changes use versioned migrations. A backup and restore path has been exercised. |
 
 ## Working rules
 
@@ -31,8 +31,8 @@ The phases are grouped into these milestones:
   same phase as the related implementation.
 - Run the listed checks and record the evidence before requesting review.
 - Stop at each review gate. Do not start the next phase until the gate passes.
-- A conditional phase can close as `N/A` when its decision gate finds no real
-  requirement. Record the reason instead of building speculative features.
+- A later unscheduled item can close as `N/A` when its decision gate finds no
+  real requirement. Record the reason instead of building speculative features.
 
 ## Phase 1 — Coordinated application and chart release
 
@@ -212,92 +212,57 @@ Make static quality checks and test coverage visible in pull requests.
 - The threshold policy is documented and can increase without redesigning the
   workflow.
 
-## Phase 5 — Declarative docroot seeding (conditional)
+## Phase 5 — Schema migrations and backup restore
 
 Milestone: M5
 
-### Decision gate
+### Goal
 
-Identify a real user workflow that needs chart-managed starter documents. If
-no current workflow needs it, record Phase 5 as `N/A` and keep mounted volumes,
-uploads, and custom images as the supported options.
+Replace `create_all()` and one-off `ALTER` statements with versioned
+migrations. Prove that a backup can restore a working database.
 
-### Implementation scope if approved
+### Scope
 
-- Choose one minimal, declarative source for seed content. Do not design several
-  source mechanisms in the first release.
-- Add values and schema for the source, destination, overwrite policy, and file
-  ownership.
-- Use an init container that is idempotent and safe with persistent volumes.
-- Define whether seeding occurs only for an empty destination or also supports
-  an explicit update mode.
-- Preserve the runtime UID/GID and read-only-root-filesystem security posture.
-- Define interactions with `persistence`, `existingClaim`, and external volume
-  mounts.
-- Add Helm unit tests, kind tests for first install and upgrade, and operator
-  documentation.
-- Use a chart minor version for the new capability unless review finds a
-  breaking values change.
+- Choose one migration tool and record the choice.
+- Add a baseline migration for the current SQLite schema, including the OIDC
+  additive columns.
+- Stop using `create_all()` as the production schema path.
+- Provide operator commands or scripts for SQLite backup and restore. The
+  restore script belongs to the automation lane.
+- Treat backup files as sensitive. They contain credential material.
+- Document how maintainers add a migration, and how operators run backup and
+  restore.
+- Add tests for migrate-up from the current schema and for restore.
+
+### Validation
+
+- A new empty database reaches the current schema through migrations only.
+- An existing database that was created with `create_all()` plus OIDC `ALTER`
+  statements migrates without data loss.
+- A backup restore produces a usable database. The check includes a login or
+  an equivalent health path.
+- The Python test suite still passes.
 
 ### Review Gate 5
 
-- The need and chosen source are documented, or the phase is closed as `N/A`.
-- If implemented, first install, repeated upgrade, and pre-populated-volume
-  behavior are deterministic and preserve existing user files.
+- Migrations are the only supported schema path.
+- Backup and restore docs and a recorded restore drill exist.
+- Tests cover migrate-up and restore.
 
-## Phase 6 — Multi-replica operation (conditional)
+## Retained backlog outside these five phases
 
-Milestone: M6
+These known gaps remain valid but are not in the ordered plan:
 
-### Decision gate
-
-Define the availability objective, expected write concurrency, failure model,
-and target Kubernetes storage classes. If no current requirement needs more
-than one replica, record Phase 6 as `N/A` and retain the documented
-single-replica limit.
-
-### Architecture scope if approved
-
-- Resolve SQLite write locking and schema-migration coordination. This can
-  require a supported external database instead of shared SQLite storage.
-- Resolve shared document storage, session state, caches, search indexes, and
-  bootstrap-job coordination.
-- Define ReadWriteMany requirements and behavior on clusters that do not offer
-  it.
-- Design probes, disruption budgets, rolling upgrades, and safe scale-down.
-- Produce a migration and rollback plan for existing single-replica installs.
-- Complete an architecture review before changing `replicaCount` behavior.
-
-### Implementation and verification if approved
-
-- Implement the approved storage and coordination design across the
-  application and chart.
-- Test concurrent reads and writes, pod loss, rolling upgrades, bootstrap
-  races, and database migration races.
-- Run multi-node kind or an equivalent integration environment where storage
-  behavior is representative.
-- Document capacity limits, required infrastructure, migration, rollback, and
-  recovery.
-
-### Review Gate 6
-
-- The requirement and architecture decision are recorded, or the phase is
-  closed as `N/A`.
-- If implemented, failure and upgrade tests demonstrate the stated availability
-  objective without data loss or permission regressions.
-
-## Retained backlog outside these six phases
-
-These known gaps remain valid but were not part of the deferred-item ordering
-that produced this plan:
-
-- Add database schema migrations and a tested backup-and-restore drill.
+- Declarative docroot seeding. If a real user workflow needs chart-managed
+  starter documents, schedule a milestone. Until then, keep mounted volumes,
+  uploads, and custom images as the supported options.
+- Multi-replica operation. If an availability requirement exists, schedule a
+  milestone after M5. Until then, keep the documented single-replica limit.
 - Automate version selection and changelog generation from the project's commit
   convention.
 - Evaluate secret scanning, static security analysis, and container
   vulnerability scanning after the supply-chain milestone establishes the
   common evidence and workflow patterns.
 
-Schedule each item as its own milestone before implementation. If Phase 6 is
-approved, schema migration and restore work becomes a prerequisite and must be
-scheduled before its implementation begins.
+Schedule each item as its own milestone before implementation. Multi-replica
+work must wait for M5.
