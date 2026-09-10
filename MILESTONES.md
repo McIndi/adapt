@@ -38,15 +38,15 @@ pull and live install.
 
 ### M3 — Dependency and supply-chain hardening
 
-Status: In progress (Phase 2)
+Status: In progress (Phase 3)
 
 Goal: automate dependency maintenance, pin the container base image, and give
 consumers verifiable release evidence.
 
 Phases:
 
-2. Dependency automation and base-image pinning (in the tree; Review Gate 2
-   waits for Dependabot on GitHub).
+2. Dependency automation and base-image pinning (done; Review Gate 2 passed
+   2026-09-10).
 3. Artifact SBOMs, provenance, and signing.
 
 Exit criteria:

@@ -1,6 +1,6 @@
 # Adapt Hardening Plan
 
-Status: Active — Review Gate 1 passed. Phase 2 is in the tree; Gate 2 is open.
+Status: Active — Review Gate 2 passed. Phase 3 is next.
 Created: 2026-09-03
 Updated: 2026-09-10
 
@@ -124,23 +124,16 @@ Keep dependencies current and make the Docker base image input reproducible.
 
 ### Review Gate 2
 
-Open. Repo work for this phase is in place:
+Passed 2026-09-10.
 
-- `.github/dependabot.yml` covers `pip`, `github-actions`, and `docker`
-  on a Monday weekly schedule, with grouped Python and Actions updates and
-  an open-PR limit of 3.
-- `Dockerfile` uses `python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6`
-  (Docker Hub index digest for tag `3.14-slim` as of 2026-09-01).
-- Helm CI checks that the built image reports Python 3.14.
-- `docs/manual/container.md` and `SECURITY.md` describe the pin and the
-  refresh path.
-
-Still required to close the gate:
-
-- Dependabot has opened or queued valid update checks for all three ecosystems.
-- The pinned base image builds for both supported architectures (existing
-  publish workflow; Helm CI covers the runner architecture).
-- No unrelated dependency upgrade is required to pass the gate.
+- Dependabot ran `pip`, `github-actions`, and `docker` on `main`.
+- GitHub Actions group PR #1 merged. All Test and Helm CI checks on that PR
+  passed.
+- The `pip` group PR #2 was closed. It raised `mcp` to 2.x and mixed docs
+  majors. That is not required to close this gate.
+- Docker opened no PR. The pinned `python:3.14-slim` index digest was current.
+- Helm CI on `main` built the image and checked Python 3.14. Dual-arch
+  remains the existing publish workflow.
 
 ## Phase 3 — Artifact SBOMs, provenance, and signing
 

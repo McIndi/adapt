@@ -1,4 +1,4 @@
-<!-- MILEMARKER: milestone=M3 lanes_ok=5/8 lag=0 updated=2026-09-10 -->
+<!-- MILEMARKER: milestone=M3 lanes_ok=6/8 lag=0 updated=2026-09-10 -->
 # Project Status — adapt
 
 Tracked with the [milemarker-8](https://github.com) skill: eight lanes,
@@ -10,15 +10,14 @@ behind the current milestone. A milestone counts as reached only when
 every lane below reads `OK` for it.
 
 **Last closed milestone:** M2 — Coordinated 0.5.2 release. **Current:** M3
-Phase 2 — Dependabot and a pinned container base image. Data stays `WIP`
-on purpose: schema work still uses `create_all()` plus additive `ALTER`
+Phase 3 — Artifact SBOMs, provenance, and signing. Data stays `WIP` on
+purpose: schema work still uses `create_all()` plus additive `ALTER`
 statements.
 
-The active sequence is `CLEANUP_PLAN.md` Phase 2. Review Gate 2 still needs
-Dependabot to accept the three ecosystems after this branch is on GitHub.
-SBOM and signing remain Phase 3. A separate product tracer upgrades MCP to
-SDK 2.2 without OpenTelemetry export. The completed Helm and image work is
-under `archive/`.
+The active sequence is `CLEANUP_PLAN.md` Phase 3. Review Gate 2 passed
+2026-09-10. A separate product tracer upgrades MCP to SDK 2.2 without
+OpenTelemetry export; that work is still local. The completed Helm and
+image work is under `archive/`.
 
 Published artifacts: PyPI `adapt-server 0.5.2`, image
 `ghcr.io/mcindi/adapt-server:0.5.2` (`linux/amd64` and `linux/arm64`),
@@ -41,10 +40,10 @@ after the check.
 | 2 | Interface | OK | MCP uses SDK 2.2 (`MCPServer`). Live Cursor/Claude check is still open. |
 | 3 | Data | WIP | SQLite still uses `create_all()`. OIDC adds columns with `ALTER`. No migration tool. Chart PVC persistence exists. |
 | 4 | Packaging | OK | `Dockerfile` pins `python:3.14-slim` to the multi-platform index digest. SBOM and signing are M3 Phase 3. |
-| 5 | Automation | WIP | `.github/dependabot.yml` covers `pip`, `github-actions`, and `docker`. Confirm GitHub accepts all three after push. Backup and restore stay unscheduled. |
+| 5 | Automation | OK | Dependabot accepted `pip`, `github-actions`, and `docker`. Actions group PR #1 merged. Backup and restore stay unscheduled. |
 | 6 | Tests | OK | MCP tests use `httpx2`, `is_error`, and `input_schema`. 356 passed locally. Coverage is M4. |
 | 7 | Docs | OK | Container manual covers tag plus digest refresh. `SECURITY.md` records Dependabot and the base-image pin. |
-| 8 | Security | WIP | Dependabot and the base-image pin are in the tree. Review Gate 2 needs live Dependabot checks. SBOM and signing stay Phase 3. |
+| 8 | Security | WIP | Phase 2 Host pin and Dependabot are live. Phase 3 is SBOM, provenance, and signing. |
 
 Keep this table's shape stable (one row per lane, status in column 3) so
 it stays `grep`-able — see the rollup convention at the bottom.
