@@ -11,8 +11,9 @@ import logging
 from typing import Annotated, Any, Literal
 
 from fastapi import HTTPException, Request
-from mcp.server.fastmcp import Context, FastMCP
-from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.mcpserver import MCPServer, Context
+from mcp.server.mcpserver.exceptions import ToolError
+from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import Field
 from sqlmodel import Session
 
@@ -23,6 +24,7 @@ from .permissions import PermissionChecker
 from .plugins.base import PluginContext
 from .routes import ResourceRegistryEntry
 from .routes_search import DATASET_TYPES, _run_search
+from .security import mcp_dns_rebinding_hosts
 from .storage import User
 
 logger = logging.getLogger(__name__)
@@ -65,21 +67,39 @@ def _authorized_entry(request: Request, user: User, namespace: str, action: str)
     return entry
 
 
-def build_mcp_server(config: AdaptConfig) -> FastMCP:
-    """Construct the FastMCP server and register its tools.
+def mcp_transport_security(config: AdaptConfig) -> TransportSecuritySettings:
+    """DNS-rebinding settings for the mounted Streamable HTTP app."""
+    hosts = mcp_dns_rebinding_hosts(config.host, config.oidc_public_url())
+    if hosts is None:
+        return TransportSecuritySettings(enable_dns_rebinding_protection=False)
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=hosts,
+    )
 
-    `streamable_http_path` is set to `/` because the outer app already mounts
-    this server's ASGI app at `/mcp` (`app.mount("/mcp", mcp_app)`); leaving
-    the SDK's own default of `/mcp` here would double up to `/mcp/mcp`.
+
+def build_mcp_asgi_app(mcp: MCPServer, config: AdaptConfig):
+    """Build the ASGI app mounted at ``/mcp``.
+
+    The SDK defaults to path ``/mcp``. The outer FastAPI app already mounts
+    at ``/mcp``, so this app uses ``/`` to avoid ``/mcp/mcp``.
     """
-    mcp = FastMCP(
+    return mcp.streamable_http_app(
+        streamable_http_path="/",
+        transport_security=mcp_transport_security(config),
+    )
+
+
+def build_mcp_server(config: AdaptConfig) -> MCPServer:
+    """Construct the MCP server and register its tools."""
+    mcp = MCPServer(
         name="adapt",
         instructions=(
             "Adapt exposes file-backed datasets, documents, and media as "
             "permission-filtered tools. Call list_resources first to see what "
             "you can read; search works across everything you're permitted to see."
         ),
-        streamable_http_path="/",
+        version=config.version,
     )
 
     @mcp.tool()

@@ -185,5 +185,11 @@ To read `products` sorted by category ascending, pass MCP tool arguments like:
 - **No `/mcp/` route at all** — the server has `mcp_enabled: false` in
   `.adapt/conf.json`, or has `ADAPT_MCP_ENABLED=false` set. See
   [Configuration](configuration.md).
+- **HTTP 421 Invalid Host header** — the MCP transport rejected the `Host`
+  header. Bind `127.0.0.1` only accepts local Host values. For a public
+  hostname, set `oidc.public_url` or bind `0.0.0.0` as you already do for
+  TrustedHost.
+- **HTTP 413 Request body too large** — the MCP POST body is larger than
+  4 MiB. Split the write or use the REST API.
 
 Manual navigation: [Previous: Security](security.md) | [Index](index.md) | [Next: Configuration](configuration.md)

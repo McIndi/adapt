@@ -4,8 +4,7 @@ MCP's streamable-HTTP transport needs a real ASGI event loop serving SSE;
 `fastapi.testclient.TestClient` doesn't speak the protocol. These tests spin
 up the app with `uvicorn.Server` on an ephemeral port in a background thread
 and drive it with `mcp.client.streamable_http.streamable_http_client` +
-`mcp.ClientSession` — the SDK's own documented pattern for testing a
-streamable-HTTP server.
+`mcp.ClientSession`.
 """
 from __future__ import annotations
 
@@ -15,7 +14,7 @@ import socket
 import threading
 import time
 
-import httpx
+import httpx2
 import pytest
 import uvicorn
 from sqlmodel import Session, select
@@ -104,18 +103,18 @@ def _make_user_with_key(app, username, *, superuser=False, reads=(), writes=()):
 
 async def _call(base_url, headers, tool, arguments=None):
     """Call a single MCP tool over streamable-HTTP and return the CallToolResult."""
-    timeout = httpx.Timeout(30, read=300)
-    async with httpx.AsyncClient(headers=headers, timeout=timeout, follow_redirects=True) as http_client:
-        async with streamable_http_client(f"{base_url}/mcp", http_client=http_client) as (read, write, _):
+    timeout = httpx2.Timeout(30, read=300)
+    async with httpx2.AsyncClient(headers=headers, timeout=timeout, follow_redirects=True) as http_client:
+        async with streamable_http_client(f"{base_url}/mcp", http_client=http_client) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 return await session.call_tool(tool, arguments or {})
 
 
 async def _list_tools(base_url, headers):
-    timeout = httpx.Timeout(30, read=300)
-    async with httpx.AsyncClient(headers=headers, timeout=timeout, follow_redirects=True) as http_client:
-        async with streamable_http_client(f"{base_url}/mcp", http_client=http_client) as (read, write, _):
+    timeout = httpx2.Timeout(30, read=300)
+    async with httpx2.AsyncClient(headers=headers, timeout=timeout, follow_redirects=True) as http_client:
+        async with streamable_http_client(f"{base_url}/mcp", http_client=http_client) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 return await session.list_tools()
@@ -124,11 +123,11 @@ async def _list_tools(base_url, headers):
 def _result_json(result):
     """Decode a tool result's content into JSON.
 
-    FastMCP emits a list-returning tool as one TextContent block per item, so
+    MCPServer emits a list-returning tool as one TextContent block per item, so
     a single block decodes to one value but multiple blocks must be
     recombined into a list.
     """
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     if len(result.content) == 1:
         return json.loads(result.content[0].text)
     return [json.loads(block.text) for block in result.content]
@@ -145,14 +144,14 @@ def test_list_tools_returns_the_five_tools(live_server):
     assert names == {"list_resources", "get_schema", "read_resource", "write_resource", "search"}
     for tool in tools.tools:
         assert tool.description
-        assert tool.inputSchema
+        assert tool.input_schema
 
 
 def test_read_resource_tool_schema_guides_sort_and_order_usage(live_server):
     base_url, _ = live_server
     tools = asyncio.run(_list_tools(base_url, headers={}))
     read_resource = next(tool for tool in tools.tools if tool.name == "read_resource")
-    props = read_resource.inputSchema["properties"]
+    props = read_resource.input_schema["properties"]
 
     assert props["order"]["enum"] == ["asc", "desc"]
     assert "column name" in props["sort"]["description"].lower()
@@ -174,7 +173,7 @@ def test_read_resource_tool_schema_guides_sort_and_order_usage(live_server):
 def test_tools_require_authentication(live_server, tool, args):
     base_url, _ = live_server
     result = asyncio.run(_call(base_url, headers={}, tool=tool, arguments=args))
-    assert result.isError
+    assert result.is_error
     assert "authentication" in result.content[0].text.lower()
 
 
@@ -199,10 +198,10 @@ def test_read_resource_respects_permissions(live_server):
     headers = {"X-API-Key": raw_key}
 
     ok = asyncio.run(_call(base_url, headers=headers, tool="read_resource", arguments={"resource": "a"}))
-    assert not ok.isError
+    assert not ok.is_error
 
     denied = asyncio.run(_call(base_url, headers=headers, tool="read_resource", arguments={"resource": "b"}))
-    assert denied.isError
+    assert denied.is_error
     assert "permission denied" in denied.content[0].text.lower()
 
 
@@ -233,7 +232,7 @@ def test_write_resource_succeeds_and_is_reflected_in_read(live_server):
         base_url, headers=headers, tool="write_resource",
         arguments={"resource": "a", "action": "create", "data": [{"name": "Dana", "age": "22"}]},
     ))
-    assert not write_result.isError, write_result.content
+    assert not write_result.is_error, write_result.content
 
     read_result = asyncio.run(_call(base_url, headers=headers, tool="read_resource", arguments={"resource": "a"}))
     rows = _result_json(read_result)
@@ -258,7 +257,7 @@ def test_write_resource_fails_for_unpermitted_user(live_server):
         base_url, headers=headers, tool="write_resource",
         arguments={"resource": "a", "action": "create", "data": [{"name": "X", "age": "1"}]},
     ))
-    assert result.isError
+    assert result.is_error
     assert "permission denied" in result.content[0].text.lower()
 
 
@@ -271,7 +270,7 @@ def test_write_resource_fails_when_readonly(live_server_readonly):
         base_url, headers=headers, tool="write_resource",
         arguments={"resource": "a", "action": "create", "data": [{"name": "X", "age": "1"}]},
     ))
-    assert result.isError
+    assert result.is_error
     assert "read-only" in result.content[0].text.lower()
 
 
@@ -284,7 +283,7 @@ def test_write_resource_fails_for_non_dataset_resource(live_server):
         base_url, headers=headers, tool="write_resource",
         arguments={"resource": "notes", "action": "create", "data": {}},
     ))
-    assert result.isError
+    assert result.is_error
     assert "does not support write" in result.content[0].text.lower()
 
 
@@ -312,11 +311,11 @@ def test_get_schema_matches_rest_endpoint(live_server):
 # ---------------------------------------------------------------------------
 
 def test_mcp_server_shape_is_reachable(docroot):
-    from adapt.mcp import build_mcp_server
+    from adapt.mcp import build_mcp_asgi_app, build_mcp_server
 
     config = AdaptConfig(root=docroot)
     mcp_server = build_mcp_server(config)
-    mcp_app = mcp_server.streamable_http_app()
+    mcp_app = build_mcp_asgi_app(mcp_server, config)
     assert mcp_server.session_manager is not None
     assert any(getattr(route, "path", None) == "/" for route in mcp_app.routes)
 
@@ -346,6 +345,34 @@ def test_mcp_disabled_mounts_no_route(tmp_path):
 
     client = TestClient(app)
     assert client.get("/health").status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# 8. MCP Host header (DNS rebinding)
+# ---------------------------------------------------------------------------
+
+def test_mcp_dns_rebinding_hosts_for_localhost():
+    from adapt.security import mcp_dns_rebinding_hosts
+
+    hosts = mcp_dns_rebinding_hosts("127.0.0.1")
+    assert hosts is not None
+    assert "127.0.0.1:*" in hosts
+    assert "testserver" in hosts
+
+
+def test_mcp_dns_rebinding_hosts_disabled_on_bind_all():
+    from adapt.security import mcp_dns_rebinding_hosts
+
+    assert mcp_dns_rebinding_hosts("0.0.0.0") is None
+
+
+def test_mcp_dns_rebinding_hosts_adds_public_url():
+    from adapt.security import mcp_dns_rebinding_hosts
+
+    hosts = mcp_dns_rebinding_hosts("0.0.0.0", "https://adapt.example.com")
+    assert hosts is not None
+    assert "adapt.example.com" in hosts
+    assert "adapt.example.com:*" in hosts
 
 
 @pytest.fixture(name="live_server_readonly")

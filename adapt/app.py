@@ -30,7 +30,7 @@ from .routes import build_resource_registry, generate_routes, resource_namespace
 from .routes_search import router as search_router, safe_snippet
 from .storage import User, DBSession, init_database
 from .locks import LockManager
-from .mcp import build_mcp_server
+from .mcp import build_mcp_asgi_app, build_mcp_server
 from .utils import build_accessible_ui_links
 from . import cache, search
 from .security import (
@@ -432,7 +432,7 @@ def create_app(config: AdaptConfig) -> FastAPI:
     # Mount the MCP server, exposing resources as agent-facing tools
     if config.mcp_enabled:
         mcp_server = build_mcp_server(config)
-        mcp_app = mcp_server.streamable_http_app()
+        mcp_app = build_mcp_asgi_app(mcp_server, config)
         # A mounted sub-app's `request.app` is itself, not the main app (see
         # lifespan() docstring for the related lifespan gotcha) — mirror the
         # slice of state every tool/helper needs onto it.

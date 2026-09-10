@@ -45,7 +45,8 @@ configured, an unauthenticated HTTP request to `/mcp/` returns `401` with a
 `WWW-Authenticate` header that points at Adapt's protected-resource metadata.
 Adapt still checks authentication when a tool executes. Cookie-authenticated
 MCP requests are still subject to CSRF validation because the transport uses
-HTTP POST.
+HTTP POST. MCP Streamable HTTP also checks the `Host` header when Adapt binds
+a local address. See [Configuration](configuration.md#mcp-interface).
 
 ## Keycloak OIDC
 

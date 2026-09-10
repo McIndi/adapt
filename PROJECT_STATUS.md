@@ -16,8 +16,9 @@ statements.
 
 The active sequence is `CLEANUP_PLAN.md` Phase 2. Review Gate 2 still needs
 Dependabot to accept the three ecosystems after this branch is on GitHub.
-SBOM and signing remain Phase 3. The completed Helm and image work is under
-`archive/`.
+SBOM and signing remain Phase 3. A separate product tracer upgrades MCP to
+SDK 2.2 without OpenTelemetry export. The completed Helm and image work is
+under `archive/`.
 
 Published artifacts: PyPI `adapt-server 0.5.2`, image
 `ghcr.io/mcindi/adapt-server:0.5.2` (`linux/amd64` and `linux/arm64`),
@@ -37,11 +38,11 @@ after the check.
 | # | Lane | Status | Next action |
 |---|------|--------|-------------|
 | 1 | Business logic | OK | M2 shipped as `0.5.2`. Next product work is unscheduled. M3 is supply-chain, not features. |
-| 2 | Interface | OK | FastAPI, generated routes, admin UI, MCP, uploads, OIDC. Chart values include `image.digest`. |
+| 2 | Interface | OK | MCP uses SDK 2.2 (`MCPServer`). Live Cursor/Claude check is still open. |
 | 3 | Data | WIP | SQLite still uses `create_all()`. OIDC adds columns with `ALTER`. No migration tool. Chart PVC persistence exists. |
 | 4 | Packaging | OK | `Dockerfile` pins `python:3.14-slim` to the multi-platform index digest. SBOM and signing are M3 Phase 3. |
 | 5 | Automation | WIP | `.github/dependabot.yml` covers `pip`, `github-actions`, and `docker`. Confirm GitHub accepts all three after push. Backup and restore stay unscheduled. |
-| 6 | Tests | OK | Helm CI builds the image and checks the interpreter is Python 3.14. Coverage is M4. |
+| 6 | Tests | OK | MCP tests use `httpx2`, `is_error`, and `input_schema`. 356 passed locally. Coverage is M4. |
 | 7 | Docs | OK | Container manual covers tag plus digest refresh. `SECURITY.md` records Dependabot and the base-image pin. |
 | 8 | Security | WIP | Dependabot and the base-image pin are in the tree. Review Gate 2 needs live Dependabot checks. SBOM and signing stay Phase 3. |
 

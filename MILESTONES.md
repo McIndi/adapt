@@ -140,6 +140,24 @@ Exit criteria:
 - Tests cover tokens, PRM, MCP 401, callback, local login, and CSRF without
   a live Keycloak.
 
+### MCP Python SDK 2.2 (product tracer, not M3)
+
+Status: In progress (local tests green)
+
+Goal: run `/mcp` on `mcp>=2.2,<3` (`MCPServer`) without an OpenTelemetry
+exporter.
+
+This tracer is independent of M3 supply-chain work. It does not add Jaeger,
+OTLP, or a tracer provider.
+
+Exit criteria:
+
+- `pyproject.toml` requires `mcp>=2.2,<3`.
+- Tools, auth, and the FastAPI mount still work on Streamable HTTP.
+- Tests use the v2 client types (`httpx2`, `is_error`, `input_schema`).
+- Host-header and 4 MiB body behavior are documented.
+- OpenTelemetry remains unconfigured.
+
 ## Unscheduled work
 
 The following gaps remain outside the six ordered phases:

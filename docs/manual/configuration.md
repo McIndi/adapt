@@ -214,6 +214,14 @@ API surface. See the [MCP Guide](mcp_guide.md) for setup. When OIDC is on,
 unauthenticated `/mcp/` requests return `401` plus RFC 9728 metadata at
 `/.well-known/oauth-protected-resource/mcp`.
 
+Adapt uses MCP Python SDK 2.x. Streamable HTTP POST bodies larger than 4 MiB
+return HTTP 413. When Adapt binds `127.0.0.1`, `localhost`, or `::1`, the SDK
+rejects MCP requests whose `Host` header is not on the local allowlist
+(HTTP 421). When Adapt binds `0.0.0.0` or `::` and `oidc.public_url` is empty,
+that Host check is off, matching TrustedHost `*`. If `oidc.public_url` is set,
+its hostname is allowed even on a bind-all address. Adapt does not configure
+an OpenTelemetry SDK or exporter. The MCP package may create no-op spans.
+
 ## Plugin Registry Notes
 
 The default registry shown above matches `AdaptConfig.plugin_registry`. The

@@ -106,8 +106,8 @@ return `409`.
 
 ## 7. MCP interface
 
-When `mcp_enabled` is true, Adapt mounts a FastMCP streamable HTTP application
-at `/mcp/`. It uses the same process, TLS configuration, resource registry,
+When `mcp_enabled` is true, Adapt mounts an MCP Python SDK (`MCPServer`)
+streamable HTTP application at `/mcp/`. It uses the same process, TLS configuration, resource registry,
 plugins, authentication resolver, and permission checks as the HTTP routes.
 
 The server provides these tools:

@@ -105,3 +105,6 @@ Do not wait until someone finds a vulnerability to update it.
 - Artifact signing and SBOM (Software Bill of Materials) generation are
   not yet in place. These remain milestone M3 Phase 3 (see
   `MILESTONES.md`).
+- The MCP Python SDK 2.x line depends on `opentelemetry-api`. Adapt does
+  not configure a tracer provider or exporter. MCP spans stay no-op until
+  a later OpenTelemetry integration.

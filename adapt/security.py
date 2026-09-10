@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import secrets
 from typing import Iterable
+from urllib.parse import urlparse
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -25,6 +26,39 @@ def build_allowed_hosts(config_host: str) -> list[str]:
     if config_host in {"0.0.0.0", "::", ""}:
         return ["*"]
     return [config_host, "localhost", "127.0.0.1", "testserver"]
+
+
+def mcp_dns_rebinding_hosts(bind_host: str, public_url: str = "") -> list[str] | None:
+    """Host allowlist for MCP Streamable HTTP DNS-rebinding checks.
+
+    Return ``None`` to turn the check off. That matches TrustedHost ``*``
+    when Adapt binds every interface and ``public_url`` is empty.
+    """
+    local = [
+        "127.0.0.1",
+        "127.0.0.1:*",
+        "localhost",
+        "localhost:*",
+        "[::1]",
+        "[::1]:*",
+        "testserver",
+        "testserver:*",
+    ]
+    extra: list[str] = []
+    if bind_host not in {"0.0.0.0", "::", ""}:
+        extra.extend([bind_host, f"{bind_host}:*"])
+    parsed = urlparse(public_url) if public_url else None
+    if parsed is not None and parsed.hostname:
+        extra.extend([parsed.hostname, f"{parsed.hostname}:*"])
+        if parsed.port:
+            extra.append(f"{parsed.hostname}:{parsed.port}")
+    if bind_host in {"0.0.0.0", "::", ""} and not extra:
+        return None
+    seen: list[str] = []
+    for host in local + extra:
+        if host not in seen:
+            seen.append(host)
+    return seen
 
 
 def requires_csrf_validation(request: Request) -> bool:

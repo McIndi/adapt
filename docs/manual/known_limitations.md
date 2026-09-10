@@ -36,6 +36,16 @@ The repository can contain changes that are newer than the published
 `adapt-server` package on PyPI. When you compare behavior with this manual,
 record the source commit or installed package version.
 
+## MCP request size
+
+MCP Streamable HTTP POST bodies larger than 4 MiB return HTTP 413. This limit
+comes from the MCP Python SDK. Use the REST API for larger dataset writes.
+
+## MCP tracing
+
+The MCP Python SDK depends on `opentelemetry-api` and can create spans. Adapt
+does not install an OpenTelemetry SDK or exporter, so those spans are discarded.
+
 ## Helm resource names
 
 The Helm chart `fullname` helper collapses to the release name when that
