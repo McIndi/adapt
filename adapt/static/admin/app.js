@@ -83,6 +83,17 @@ document.addEventListener('DOMContentLoaded', () => {
         return { ...headers, 'X-CSRF-Token': token };
     }
 
+    // Encodes a value for safe placement inside a double-quoted HTML
+    // attribute (used for data-* attributes built from arbitrary strings,
+    // e.g. file-path-derived cache keys).
+    function escapeHtmlAttr(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     function displayPermissionResource(resource) {
         const normalized = typeof resource === 'string' ? resource.trim() : '';
         return normalized ? normalized : '(document root)';
