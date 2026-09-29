@@ -18,6 +18,24 @@
     outline-offset: 2px;
 }
 
+.container-fluid table {
+    width: 100%;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+}
+
+.container-fluid table th,
+.container-fluid table td {
+    padding: 0.5rem;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: top;
+}
+
+.container-fluid table thead th {
+    border-bottom: 2px solid #dee2e6;
+    text-align: left;
+}
+
 .adapt-sort-indicator {
     flex-shrink: 0;
     font-size: 0.75rem;
