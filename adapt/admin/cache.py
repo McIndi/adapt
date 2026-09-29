@@ -69,7 +69,7 @@ def clear_cache(request: Request, resource: Optional[str] = None, user = Depends
     logger.info("Cleared cache for resource %s", resource or "all")
     return {"success": True}
 
-@router.delete("/cache/{key}")
+@router.delete("/cache/{key:path}")
 def delete_cache_entry(key: str, resource: str, request: Request, user = Depends(require_superuser)):
     """Delete a specific cache entry."""
     invalidate_cache(resource, key)
