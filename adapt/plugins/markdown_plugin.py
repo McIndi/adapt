@@ -20,7 +20,7 @@ from .base import Plugin, ResourceDescriptor, PluginContext, SearchDocument
 logger = logging.getLogger(__name__)
 
 # Rendered with the "toc" extension so heading ids exist for search deep links.
-MARKDOWN_EXTENSIONS = ["toc"]
+MARKDOWN_EXTENSIONS = ["toc", "tables", "fenced_code", "sane_lists"]
 
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.*?)\s*#*$", re.MULTILINE)
 
