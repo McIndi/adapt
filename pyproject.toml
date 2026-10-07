@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools==84.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -24,40 +24,61 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Internet :: WWW/HTTP :: HTTP Servers",
 ]
+# Compatible ranges for users. Lower bounds are the oldest versions that
+# resolve together and pass the suite on the oldest supported Python (see
+# constraints-min.txt and the test-min CI job). Upper bounds only for a known
+# incompatibility, with an issue reference. Exact tested pins live in
+# requirements.lock.
 dependencies = [
-    "fastapi>=0.115,<1.0",
-    "uvicorn>=0.30,<1.0",
-    "sqlmodel>=0.0.14,<0.1",
-    "pendulum>=3.0,<4",
-    "watchfiles>=0.20,<2",
-    "jinja2>=3.1,<4",
-    "openpyxl>=3.1,<4",
-    "xlrd>=2.0.2,<3",
-    "markdown>=3.5,<4",
-    "python-multipart>=0.0.9,<0.1",
-    "mutagen>=1.47,<2",
-    "imageio>=2.31,<3",
-    "imageio-ffmpeg>=0.4,<1",
-    "pillow>=12.3,<13",
-    "python-json-logger>=2.0,<5",
-    # fastparquet 2026.5.0 uses generic datetime/timedelta units that NumPy
-    # 2.5 deprecates. Remove this cap when fastparquet adopts explicit units.
+    "fastapi>=0.115",
+    "uvicorn>=0.31.1",
+    "sqlmodel>=0.0.14",
+    "pendulum>=3.0",
+    "watchfiles>=0.20",
+    "jinja2>=3.1",
+    "openpyxl>=3.1",
+    "xlrd>=2.0.2",
+    "markdown>=3.5",
+    "python-multipart>=0.0.9",
+    "mutagen>=1.47",
+    "imageio>=2.31",
+    "imageio-ffmpeg>=0.4",
+    "pillow>=12.3",
+    "python-json-logger>=2.0",
+    # fastparquet (2026.5.0 through 2026.9.0) uses generic timedelta units
+    # that NumPy 2.5 deprecates; reading a timedelta column warns and will
+    # fail when NumPy turns the deprecation into an error. Remove this cap
+    # when fastparquet adopts explicit units:
+    # https://github.com/dask/fastparquet/issues/983
     "numpy>=1.26,<2.5",
-    "pandas>=2.0,<4",
-    "fastparquet>=2024.0.0,<2027",
-    "mcp>=2.2,<3",
-    "PyJWT>=2.8,<3",
-    "cryptography>=43,<51",
-    "httpx>=0.27,<1",
+    "pandas>=2.0",
+    "fastparquet>=2024.2.0",
+    "mcp>=2.2",
+    "PyJWT>=2.10.1",
+    "cryptography>=43",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=8,<10",
-    "httpx>=0.27,<1",
-    "httpx2>=2.0,<3",
-    "build>=1.0,<2",
-    "twine>=5.0,<8",
+    "pytest>=8",
+    "httpx>=0.27",
+    "httpx2>=2.5.0",
+    "build>=1.0",
+    "twine>=5.0",
+]
+
+# Tooling for CI and the docs build. Not published; pinned in requirements.lock.
+[dependency-groups]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocstrings[python]>=1.0.6",
+    "mkdocs-gen-files>=0.6.1",
+    "mkdocs-mermaid2-plugin>=1.2.3",
+]
+ci = [
+    "pip>=26.2.1",
+    "pip-audit>=2.10.1",
 ]
 
 [project.urls]
