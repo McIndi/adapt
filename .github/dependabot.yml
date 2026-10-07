@@ -19,8 +19,9 @@ updates:
         patterns:
           - "*"
     ignore:
-      # Capped for a known fastparquet incompatibility; see pyproject.toml and
-      # https://github.com/dask/fastparquet/issues/983
+      # Capped for a known fastparquet incompatibility; see pyproject.toml,
+      # https://github.com/dask/fastparquet/issues/983 and
+      # https://github.com/McIndi/adapt/issues/8
       - dependency-name: numpy
         versions: [">=2.5"]
 

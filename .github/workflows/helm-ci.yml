@@ -31,9 +31,11 @@ jobs:
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           # Latest Helm 3. chart-testing 3.15.0 does not support Helm 4
-          # (helm/chart-testing#854).
+          # (helm/chart-testing#854). Held back: McIndi/adapt#9.
           version: v3.22.0
 
+      # Held at v0.6.3: v1.x rewords schema errors and needs a test change
+      # plus a chart version bump. McIndi/adapt#9.
       - name: Install helm-unittest plugin
         run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.6.3
 
@@ -67,7 +69,7 @@ jobs:
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           # Latest Helm 3. chart-testing 3.15.0 does not support Helm 4
-          # (helm/chart-testing#854).
+          # (helm/chart-testing#854). Held back: McIndi/adapt#9.
           version: v3.22.0
 
       - name: Setup chart-testing

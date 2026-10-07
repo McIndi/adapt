@@ -50,6 +50,7 @@ dependencies = [
     # fail when NumPy turns the deprecation into an error. Remove this cap
     # when fastparquet adopts explicit units:
     # https://github.com/dask/fastparquet/issues/983
+    # Tracked in https://github.com/McIndi/adapt/issues/8
     "numpy>=1.26,<2.5",
     "pandas>=2.0",
     "fastparquet>=2024.2.0",

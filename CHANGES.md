@@ -19,7 +19,8 @@ Python 3.11 by the new `test-min` CI job:
   `httpx<1`, `httpx2<3`, `build<2` and `twine<8`.
 - Kept `numpy<2.5`. fastparquet 2026.9.0 still uses generic timedelta
   units that NumPy 2.5 deprecates
-  ([dask/fastparquet#983](https://github.com/dask/fastparquet/issues/983)).
+  ([dask/fastparquet#983](https://github.com/dask/fastparquet/issues/983);
+  tracked in [#8](https://github.com/McIndi/adapt/issues/8)).
 - Raised lower bounds to the oldest versions that can install with
   `mcp>=2.2`, or that exist on PyPI:
   - `uvicorn` 0.30 → 0.31.1 (mcp 2.2 requires it)
@@ -78,7 +79,7 @@ CI:
   `uv` with `versioning-strategy: lockfile-only`. Dependabot updates
   `uv.lock` and never changes the pyproject ranges. The `mcp`
   major-version ignore is gone, and NumPy 2.5 and later are ignored until
-  fastparquet#983 is fixed.
+  fastparquet#983 is fixed ([#8](https://github.com/McIndi/adapt/issues/8)).
 
 Container image:
 

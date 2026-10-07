@@ -13,8 +13,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Same hard gate as publish-image.yml and publish-pypi.yml: a release
-  # can't publish docs that skipped CI.
+  # Run the Test workflow first, so a release can't publish docs that
+  # skipped CI. publish-image.yml and publish-chart.yml gate the same way;
+  # publish-pypi.yml builds and publishes without running the tests.
   test:
     uses: ./.github/workflows/test.yml
 

@@ -30,7 +30,7 @@ jobs:
         uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           # Latest Helm 3. chart-testing 3.15.0 does not support Helm 4
-          # (helm/chart-testing#854).
+          # (helm/chart-testing#854). Held back: McIndi/adapt#9.
           version: v3.22.0
 
       - name: Verify chart tag matches Chart.yaml version
