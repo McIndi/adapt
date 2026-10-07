@@ -10,6 +10,27 @@ both release types.
 
 This guide gives the complete Helm chart release procedure.
 
+## Dependency refresh
+
+Start every application release by refreshing the pins on a branch from
+`dev`:
+
+```bash
+uv lock --upgrade
+uv sync --locked --extra dev --group docs
+uv run python -m pytest tests/ -q
+uv run mkdocs build --strict
+```
+
+Also bump the pinned uv version, the action SHAs, the Python patch versions,
+and the image digests in `.github/workflows/` and `Dockerfile`. CI tests the
+lower bounds from `constraints-min.txt` in the `test-min` job. Record every
+pin change, old → new, in `CHANGES.md`.
+
+The container image installs the runtime dependencies from a hashed export
+of the lock. The `Dockerfile` creates it in a build stage:
+`uv export --locked --format requirements-txt --no-dev --no-emit-project`.
+
 ## Coordinated application and chart release
 
 Publish the Python package and the container image before the chart. The

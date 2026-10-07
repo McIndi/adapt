@@ -2,7 +2,7 @@
 # dependencies and the dev extra). The test-min CI job installs these on the
 # oldest supported Python (requires-python >=3.11):
 #
-#   python -m pip install -c constraints-min.txt -e ".[dev]"
+#   uv pip install -c constraints-min.txt -e ".[dev]"
 #
 # Keep each pin equal to its pyproject.toml lower bound. Raise a bound only
 # through a deliberate change noted in CHANGES.md.

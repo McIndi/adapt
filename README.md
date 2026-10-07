@@ -249,16 +249,27 @@ this documentation, and GitHub Pages publishes it.
 Build the documentation locally:
 
 ```bash
-python -m pip install --require-hashes -r requirements.lock
-python -m pip install --no-deps -e .
-mkdocs build --strict
+uv sync --locked --extra dev --group docs
+uv run mkdocs build --strict
 ```
 
-`requirements.lock` pins the exact, hashed versions that CI tests: runtime,
-the `dev` extra, and the `docs` and `ci` dependency groups. Regenerate it
-with the command in its header after you change `pyproject.toml`.
+Run the tests the same way CI does:
+
+```bash
+uv sync --locked --extra dev
+uv run python -m pytest tests/ -q
+```
+
+`uv.lock` pins the exact, hashed versions that CI tests: runtime, the `dev`
+extra, and the `docs` and `audit` dependency groups. After you change
+`pyproject.toml`, run `uv lock`. CI fails when `uv.lock` is out of date.
 `constraints-min.txt` holds the lower bounds that the `test-min` CI job
-installs on Python 3.11.
+installs on Python 3.11:
+
+```bash
+uv venv --python 3.11
+uv pip install -c constraints-min.txt -e ".[dev]"
+```
 
 ## License
 

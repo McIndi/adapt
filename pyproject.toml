@@ -28,7 +28,7 @@ classifiers = [
 # resolve together and pass the suite on the oldest supported Python (see
 # constraints-min.txt and the test-min CI job). Upper bounds only for a known
 # incompatibility, with an issue reference. Exact tested pins live in
-# requirements.lock.
+# uv.lock.
 dependencies = [
     "fastapi>=0.115",
     "uvicorn>=0.31.1",
@@ -68,7 +68,7 @@ dev = [
     "twine>=5.0",
 ]
 
-# Tooling for CI and the docs build. Not published; pinned in requirements.lock.
+# Tooling for CI and the docs build. Not published; pinned in uv.lock.
 [dependency-groups]
 docs = [
     "mkdocs>=1.6.1",
@@ -76,8 +76,7 @@ docs = [
     "mkdocs-gen-files>=0.6.1",
     "mkdocs-mermaid2-plugin>=1.2.3",
 ]
-ci = [
-    "pip>=26.2.1",
+audit = [
     "pip-audit>=2.10.1",
 ]
 

@@ -1,20 +1,19 @@
-# Weekly updates for Python packages, GitHub Actions, and the Dockerfile
-# base image. Pull requests target dev and go through CI and review like any
+# Weekly updates for uv.lock, GitHub Actions, and the Dockerfile base
+# images (Python and uv). Pull requests target dev and go through CI and review like any
 # other change. Group routine updates so each ecosystem usually opens one
 # pull request.
 version: 2
 updates:
-  - package-ecosystem: pip
+  - package-ecosystem: uv
     directory: /
     target-branch: dev
     schedule:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
-    # pyproject.toml holds compatible ranges for users. Change a range only
-    # when a new release falls outside it; never raise a lower bound here.
-    # Lower bounds move only by a deliberate change noted in CHANGES.md.
-    versioning-strategy: increase-if-necessary
+    # Update uv.lock only. pyproject.toml holds compatible ranges for users;
+    # lower bounds move only by a deliberate change noted in CHANGES.md.
+    versioning-strategy: lockfile-only
     groups:
       python:
         patterns:

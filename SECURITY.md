@@ -93,16 +93,19 @@ Do not wait until someone finds a vulnerability to update it.
   An upper bound is set only for a known incompatibility, with an issue
   reference. CI tests the lower bounds (`constraints-min.txt`, `test-min`
   job) and the exact pins.
-- CI, docs, and package builds install from `requirements.lock`: exact
-  versions with hashes (`pip install --require-hashes`).
+- CI, docs, and package builds install from `uv.lock` (`uv sync --locked`):
+  exact versions with hashes. A stale lock fails CI. The container image
+  installs a hashed runtime-only export of the lock
+  (`pip install --require-hashes`).
 - Workflows pin every third-party action to a full commit SHA, and pin
   runner images and Python patch versions.
-- Dependabot checks `pip`, GitHub Actions, and Docker every Monday and
-  opens pull requests against `dev` (`.github/dependabot.yml`).
-- The container `FROM` line keeps the `python:3.14-slim` tag and pins the
-  multi-platform index digest. Refresh steps are in
+- Dependabot checks `uv` (lock only), GitHub Actions, and Docker every
+  Monday and opens pull requests against `dev` (`.github/dependabot.yml`).
+- The container `FROM` lines pin exact tags (`python:3.14.8-slim`, and
+  `ghcr.io/astral-sh/uv` for the export stage) plus multi-platform index
+  digests. Refresh steps are in
   `docs/manual/container.md`.
-- CI runs `pip-audit` against installed dependencies on every push and
+- CI runs `pip-audit` against every package in `uv.lock` on every push and
   every pull request (`.github/workflows/test.yml`, `dependency-audit`
   job).
 - Releases publish to PyPI through OIDC trusted publishing
