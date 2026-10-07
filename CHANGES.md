@@ -93,10 +93,13 @@ Container image:
 
 Helm CI:
 
-- Helm v3.21.4 → v3.22.0. This is the latest Helm 3; chart-testing 3.15.0
-  does not support Helm 4 (helm/chart-testing#854).
+- Helm v3.21.4 → v3.22.0. This is the latest Helm 3; chart-testing does
+  not support Helm 4 (helm/chart-testing#854).
 - kind v0.32.0 → v0.33.0. kubectl v1.37.1 is now pinned.
-- chart-testing 3.14.0 (the action default) → 3.15.0. yamllint 1.38.0 and
-  yamale 6.1.0 are now pinned.
+- chart-testing is now pinned at 3.14.0 (unchanged; it was the action
+  default). The latest, 3.15.0, ships only Sigstore bundles, and
+  chart-testing-action v2.8.0 can't verify it
+  (helm/chart-testing-action#230). yamllint 1.38.0 and yamale 6.1.0 are now
+  pinned.
 - kindest/node matrix v1.31.2, v1.32.0, v1.33.0 → v1.35.8, v1.36.4,
   v1.37.0. These are the kind v0.33.0 images, pinned by digest.
