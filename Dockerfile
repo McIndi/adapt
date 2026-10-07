@@ -1,9 +1,9 @@
-# Official Python slim image. Keep the 3.14 tag for humans. Pin the
-# multi-platform index digest (not an amd64-only or arm64-only digest) so
-# both publish architectures resolve the same input. Dependabot updates
-# the tag and digest together. To refresh by hand, copy the index Digest
-# from: docker buildx imagetools inspect python:3.14-slim
-FROM python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+# Official Python slim image at an exact patch tag. Pin the multi-platform
+# index digest (not an amd64-only or arm64-only digest) so both publish
+# architectures resolve the same input. Dependabot updates the tag and digest
+# together. To refresh by hand, copy the index Digest from:
+#   docker buildx imagetools inspect python:3.14.8-slim
+FROM python:3.14.8-slim@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2
 
 ARG IMAGE_VERSION="0.4.1"
 ARG IMAGE_SOURCE="https://github.com/McIndi/adapt"
@@ -25,11 +25,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md LICENSE ./
+COPY pyproject.toml README.md LICENSE requirements.runtime.lock ./
 
-RUN python -c "import tomllib; print('\\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']))" > /tmp/requirements.txt \
-    && pip install --no-cache-dir -r /tmp/requirements.txt \
-    && rm /tmp/requirements.txt
+# Runtime dependencies only, at the exact hashed versions CI tests. See the
+# header of requirements.runtime.lock for the command that generates it.
+RUN pip install --no-cache-dir --require-hashes -r requirements.runtime.lock
 
 COPY adapt ./adapt
 

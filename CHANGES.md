@@ -76,3 +76,20 @@ CI:
   `increase-if-necessary`, so Dependabot never raises a lower bound. The
   `mcp` major-version ignore is gone, and NumPy 2.5 and later are ignored
   until fastparquet#983 is fixed.
+
+Container image:
+
+- Base image `python:3.14-slim` → `python:3.14.8-slim`, with a new index digest
+  (`sha256:f85c5697…`).
+- The image installs runtime dependencies from `requirements.runtime.lock`
+  with `--require-hashes`, instead of resolving the ranges at build time.
+
+Helm CI:
+
+- Helm v3.21.4 → v3.22.0. This is the latest Helm 3; chart-testing 3.15.0
+  does not support Helm 4 (helm/chart-testing#854).
+- kind v0.32.0 → v0.33.0. kubectl v1.37.1 is now pinned.
+- chart-testing 3.14.0 (the action default) → 3.15.0. yamllint 1.38.0 and
+  yamale 6.1.0 are now pinned.
+- kindest/node matrix v1.31.2, v1.32.0, v1.33.0 → v1.35.8, v1.36.4,
+  v1.37.0. These are the kind v0.33.0 images, pinned by digest.
