@@ -89,10 +89,16 @@ Do not wait until someone finds a vulnerability to update it.
 
 ## Supply Chain
 
-- Runtime dependencies in `pyproject.toml` carry version limits (a lower
-  bound plus an upper bound), instead of staying fully open-ended.
-- Dependabot checks `pip`, GitHub Actions, and Docker every Monday
-  (`.github/dependabot.yml`).
+- Runtime dependencies in `pyproject.toml` carry a tested lower bound.
+  An upper bound is set only for a known incompatibility, with an issue
+  reference. CI tests the lower bounds (`constraints-min.txt`, `test-min`
+  job) and the exact pins.
+- CI, docs, and package builds install from `requirements.lock`: exact
+  versions with hashes (`pip install --require-hashes`).
+- Workflows pin every third-party action to a full commit SHA, and pin
+  runner images and Python patch versions.
+- Dependabot checks `pip`, GitHub Actions, and Docker every Monday and
+  opens pull requests against `dev` (`.github/dependabot.yml`).
 - The container `FROM` line keeps the `python:3.14-slim` tag and pins the
   multi-platform index digest. Refresh steps are in
   `docs/manual/container.md`.

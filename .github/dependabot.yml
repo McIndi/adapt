@@ -1,26 +1,33 @@
 # Weekly updates for Python packages, GitHub Actions, and the Dockerfile
-# base image. Group routine updates so each ecosystem usually opens one
-# pull request. Do not mix unrelated upgrades into the first config change;
-# let later Dependabot PRs bump action and package versions.
+# base image. Pull requests target dev and go through CI and review like any
+# other change. Group routine updates so each ecosystem usually opens one
+# pull request.
 version: 2
 updates:
   - package-ecosystem: pip
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
+    # pyproject.toml holds compatible ranges for users. Change a range only
+    # when a new release falls outside it; never raise a lower bound here.
+    # Lower bounds move only by a deliberate change noted in CHANGES.md.
+    versioning-strategy: increase-if-necessary
     groups:
       python:
         patterns:
           - "*"
     ignore:
-      - dependency-name: mcp
-        update-types:
-          - version-update:semver-major
+      # Capped for a known fastparquet incompatibility; see pyproject.toml and
+      # https://github.com/dask/fastparquet/issues/983
+      - dependency-name: numpy
+        versions: [">=2.5"]
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday
@@ -32,6 +39,7 @@ updates:
 
   - package-ecosystem: docker
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday

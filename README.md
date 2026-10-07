@@ -249,10 +249,16 @@ this documentation, and GitHub Pages publishes it.
 Build the documentation locally:
 
 ```bash
-python -m pip install -e ".[dev]"
-python -m pip install -r requirements-docs.txt
+python -m pip install --require-hashes -r requirements.lock
+python -m pip install --no-deps -e .
 mkdocs build --strict
 ```
+
+`requirements.lock` pins the exact, hashed versions that CI tests: runtime,
+the `dev` extra, and the `docs` and `ci` dependency groups. Regenerate it
+with the command in its header after you change `pyproject.toml`.
+`constraints-min.txt` holds the lower bounds that the `test-min` CI job
+installs on Python 3.11.
 
 ## License
 
