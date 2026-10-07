@@ -76,10 +76,13 @@ def iter_effective_routes(routes, prefix: str = ""):
     `_IncludedRouter` wrapper rather than flattening into `app.routes`; nested
     routes carry only their sub-path, so the mount prefix must be reapplied.
     Works on both the flattened and nested representations.
+
+    Paths use `path_format` (converters stripped, e.g. `/cache/{key}` for
+    `/cache/{key:path}`), the same form get_openapi() uses.
     """
     for route in routes:
         if isinstance(route, APIRoute):
-            yield prefix + route.path, route
+            yield prefix + route.path_format, route
             continue
         context = getattr(route, "include_context", None)
         if context is not None:
