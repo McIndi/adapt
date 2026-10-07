@@ -1,9 +1,24 @@
-# Official Python slim image. Keep the 3.14 tag for humans. Pin the
-# multi-platform index digest (not an amd64-only or arm64-only digest) so
-# both publish architectures resolve the same input. Dependabot updates
-# the tag and digest together. To refresh by hand, copy the index Digest
-# from: docker buildx imagetools inspect python:3.14-slim
-FROM python:3.14-slim@sha256:cad9a2c871761c413caa6fdd6441c783451e740a48aaeba60ae62a8b53525ef6
+# Official Python slim image at an exact patch tag. Pin the multi-platform
+# index digest (not an amd64-only or arm64-only digest) so both publish
+# architectures resolve the same input. Dependabot updates the tag and digest
+# together. To refresh by hand, copy the index Digest from:
+#   docker buildx imagetools inspect python:3.14.8-slim
+FROM python:3.14.8-slim@sha256:f85c5697265c178cc6887276c55fe16cf3d14ca35c3df6a5eab3b360534a55d2 AS base
+
+# Export the runtime dependencies (no extras, no dependency groups, not the
+# project itself) from uv.lock as a hashed requirements file. --locked fails
+# the build if uv.lock is out of date with pyproject.toml. The uv image is
+# pinned by its multi-platform index digest; Dependabot updates it.
+FROM ghcr.io/astral-sh/uv:0.12.23@sha256:61d393e44e249f2e4b526b6c7ddcecce245946826e608e11c93ad4f5bba55b21 AS uv
+
+FROM base AS runtime-requirements
+COPY --from=uv /uv /usr/local/bin/uv
+WORKDIR /export
+COPY pyproject.toml uv.lock ./
+RUN uv export --locked --format requirements-txt --no-dev --no-emit-project \
+    --output-file /export/requirements.txt
+
+FROM base
 
 ARG IMAGE_VERSION="0.4.1"
 ARG IMAGE_SOURCE="https://github.com/McIndi/adapt"
@@ -27,8 +42,9 @@ RUN apt-get update \
 
 COPY pyproject.toml README.md LICENSE ./
 
-RUN python -c "import tomllib; print('\\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']))" > /tmp/requirements.txt \
-    && pip install --no-cache-dir -r /tmp/requirements.txt \
+# Runtime dependencies only, at the exact hashed versions CI tests.
+COPY --from=runtime-requirements /export/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir --require-hashes -r /tmp/requirements.txt \
     && rm /tmp/requirements.txt
 
 COPY adapt ./adapt

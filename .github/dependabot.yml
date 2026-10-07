@@ -1,26 +1,33 @@
-# Weekly updates for Python packages, GitHub Actions, and the Dockerfile
-# base image. Group routine updates so each ecosystem usually opens one
-# pull request. Do not mix unrelated upgrades into the first config change;
-# let later Dependabot PRs bump action and package versions.
+# Weekly updates for uv.lock, GitHub Actions, and the Dockerfile base
+# images (Python and uv). Pull requests target dev and go through CI and review like any
+# other change. Group routine updates so each ecosystem usually opens one
+# pull request.
 version: 2
 updates:
-  - package-ecosystem: pip
+  - package-ecosystem: uv
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday
     open-pull-requests-limit: 3
+    # Update uv.lock only. pyproject.toml holds compatible ranges for users;
+    # lower bounds move only by a deliberate change noted in CHANGES.md.
+    versioning-strategy: lockfile-only
     groups:
       python:
         patterns:
           - "*"
     ignore:
-      - dependency-name: mcp
-        update-types:
-          - version-update:semver-major
+      # Capped for a known fastparquet incompatibility; see pyproject.toml,
+      # https://github.com/dask/fastparquet/issues/983 and
+      # https://github.com/McIndi/adapt/issues/8
+      - dependency-name: numpy
+        versions: [">=2.5"]
 
   - package-ecosystem: github-actions
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday
@@ -32,6 +39,7 @@ updates:
 
   - package-ecosystem: docker
     directory: /
+    target-branch: dev
     schedule:
       interval: weekly
       day: monday

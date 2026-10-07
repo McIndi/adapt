@@ -22,16 +22,20 @@ on:
 jobs:
   lint-and-unittest:
     name: Helm lint and unit tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Helm
-        uses: azure/setup-helm@v5
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
-          version: v3.21.4
+          # Latest Helm 3. chart-testing does not support Helm 4
+          # (helm/chart-testing#854). Held back: McIndi/adapt#9.
+          version: v3.22.0
 
+      # Held at v0.6.3: v1.x rewords schema errors and needs a test change
+      # plus a chart version bump. McIndi/adapt#9.
       - name: Install helm-unittest plugin
         run: helm plugin install https://github.com/helm-unittest/helm-unittest --version v0.6.3
 
@@ -46,32 +50,44 @@ jobs:
 
   kind-install-smoke:
     name: kind + ct install + helm test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: lint-and-unittest
     strategy:
       fail-fast: false
       matrix:
         kindNode:
-          - kindest/node:v1.31.2
-          - kindest/node:v1.32.0
-          - kindest/node:v1.33.0
+          # Images published for kind v0.33.0, pinned by digest.
+          - kindest/node:v1.35.8@sha256:07b2536e30b803ed61d1677a79df6115f798ce64c80f9e22f6ed45afd09323c0
+          - kindest/node:v1.36.4@sha256:099e049362a1526b2db71494e1947aae99bd16290d7c895f2b7ea312e3cbfaed
+          - kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Helm
-        uses: azure/setup-helm@v5
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
-          version: v3.21.4
+          # Latest Helm 3. chart-testing does not support Helm 4
+          # (helm/chart-testing#854). Held back: McIndi/adapt#9.
+          version: v3.22.0
 
       - name: Setup chart-testing
-        uses: helm/chart-testing-action@v2.8.0
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+        with:
+          # Held at 3.14.0: ct 3.15.0 ships only Sigstore bundles, and action
+          # v2.8.0 verifies with the .pem/.sig files that 3.14.0 still ships.
+          # Move to 3.15.0 with the action release from
+          # helm/chart-testing-action#230. Held back: McIndi/adapt#9.
+          version: 3.14.0
+          yamllint_version: 1.38.0
+          yamale_version: 6.1.0
 
       - name: Create kind cluster
-        uses: helm/kind-action@v1.15.0
+        uses: helm/kind-action@1544676c07bb3570fcb70166beaa07c4528fd4aa # v1.15.1
         with:
-          version: v0.32.0
+          version: v0.33.0
+          kubectl_version: v1.37.1
           cluster_name: chart-testing
           node_image: ${{ matrix.kindNode }}
 
@@ -117,17 +133,25 @@ jobs:
 
   version-increment:
     name: Chart version increment check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: lint-and-unittest
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Setup chart-testing
-        uses: helm/chart-testing-action@v2.8.0
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+        with:
+          # Held at 3.14.0: ct 3.15.0 ships only Sigstore bundles, and action
+          # v2.8.0 verifies with the .pem/.sig files that 3.14.0 still ships.
+          # Move to 3.15.0 with the action release from
+          # helm/chart-testing-action#230. Held back: McIndi/adapt#9.
+          version: 3.14.0
+          yamllint_version: 1.38.0
+          yamale_version: 6.1.0
 
       - name: Check chart version increment
         run: >-

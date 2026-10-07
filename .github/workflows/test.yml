@@ -9,72 +9,86 @@ on:
 permissions:
   contents: read
 
+# docs, test and dependency-audit install the exact, hashed pins from uv.lock
+# on the newest Python. `uv sync --locked` fails when uv.lock is out of date
+# with pyproject.toml. test-min installs the pyproject.toml lower bounds from
+# constraints-min.txt on the oldest supported Python.
 jobs:
   docs:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          python-version: "3.14"
-          cache: pip
-          cache-dependency-path: |
-            pyproject.toml
-            requirements-docs.txt
+          version: "0.12.23"
+          python-version: "3.14.8"
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
-          python -m pip install -r requirements-docs.txt
+        run: uv sync --locked --extra dev --group docs
 
       - name: Build documentation
-        run: mkdocs build --strict
+        run: uv run --no-sync mkdocs build --strict
 
   test:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        fastapi-version: ["0.115.*", "0.140.*"]
+    runs-on: ubuntu-26.04
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          python-version: "3.14"
+          version: "0.12.23"
+          python-version: "3.14.8"
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
-          python -m pip install "fastapi==${{ matrix.fastapi-version }}"
+        run: uv sync --locked --extra dev
 
       - name: Run tests
-        run: python -m pytest tests/ -q
+        run: uv run --no-sync python -m pytest tests/ -q
 
-  dependency-audit:
-    runs-on: ubuntu-latest
+  test-min:
+    runs-on: ubuntu-26.04
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          python-version: "3.14"
+          version: "0.12.23"
+          # Oldest Python allowed by requires-python.
+          python-version: "3.11.17"
 
-      - name: Install dependencies
+      - name: Install minimum dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          uv venv
+          uv pip install -c constraints-min.txt -e ".[dev]"
 
-      - name: Run pip-audit
+      - name: Run tests
+        run: .venv/bin/python -m pytest tests/ -q
+
+  dependency-audit:
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.12.23"
+          python-version: "3.14.8"
+
+      - name: Install pip-audit
+        run: uv sync --locked --only-group audit
+
+      - name: Run pip-audit on every locked package
         run: |
-          python -m pip install pip-audit
-          python -m pip_audit
+          uv export --locked --format requirements-txt --all-extras --all-groups \
+            --no-emit-project --output-file audit-requirements.txt
+          uv run --no-sync python -m pip_audit --disable-pip --require-hashes \
+            -r audit-requirements.txt

@@ -23,8 +23,8 @@ docker pull ghcr.io/mcindi/adapt-server:0.5.2
 
 ## Base image pin
 
-The `Dockerfile` starts from `python:3.14-slim` plus a multi-platform index
-digest. The tag shows the Python series. The digest stops a silent retag of
+The `Dockerfile` starts from `python:3.14.8-slim` plus a multi-platform index
+digest. The tag shows the exact Python version. The digest stops a silent retag of
 that name from changing the build input.
 
 Dependabot watches the Docker ecosystem every Monday. It opens a pull
@@ -34,7 +34,7 @@ after the image build and the Python 3.14 check in Helm CI pass.
 To refresh the pin by hand:
 
 ```bash
-docker buildx imagetools inspect python:3.14-slim
+docker buildx imagetools inspect python:3.14.8-slim
 ```
 
 Copy the top-level `Digest` (`sha256:...`) into the `FROM` line. Do not copy

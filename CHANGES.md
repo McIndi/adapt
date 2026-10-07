@@ -1,0 +1,106 @@
+# Changes
+
+## Unreleased
+
+### Dependencies
+
+Dependency refresh per the McIndi dependency SOP. This supersedes
+Dependabot PR #7.
+
+Package metadata (`pyproject.toml`). The lower bounds are now tested on
+Python 3.11 by the new `test-min` CI job:
+
+- Removed blanket upper bounds that had no known incompatibility:
+  `fastapi<1.0`, `uvicorn<1.0`, `sqlmodel<0.1`, `pendulum<4`, `watchfiles<2`,
+  `jinja2<4`, `openpyxl<4`, `xlrd<3`, `markdown<4`, `python-multipart<0.1`,
+  `mutagen<2`, `imageio<3`, `imageio-ffmpeg<1`, `pillow<13`,
+  `python-json-logger<5`, `pandas<4`, `fastparquet<2027`, `mcp<3`,
+  `PyJWT<3`, `cryptography<51`, `httpx<1`. The dev extra lost `pytest<10`,
+  `httpx<1`, `httpx2<3`, `build<2` and `twine<8`.
+- Kept `numpy<2.5`. fastparquet 2026.9.0 still uses generic timedelta
+  units that NumPy 2.5 deprecates
+  ([dask/fastparquet#983](https://github.com/dask/fastparquet/issues/983);
+  tracked in [#8](https://github.com/McIndi/adapt/issues/8)).
+- Raised lower bounds to the oldest versions that can install with
+  `mcp>=2.2`, or that exist on PyPI:
+  - `uvicorn` 0.30 → 0.31.1 (mcp 2.2 requires it)
+  - `PyJWT` 2.8 → 2.10.1 (mcp 2.2 requires it)
+  - `httpx2` (dev) 2.0 → 2.5.0 (mcp 2.2 requires it)
+  - `fastparquet` 2024.0.0 → 2024.2.0 (the first 2024 release)
+- `[build-system]`: `setuptools>=69`, `wheel` → `setuptools==84.0.0`.
+  setuptools now builds wheels itself.
+
+Pinning:
+
+- New `uv.lock` (uv 0.12.23, `uv lock`) holds exact versions and hashes for
+  runtime, the `dev` extra, and the new `docs` and `audit` dependency
+  groups. CI installs it with `uv sync --locked`, so a stale lock fails CI.
+- New `constraints-min.txt` holds the lower bounds.
+- Removed `requirements-docs.txt`. Its pins are now in the `docs` group and
+  the lock.
+- Version changes compared with the previous CI install:
+  - markdown 3.10.3 → 3.11
+  - pymdown-extensions 11.0.2 → 12.1
+  - mkdocstrings-python 2.0.8 → 2.0.9
+  - platformdirs 4.11.7 → 4.12.3
+  - urllib3 2.7.0 → 2.8.0
+  - idna 3.19 → 3.20
+  - charset-normalizer 3.5.1 → 3.5.2
+  - markupsafe 3.0.3 → 3.0.4
+  - pip-audit unpinned → 2.10.1
+  - uv (new; CI and the image export stage) 0.12.23
+
+CI:
+
+- Every third-party action is pinned to a full commit SHA, on its latest
+  release:
+  - astral-sh/setup-uv v10.2.0 (new; replaces setup-python plus pip in the
+    test, docs, pages and publish build jobs)
+  - actions/checkout v7.0.1
+  - actions/setup-python v7.0.0
+  - actions/upload-artifact v7.0.2
+  - actions/download-artifact v8.0.2
+  - actions/upload-pages-artifact v5.0.0
+  - actions/deploy-pages v5.0.1
+  - azure/setup-helm v5.0.1
+  - helm/chart-testing-action v2.8.0
+  - helm/kind-action v1.15.0 → v1.15.1
+  - docker/setup-qemu-action v4.4.0
+  - docker/setup-buildx-action v4.4.1
+  - docker/login-action v4.6.0
+  - docker/build-push-action v7.4.0
+  - pypa/gh-action-pypi-publish `release/v1` → v1.14.2
+- Runners changed from `ubuntu-latest` to `ubuntu-26.04`.
+- Python changed from `3.14` to `3.14.8`. `test-min` uses `3.11.17`.
+- The Test workflow's `test (0.115.*)` and `test (0.140.*)` FastAPI matrix
+  is replaced by `test` (lock, Python 3.14.8) and `test-min` (lower bounds,
+  Python 3.11.17).
+- Dependabot pull requests now target `dev`. The `pip` ecosystem is now
+  `uv` with `versioning-strategy: lockfile-only`. Dependabot updates
+  `uv.lock` and never changes the pyproject ranges. The `mcp`
+  major-version ignore is gone, and NumPy 2.5 and later are ignored until
+  fastparquet#983 is fixed ([#8](https://github.com/McIndi/adapt/issues/8)).
+
+Container image:
+
+- Base image `python:3.14-slim` → `python:3.14.8-slim`, with a new index digest
+  (`sha256:f85c5697…`).
+- The image installs runtime dependencies with `--require-hashes` from a
+  build stage that runs
+  `uv export --locked --format requirements-txt --no-dev --no-emit-project`
+  (`ghcr.io/astral-sh/uv:0.12.23`, pinned by digest). Before this change,
+  the image resolved the ranges at build time.
+
+Helm CI:
+
+- Helm v3.21.4 → v3.22.0. This is the latest Helm 3; chart-testing does
+  not support Helm 4 (helm/chart-testing#854).
+- kind v0.32.0 → v0.33.0. kubectl v1.37.1 is now pinned.
+- chart-testing is now pinned at 3.14.0 (unchanged; it was the action
+  default). The latest, 3.15.0, ships only Sigstore bundles, and
+  chart-testing-action v2.8.0 can't verify it
+  (helm/chart-testing-action#230; tracked in
+  [#9](https://github.com/McIndi/adapt/issues/9)). yamllint 1.38.0 and yamale 6.1.0 are now
+  pinned.
+- kindest/node matrix v1.31.2, v1.32.0, v1.33.0 → v1.35.8, v1.36.4,
+  v1.37.0. These are the kind v0.33.0 images, pinned by digest.

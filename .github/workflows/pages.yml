@@ -13,45 +13,40 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Same hard gate as publish-image.yml and publish-pypi.yml: a release
-  # can't publish docs that skipped CI.
+  # Run the Test workflow first, so a release can't publish docs that
+  # skipped CI. publish-image.yml and publish-chart.yml gate the same way;
+  # publish-pypi.yml builds and publishes without running the tests.
   test:
     uses: ./.github/workflows/test.yml
 
   build:
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Set up uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         with:
-          python-version: "3.14"
-          cache: pip
-          cache-dependency-path: |
-            pyproject.toml
-            requirements-docs.txt
+          version: "0.12.23"
+          python-version: "3.14.8"
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
-          python -m pip install -r requirements-docs.txt
+        run: uv sync --locked --extra dev --group docs
 
       - name: Build documentation
-        run: mkdocs build --strict
+        run: uv run --no-sync mkdocs build --strict
 
       - name: Upload GitHub Pages artifact
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: site
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       pages: write
       id-token: write
@@ -62,4 +57,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
