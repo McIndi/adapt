@@ -99,7 +99,8 @@ Helm CI:
 - chart-testing is now pinned at 3.14.0 (unchanged; it was the action
   default). The latest, 3.15.0, ships only Sigstore bundles, and
   chart-testing-action v2.8.0 can't verify it
-  (helm/chart-testing-action#230). yamllint 1.38.0 and yamale 6.1.0 are now
+  (helm/chart-testing-action#230; tracked in
+  [#9](https://github.com/McIndi/adapt/issues/9)). yamllint 1.38.0 and yamale 6.1.0 are now
   pinned.
 - kindest/node matrix v1.31.2, v1.32.0, v1.33.0 → v1.35.8, v1.36.4,
   v1.37.0. These are the kind v0.33.0 images, pinned by digest.
