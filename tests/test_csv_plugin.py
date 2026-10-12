@@ -113,7 +113,6 @@ def python_resource_descriptor(sample_py):
 
 @pytest.fixture
 def plugin_context(tmp_path):
-    from sqlalchemy import create_engine
     from adapt.locks import LockManager
     from adapt.storage import init_database
     

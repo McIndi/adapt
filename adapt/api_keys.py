@@ -6,7 +6,7 @@ import secrets
 import hashlib
 from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
-from fastapi import Request, HTTPException, Security
+from fastapi import Request, Security
 from fastapi.security import APIKeyHeader
 
 from .storage import APIKey, User

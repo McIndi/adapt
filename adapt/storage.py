@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from enum import Enum as PyEnum
 from pathlib import Path
 from typing import Generator
 
 from sqlalchemy import Boolean, Column, DateTime, Text, UniqueConstraint, Integer, ForeignKey as SA_ForeignKey, Enum as SqlEnum
 from sqlmodel import Field, SQLModel, create_engine, Session
 from sqlalchemy import event
-from fastapi import Request, Depends
+from fastapi import Request
 
 
 logger = logging.getLogger(__name__)
@@ -40,8 +41,6 @@ class Group(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     name: str = Field(sa_column=Column(Text, unique=True, nullable=False))
     description: str | None = None
-
-from enum import Enum as PyEnum
 
 
 class Action(PyEnum):

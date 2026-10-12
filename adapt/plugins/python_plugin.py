@@ -1,9 +1,8 @@
 from __future__ import annotations
 import logging
-from adapt.cache import get_cache, set_cache, invalidate_cache
 
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from fastapi import Request
 from fastapi.routing import APIRouter

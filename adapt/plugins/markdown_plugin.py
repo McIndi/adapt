@@ -10,7 +10,6 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from fastapi import Request
-from fastapi.responses import HTMLResponse
 from fastapi.routing import APIRouter
 
 from ..utils import build_accessible_ui_links

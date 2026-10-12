@@ -1,9 +1,8 @@
 import pytest
 from pathlib import Path
-from adapt.discovery import discover_resources, should_ignore, DatasetResource
+from adapt.discovery import discover_resources, should_ignore
 from adapt.config import AdaptConfig
 from adapt.plugins.base import ResourceDescriptor
-from adapt.plugins.csv_plugin import CsvPlugin
 
 @pytest.fixture
 def mock_config():
@@ -68,8 +67,7 @@ def test_discover_resources_nested_structure(tmp_path, mock_config):
     resources = discover_resources(tmp_path, mock_config)
     
     assert len(resources) == 1
-    resource = resources[0]
-    
+
     # Check companion files mirror structure in .adapt
     adapt_subdir = tmp_path / ".adapt" / "subdir"
     assert adapt_subdir.exists()

@@ -4,8 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from fastapi import FastAPI, Request, Depends
-from fastapi.routing import APIRoute, APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi.routing import APIRoute
 import logging
 
 from .config import AdaptConfig

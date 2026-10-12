@@ -1,7 +1,7 @@
 """Tests for adapt.auth.dependencies: get_current_user, require_auth,
 require_superuser, check_permission, and permission_dependency."""
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from fastapi import HTTPException
 from sqlmodel import Session
 
@@ -10,12 +10,9 @@ from adapt.storage import (
 )
 from adapt.auth.dependencies import (
     get_current_user, require_auth, require_superuser, check_permission,
-    permission_dependency,
 )
 from adapt.auth.session import create_session
-from adapt.api_keys import generate_api_key, create_api_key_record
-from adapt.storage import APIKey
-from datetime import datetime, timezone
+from adapt.api_keys import create_api_key_record
 
 
 # ---------------------------------------------------------------------------

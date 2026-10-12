@@ -1,8 +1,9 @@
 # Adapt Hardening Plan
 
-Status: Active — Review Gate 2 passed. Phase 3 is next.
+Status: Active — Phase 3 producer steps are in the workflows. Review Gate 3
+waits on the next public release. Phase 4 checks run on pull requests.
 Created: 2026-09-03
-Updated: 2026-09-10
+Updated: 2026-10-12
 
 This plan replaces the completed container and Helm cleanup plan. The full
 record of that work is in
@@ -170,6 +171,11 @@ duplicating evidence that the registries already produce.
 
 ### Review Gate 3
 
+Not passed. The producer steps landed on 2026-10-12. `SUPPLY_CHAIN.md` records
+the `0.5.2` inventory. `RELEASING.md` records the verification commands.
+Image and chart signatures, and the new SBOMs, appear on the next publish.
+Close this gate only after those public artifacts verify.
+
 - The evidence inventory is accurate and checked into the repository.
 - Every published artifact has a documented SBOM and verification path.
 - Missing image and chart integrity evidence has been added and tested.
@@ -207,10 +213,17 @@ Make static quality checks and test coverage visible in pull requests.
 
 ### Review Gate 4
 
-- Lint and coverage are required pull-request checks.
-- The recorded coverage baseline matches CI.
-- The threshold policy is documented and can increase without redesigning the
-  workflow.
+Local checks passed on 2026-10-12. CI confirmation is the next pull request.
+
+- `lint` and `coverage` run on every pull request from `.github/workflows/test.yml`.
+- The statement-coverage floor is `fail_under = 81` in `pyproject.toml`.
+  The local measurement was 81.50% (356 passed, 1 skipped). Raising or
+  lowering it is a one-line change, documented in `RELEASING.md`.
+- A file with a syntax error failed `ruff check` with exit code 1. That file
+  was not committed.
+- `pytest --cov=adapt --cov-fail-under=100` failed with
+  `FAIL Required test coverage of 100% not reached. Total coverage: 81.50%`.
+  The committed floor is 81.
 
 ## Phase 5 — Schema migrations and backup restore
 

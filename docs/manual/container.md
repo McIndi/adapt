@@ -169,9 +169,11 @@ The image also carries a built-in `HEALTHCHECK` that polls `/health` every
 docker ps --filter name=adapt
 ```
 
-**Future work:** signature verification (cosign/sigstore) and an attached
-SBOM are not yet part of the publish pipeline — see Phase 3 and milestone M3 in
-[MILESTONES.md](https://github.com/McIndi/adapt/blob/main/MILESTONES.md).
+From the next image release after `0.5.2`, the publish workflow signs the
+image index with Cosign and attaches an SBOM. `0.5.2` already carries SLSA
+provenance and does not carry that signature. Verification commands are in
+`RELEASING.md` at the repository root. The `0.5.2` inventory is in
+`SUPPLY_CHAIN.md`.
 
 ## Kubernetes
 

@@ -110,10 +110,13 @@ Do not wait until someone finds a vulnerability to update it.
   job).
 - Releases publish to PyPI through OIDC trusted publishing
   (`.github/workflows/publish-pypi.yml`). This repository stores no
-  long-lived PyPI token.
-- Artifact signing and SBOM (Software Bill of Materials) generation are
-  not yet in place. These remain milestone M3 Phase 3 (see
-  `MILESTONES.md`).
+  long-lived PyPI token. PyPI already attests those distributions.
+  The workflow does not add a second PyPI signature.
+- From the next release, publish workflows add CycloneDX SBOMs for the
+  Python distributions and the chart, an SPDX SBOM and a keyless Cosign
+  signature for the image, and a keyless Cosign signature for the chart.
+  The `0.5.2` inventory and the verification commands are in
+  `SUPPLY_CHAIN.md` and `RELEASING.md`.
 - The MCP Python SDK 2.x line depends on `opentelemetry-api`. Adapt does
   not configure a tracer provider or exporter. MCP spans stay no-op until
   a later OpenTelemetry integration.

@@ -2,7 +2,7 @@ from pathlib import Path
 import logging
 
 from ...config import AdaptConfig
-from ...storage import Permission, Group, GroupPermission, init_database, Action, get_db_session, User, UserGroup
+from ...storage import Permission, Group, GroupPermission, init_database, User, UserGroup
 from sqlmodel import Session, select
 
 logger = logging.getLogger(__name__)

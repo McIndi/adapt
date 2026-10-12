@@ -38,7 +38,7 @@ pull and live install.
 
 ### M3 — Dependency and supply-chain hardening
 
-Status: In progress (Phase 3)
+Status: In progress (Phase 3 workflows landed; Review Gate 3 is open)
 
 Goal: automate dependency maintenance, pin the container base image, and give
 consumers verifiable release evidence.
@@ -63,7 +63,7 @@ Exit criteria:
 
 ### M4 — Quality visibility
 
-Status: Planned
+Status: Checks are in CI. Review Gate 4 is waiting on the next pull request.
 
 Goal: make Python static checks and test coverage visible and enforceable in
 pull requests.

@@ -10,8 +10,11 @@ behind the current milestone. A milestone counts as reached only when
 every lane below reads `OK` for it.
 
 **Last closed milestone:** M2 — Coordinated 0.5.2 release. **Current:** M3
-Phase 3 — Artifact SBOMs, provenance, and signing. Data stays `WIP` until
-M5: schema work still uses `create_all()` plus additive `ALTER` statements.
+Phase 3 — Artifact SBOMs, provenance, and signing. The producer workflows
+are in the repository. Review Gate 3 stays open until the next public
+release verifies. M4 lint and coverage already run on pull requests. Data
+stays `WIP` until M5: schema work still uses `create_all()` plus additive
+`ALTER` statements.
 
 The active sequence is `CLEANUP_PLAN.md` Phase 3. Review Gate 2 passed
 2026-09-10. A separate product tracer upgrades MCP to SDK 2.2 without
@@ -38,11 +41,11 @@ after the check.
 | 1 | Business logic | OK | M2 shipped as `0.5.2`. Next product work is unscheduled. M3 is supply-chain, not features. |
 | 2 | Interface | OK | MCP uses SDK 2.2 (`MCPServer`). Live Cursor/Claude check is still open. |
 | 3 | Data | WIP | SQLite still uses `create_all()`. OIDC adds columns with `ALTER`. Migrations and a restore drill are M5. |
-| 4 | Packaging | WIP | Base image is pinned. Phase 3 still needs SBOMs and missing image/chart signatures on publish. |
+| 4 | Packaging | WIP | Publish workflows now emit SBOMs and keyless signatures. Packaging stays `WIP` until the next release verifies them. |
 | 5 | Automation | OK | Dependabot accepted `pip`, `github-actions`, and `docker`. Actions group PR #1 merged. The restore script is M5. |
-| 6 | Tests | OK | MCP tests use `httpx2`, `is_error`, and `input_schema`. 356 passed locally. Coverage is M4. |
-| 7 | Docs | OK | Container manual covers tag plus digest refresh. `SECURITY.md` records Dependabot and the base-image pin. |
-| 8 | Security | WIP | Phase 2 Dependabot and the base-image pin are live. Next: inventory current attestations, then add missing SBOM, provenance, and signatures. |
+| 6 | Tests | OK | Ruff and one coverage job run on pull requests. The statement floor is 81. |
+| 7 | Docs | OK | `SUPPLY_CHAIN.md` inventories `0.5.2`. `RELEASING.md` has verification commands and the coverage policy. |
+| 8 | Security | WIP | `0.5.2` inventory is checked in. Image and chart signatures land on the next publish. PyPI keeps its existing attestation. |
 
 Keep this table's shape stable (one row per lane, status in column 3) so
 it stays `grep`-able — see the rollup convention at the bottom.

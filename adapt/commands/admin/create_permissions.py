@@ -4,7 +4,7 @@ import logging
 
 from ...admin.resources import list_resources
 from ...config import AdaptConfig
-from ...storage import Permission, Group, GroupPermission, init_database, Action, get_db_session
+from ...storage import Permission, Group, GroupPermission, init_database, Action
 from sqlmodel import Session, select
 
 logger = logging.getLogger(__name__)

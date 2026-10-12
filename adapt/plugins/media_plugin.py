@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from adapt.cache import get_cache, set_cache, invalidate_cache
+from adapt.cache import get_cache, set_cache
 
 import base64
 import io
@@ -9,14 +9,13 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from fastapi import Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse
 from fastapi.routing import APIRouter
 from mutagen import File
 import imageio.v2 as imageio
 from PIL import Image
 
 from .base import Plugin, ResourceDescriptor, PluginContext, SearchDocument
-from ..security_urls import login_redirect_url
 
 
 logger = logging.getLogger(__name__)

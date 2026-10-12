@@ -1,19 +1,15 @@
 from adapt.cache import get_cache, set_cache, invalidate_cache
 import logging
 from pathlib import Path
-from typing import Any, Sequence, Iterable, Optional
+from typing import Any, Iterable, Optional
 import pandas as pd
-import fastparquet
 from .dataset_plugin import DatasetPlugin
 from .base import ResourceDescriptor, atomic_write
 
 
 logger = logging.getLogger(__name__)
 
-class ParquetPlugin(DatasetPlugin):
-    """
-    Plugin for reading and writing Parquet files using pandas + fastparquet.
-    """
+
 class ParquetPlugin(DatasetPlugin):
     """
     Plugin for reading and writing Parquet files using pandas + fastparquet.
@@ -107,7 +103,6 @@ class ParquetPlugin(DatasetPlugin):
             with resource.schema_path.open() as f:
                 return json.load(f)
         header = resource.metadata.get("header", [])
-        sample = resource.metadata.get("sample_row", [])
         columns = {}
         if header:
             df = pd.read_parquet(resource.path)

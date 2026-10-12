@@ -6,10 +6,6 @@ from adapt.app import create_app
 from adapt.storage import APIKey, DBSession, init_database, User
 from adapt.auth.password import hash_password, verify_password
 from adapt.auth.session import create_session
-from pathlib import Path
-import io
-import sys
-from contextlib import redirect_stdout
 
 @pytest.fixture
 def app(tmp_path):
@@ -404,7 +400,6 @@ def test_run_list_groups_with_data(db_session, tmp_path, capsys):
     """Test list-groups command with groups, permissions, and users."""
     from adapt.commands.admin import run_list_groups
     from adapt.storage import Group, Permission, GroupPermission, User, UserGroup, Action
-    from sqlmodel import select
     
     # Create test data
     # Users
@@ -499,7 +494,7 @@ def test_run_list_resources(tmp_path, capsys):
 def test_run_create_permissions(tmp_path, capsys):
     """Test create-permissions command."""
     from adapt.commands.admin import run_create_permissions
-    from adapt.storage import Group, Permission, GroupPermission
+    from adapt.storage import Group, Permission
     from sqlmodel import Session, select
     
     # Create some test files

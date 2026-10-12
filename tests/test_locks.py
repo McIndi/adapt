@@ -2,11 +2,9 @@ import pytest
 import threading
 import time
 from datetime import datetime, timedelta, timezone
-from sqlmodel import Session, select
+from sqlmodel import Session
 from adapt.locks import LockManager, LockTimeoutError
 from adapt.storage import LockRecord, init_database
-import tempfile
-from pathlib import Path
 
 
 @pytest.fixture
@@ -36,8 +34,8 @@ def test_acquire_lock_conflict(lock_manager):
 
 
 def test_acquire_lock_expired(lock_manager):
-    # Acquire with short TTL
-    lock = lock_manager.acquire_lock("test.csv", "user1", "test", ttl_seconds=1)
+    # Acquire with short TTL. The return value is unused; expiry is what matters.
+    lock_manager.acquire_lock("test.csv", "user1", "test", ttl_seconds=1)
     time.sleep(2)  # Wait for expiry
     # Should be able to acquire again
     lock2 = lock_manager.acquire_lock("test.csv", "user2", "test")
