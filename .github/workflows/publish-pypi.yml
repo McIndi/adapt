@@ -51,10 +51,23 @@ jobs:
           echo "wheel=$wheel" >> "$GITHUB_OUTPUT"
           echo "sdist=$sdist" >> "$GITHUB_OUTPUT"
 
+      # Syft 1.54 does not open a .whl. Unpack each archive and add the locked
+      # runtime requirements so the document lists those packages.
+      - name: Prepare distribution scan directories
+        run: |
+          rm -rf sbom-src
+          mkdir -p sbom-src/wheel sbom-src/sdist
+          python -m zipfile -e "${{ steps.dist.outputs.wheel }}" sbom-src/wheel
+          tar -xzf "${{ steps.dist.outputs.sdist }}" -C sbom-src/sdist
+          uv export --locked --no-dev --no-emit-project --format requirements-txt \
+            --output-file sbom-src/requirements.txt
+          cp sbom-src/requirements.txt sbom-src/wheel/requirements.txt
+          cp sbom-src/requirements.txt sbom-src/sdist/requirements.txt
+
       - name: CycloneDX SBOM for the wheel
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
-          file: ${{ steps.dist.outputs.wheel }}
+          path: sbom-src/wheel
           format: cyclonedx-json
           output-file: dist/wheel.cdx.json
           upload-artifact: false
@@ -65,7 +78,7 @@ jobs:
       - name: CycloneDX SBOM for the sdist
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
-          file: ${{ steps.dist.outputs.sdist }}
+          path: sbom-src/sdist
           format: cyclonedx-json
           output-file: dist/sdist.cdx.json
           upload-artifact: false

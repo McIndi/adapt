@@ -148,16 +148,27 @@ jobs:
         run: |
           wheel=$(ls dist/*.whl)
           sdist=$(ls dist/*.tar.gz)
-          chart=$(ls .chart-package/*.tgz)
           echo "wheel=$wheel" >> "$GITHUB_OUTPUT"
           echo "sdist=$sdist" >> "$GITHUB_OUTPUT"
-          echo "chart=$chart" >> "$GITHUB_OUTPUT"
           mkdir -p sbom
+
+      # Syft 1.54 does not open a .whl. Unpack each archive and add the locked
+      # runtime requirements so the document lists those packages.
+      - name: Prepare distribution scan directories
+        run: |
+          rm -rf sbom-src
+          mkdir -p sbom-src/wheel sbom-src/sdist
+          python -m zipfile -e "${{ steps.artifacts.outputs.wheel }}" sbom-src/wheel
+          tar -xzf "${{ steps.artifacts.outputs.sdist }}" -C sbom-src/sdist
+          uv export --locked --no-dev --no-emit-project --format requirements-txt \
+            --output-file sbom-src/requirements.txt
+          cp sbom-src/requirements.txt sbom-src/wheel/requirements.txt
+          cp sbom-src/requirements.txt sbom-src/sdist/requirements.txt
 
       - name: CycloneDX SBOM for the wheel
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
-          file: ${{ steps.artifacts.outputs.wheel }}
+          path: sbom-src/wheel
           format: cyclonedx-json
           output-file: sbom/wheel.cdx.json
           upload-artifact: false
@@ -168,7 +179,7 @@ jobs:
       - name: CycloneDX SBOM for the sdist
         uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
-          file: ${{ steps.artifacts.outputs.sdist }}
+          path: sbom-src/sdist
           format: cyclonedx-json
           output-file: sbom/sdist.cdx.json
           upload-artifact: false
@@ -176,16 +187,9 @@ jobs:
           dependency-snapshot: false
           syft-version: v1.54.1
 
+      # Syft does not catalog Helm charts. Write the chart and its images.
       - name: CycloneDX SBOM for the chart
-        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-        with:
-          file: ${{ steps.artifacts.outputs.chart }}
-          format: cyclonedx-json
-          output-file: sbom/chart.cdx.json
-          upload-artifact: false
-          upload-release-assets: false
-          dependency-snapshot: false
-          syft-version: v1.54.1
+        run: uv run --no-sync python tools/chart_cyclonedx.py charts/adapt sbom/chart.cdx.json
 
       - name: Require non-empty CycloneDX documents
         run: uv run --no-sync python tools/check_cyclonedx.py sbom/wheel.cdx.json sbom/sdist.cdx.json sbom/chart.cdx.json

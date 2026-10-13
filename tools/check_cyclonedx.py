@@ -1,4 +1,7 @@
-"""Fail unless each path is a CycloneDX JSON document with components.
+"""Fail unless each path is a CycloneDX JSON document with package components.
+
+A component of type "file" does not count. Syft records archive members as
+files, and that list can be non-empty when no package was cataloged.
 
 Usage: python tools/check_cyclonedx.py sbom/one.cdx.json sbom/two.cdx.json
 """
@@ -24,15 +27,16 @@ def main(paths: list[str]) -> int:
             failed = True
             continue
         components = document.get("components") or []
-        if document.get("bomFormat") != "CycloneDX" or not components:
+        packages = [item for item in components if item.get("type") != "file"]
+        if document.get("bomFormat") != "CycloneDX" or not packages:
             print(
                 f"{path}: bomFormat={document.get('bomFormat')!r} "
-                f"components={len(components)}",
+                f"packages={len(packages)} components={len(components)}",
                 file=sys.stderr,
             )
             failed = True
             continue
-        print(f"{path}: {len(components)} components")
+        print(f"{path}: {len(packages)} packages")
     return 1 if failed else 0
 
 

@@ -29,8 +29,14 @@ The chart workflow also waits for Helm CI. New actions are pinned to commit
 SHAs: `anchore/sbom-action` v0.24.3, `sigstore/cosign-installer` v4.1.2
 (Cosign v3.1.3), and `actions/attest` v4.1.0. Syft is pinned to v1.54.1.
 
-Pull requests run the same CycloneDX producer for the wheel, sdist, and chart
-in the `package-sbom` job. They do not sign or publish.
+Syft 1.54.1 does not open a `.whl`, and it does not catalog a Helm chart.
+The wheel and sdist jobs unpack the archive and add the locked runtime
+requirements. Syft then lists those packages. The chart job writes its own
+CycloneDX document with `tools/chart_cyclonedx.py`. That document lists the
+chart and the container images it installs.
+
+Pull requests run these same producers in the `package-sbom` job. They do not
+sign or publish.
 
 ## Review Gate 3
 
