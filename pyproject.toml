@@ -63,6 +63,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=8",
+    "pytest-cov>=6",
+    "ruff>=0.14.2",
     "httpx>=0.27",
     "httpx2>=2.5.0",
     "build>=1.0",
@@ -88,6 +90,48 @@ Issues = "https://github.com/McIndi/adapt/issues"
 
 [project.scripts]
 adapt = "adapt.cli:main"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["adapt", "tests"]
+
+[tool.ruff.lint]
+# Bug and import hygiene only. Formatting rules and `ruff format` stay out of
+# this gate so it is not a repository-wide rewrite.
+select = ["E4", "E7", "E9", "F", "B"]
+ignore = [
+    "E402", # package modules import submodules after their router exists
+    "E711", # comparison-to-None style
+    "E712", # comparison-to-bool style
+    "E741", # ambiguous names already present in tests
+    "B007", # unused loop variables in tests
+    "B017", # pytest.raises(Exception) in existing tests
+    "B904", # exception chaining is outside this gate
+]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Cookie",
+    "fastapi.Form",
+    "fastapi.File",
+    "fastapi.Security",
+]
+
+[tool.coverage.run]
+source = ["adapt"]
+branch = false
+
+[tool.coverage.report]
+show_missing = true
+# Statement-coverage floor. Raise this as coverage grows. Do not lower it
+# to make a pull request pass. The number is the measured baseline.
+fail_under = 81
 
 [tool.setuptools.packages.find]
 where = ["."]

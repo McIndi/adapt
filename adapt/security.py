@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import secrets
-from typing import Iterable
 from urllib.parse import urlparse
 
 from fastapi import Request

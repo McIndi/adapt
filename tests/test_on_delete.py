@@ -1,6 +1,5 @@
-import pytest
 from sqlmodel import select
-from adapt.storage import User, APIKey, DBSession, UserGroup, Group, AuditLog, init_database
+from adapt.storage import User, APIKey, DBSession, UserGroup, Group, AuditLog
 from adapt.auth.password import hash_password
 
 

@@ -8,7 +8,6 @@ from adapt.plugins.html_plugin import HtmlPlugin
 from adapt.plugins.base import ResourceDescriptor
 
 from fastapi import Request, APIRouter
-from fastapi.testclient import TestClient
 
 
 @pytest.fixture

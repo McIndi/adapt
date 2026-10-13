@@ -1,13 +1,10 @@
 import pytest
 from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
-from adapt.auth.session import get_session, create_session, SESSION_TTL
+from adapt.auth.session import get_session, create_session
 from adapt.auth.password import hash_password, verify_password
 from adapt.storage import User, DBSession, APIKey, init_database
 from adapt.config import AdaptConfig
-import tempfile
-import os
-from pathlib import Path
 
 
 @pytest.fixture

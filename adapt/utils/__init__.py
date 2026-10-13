@@ -6,6 +6,8 @@ import logging
 if TYPE_CHECKING:
     from fastapi import Request
 
+    from ..storage import User
+
 logger = logging.getLogger(__name__)
 
 

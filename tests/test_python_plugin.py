@@ -1,4 +1,3 @@
-from pathlib import Path
 
 from adapt.plugins.python_plugin import PythonHandlerPlugin
 

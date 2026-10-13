@@ -1,6 +1,5 @@
 import pytest
 import errno
-from pathlib import Path
 import pandas as pd
 import adapt.cache as cache_module
 from adapt.plugins.parquet_plugin import ParquetPlugin

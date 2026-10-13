@@ -1,10 +1,8 @@
 import pytest
 from pathlib import Path
 from adapt.plugins.dataset_plugin import DatasetPlugin, ResourceDescriptor, PluginContext
-from adapt.plugins.base import Plugin
 from fastapi import Request, APIRouter
 from adapt.locks import LockManager
-from sqlalchemy import create_engine
 
 class MockDatasetPlugin(DatasetPlugin):
     """Concrete implementation for testing abstract DatasetPlugin."""

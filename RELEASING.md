@@ -237,8 +237,8 @@ helm install myadapt oci://ghcr.io/mcindi/charts/adapt \
 
 The release name `adapt` is valid on chart `0.5.2` and later.
 
-OCI charts do not use `helm repo add`. Chart signing and provenance remain
-Phase 3 work in milestone M3.
+OCI charts do not use `helm repo add`. After chart `0.5.2`, verify the
+signature and SBOM with the commands below before trusting a new chart.
 
 ## Application release summary
 
@@ -247,3 +247,100 @@ GitHub Release with a matching `v<app-version>` tag.
 
 That event starts the PyPI, container-image, and documentation workflows. The
 application version must match `pyproject.toml` and `adapt/__init__.py`.
+
+The PyPI job publishes through Trusted Publishing, writes CycloneDX SBOMs
+onto the GitHub Release, and attests those SBOMs. The image job attaches an
+SPDX SBOM and SLSA provenance, then signs the image index with Cosign. The
+chart job signs the OCI chart and attests a CycloneDX SBOM. `0.5.2` itself
+predates those extra artifacts. See `SUPPLY_CHAIN.md`.
+
+## Verify a release
+
+Run these from a clean directory after the publish workflows succeed. Replace
+the version. A wrong identity, a missing signature, or a changed file must
+exit nonzero.
+
+PyPI distributions. This checks the existing Trusted Publishing attestation.
+It does not look for a second signature.
+
+```bash
+python -m pip install pypi-attestations
+python -m pip download adapt-server==0.5.2 --no-deps --no-binary :all: -d dist
+python -m pip download adapt-server==0.5.2 --no-deps --only-binary :all: -d dist
+pypi-attestations verify pypi --repository McIndi/adapt dist/*
+```
+
+Python SBOMs, from the GitHub Release assets:
+
+```bash
+gh release download v0.5.2 --pattern "*.cdx.json" --dir sbom
+gh attestation verify sbom/adapt_server-0.5.2.whl.cdx.json --repo McIndi/adapt
+gh attestation verify sbom/adapt_server-0.5.2.tar.gz.cdx.json --repo McIndi/adapt
+```
+
+The asset names use the version of that release. `0.5.2` has no SBOM assets.
+Use the next application release for this check.
+
+Image signature, SBOM, and provenance:
+
+```bash
+cosign verify \
+  --certificate-identity-regexp '^https://github.com/McIndi/adapt/\.github/workflows/publish-image\.yml@refs/tags/v.+' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/mcindi/adapt-server:0.5.2
+
+docker buildx imagetools inspect ghcr.io/mcindi/adapt-server:0.5.2
+```
+
+`cosign verify` fails on `0.5.2` because that image has provenance and no
+Cosign signature. The imagetools listing shows the provenance attestations.
+The next image release must pass `cosign verify` and list an SBOM.
+
+Chart signature and SBOM:
+
+```bash
+cosign verify \
+  --certificate-identity-regexp '^https://github.com/McIndi/adapt/\.github/workflows/publish-chart\.yml@refs/tags/chart-v.+' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/mcindi/charts/adapt:0.5.2
+
+cosign verify-attestation \
+  --type cyclonedx \
+  --certificate-identity-regexp '^https://github.com/McIndi/adapt/\.github/workflows/publish-chart\.yml@refs/tags/chart-v.+' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/mcindi/charts/adapt:0.5.2
+```
+
+Both chart commands fail on `0.5.2`. They apply to the next chart release.
+
+Confirm a bad identity fails. This exits nonzero:
+
+```bash
+cosign verify \
+  --certificate-identity https://github.com/McIndi/adapt/.github/workflows/does-not-exist.yml@refs/tags/v0.5.2 \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  ghcr.io/mcindi/adapt-server:0.5.2
+```
+
+## Quality gates
+
+Pull requests run two extra required jobs in `.github/workflows/test.yml`:
+
+- `lint` runs `ruff check adapt tests`. The rule set is in `pyproject.toml`.
+  It covers pyflakes, bugbear, and a few pycodestyle error classes. It does
+  not run `ruff format`.
+- `coverage` runs the suite once and prints statement coverage plus
+  missing lines. The floor is `[tool.coverage.report] fail_under` in
+  `pyproject.toml`.
+
+The measured baseline on 2026-10-12 is 81.50% statement coverage
+(Python 3.14.6, 356 passed, 1 skipped). `fail_under` is 81, the highest
+whole number that baseline meets.
+
+Raise `fail_under` when a change increases coverage. Do not lower it to make
+a pull request pass. The other test jobs stay free of coverage so the summary
+comes from one job.
+
+A lint syntax error and `--cov-fail-under=100` both exit nonzero. Those
+checks were run locally on 2026-10-12 and then removed. The CI jobs use the
+real Ruff configuration and `fail_under = 81`.

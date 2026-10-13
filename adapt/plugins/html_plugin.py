@@ -1,6 +1,6 @@
 from __future__ import annotations
 import logging
-from adapt.cache import get_cache, set_cache, invalidate_cache
+from adapt.cache import get_cache, set_cache
 
 from html.parser import HTMLParser
 from pathlib import Path
@@ -141,7 +141,6 @@ class HtmlPlugin(Plugin):
     def get_route_configs(self, descriptor: ResourceDescriptor) -> list[tuple[str, APIRouter]]:
         """Return route configs for HTML content: direct serving."""
         logger.debug(f"Getting route configs for HTML: {descriptor.path}")
-        from fastapi.responses import HTMLResponse
 
         router = APIRouter()
         @router.get("")
