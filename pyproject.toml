@@ -38,7 +38,7 @@ dependencies = [
     "mutagen>=1.47,<2",
     "imageio>=2.31,<3",
     "imageio-ffmpeg>=0.4,<1",
-    "pillow>=12.3,<13",
+    "pillow>=12.3,<14",
     "python-json-logger>=2.0,<5",
     # fastparquet 2026.5.0 uses generic datetime/timedelta units that NumPy
     # 2.5 deprecates. Remove this cap when fastparquet adopts explicit units.
